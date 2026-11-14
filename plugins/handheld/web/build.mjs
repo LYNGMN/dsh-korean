@@ -16,6 +16,9 @@ fs.rmSync(DIST, { recursive: true, force: true })
 fs.mkdirSync(path.join(DIST, 'assets'), { recursive: true })
 
 const app = await esbuild.build({
+  // File names carry a hash of the inputs and their paths relative to this folder.
+  // Pinning it keeps the names the same whichever folder the build is started from.
+  absWorkingDir: path.join(WEB, '..'),
   entryPoints: { app: path.join(WEB, 'src', 'main.jsx') },
   outdir: DIST,
   entryNames: 'assets/[name]-[hash]',
