@@ -44,6 +44,7 @@ const PATHS = {
       <path d="M5 15V6a2 2 0 0 1 2-2h8" />
     </>
   ),
+  branch: <path d="M6 4v9a4 4 0 0 0 4 4h9M15.5 13.5 19 17l-3.5 3.5" />,
   chevron: <path d="m6 9 6 6 6-6" />,
   tool: <path d="m5 8 4 4-4 4M12 16h7" />,
   check: <path d="m5 12.5 4.5 4.5L19 7" />,

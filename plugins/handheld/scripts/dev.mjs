@@ -14,6 +14,7 @@ const logger = { info: (m) => console.log(m), warn: (m) => console.warn(m) }
 
 const DEMO = 'session-demo-1'
 const SECOND = 'session-demo-2'
+const HELPER = 'session-demo-helper'
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function seed(dsh) {
@@ -34,6 +35,13 @@ function seed(dsh) {
   dsh.pushEvent(DEMO, 'workspace/changes', { turn: 1 })
   reply(1, '버튼을 `btn-lg`로 키우고 오류 문구를 바꿨습니다.\n\n- 버튼 글자: **로그인**\n- 오류: 비밀번호가 맞지 않습니다 (`role="alert"`로 화면 낭독기에도 읽힙니다)\n\n```css\n.btn-lg {\n  font-size: 1.125rem;\n  min-height: 44px;\n}\n```')
   dsh.pushEvent(DEMO, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  // A subagent the demo session handed work to.
+  dsh.pushEvent(HELPER, 'user/message', { source: { kind: 'user' }, content: [{ type: 'text', text: '`Sign in` 문구가 쓰인 곳을 모두 찾아 줘' }] })
+  dsh.pushEvent(HELPER, 'turn/start', { turn: 1 })
+  dsh.pushEvent(HELPER, 'tool/call', { callId: 'h1', name: 'bash', arguments: JSON.stringify({ command: 'rg -n "Sign in" src' }) })
+  dsh.pushEvent(HELPER, 'tool/result', { message: { toolCallId: 'h1', isError: false, content: [{ type: 'text', text: 'src/Login.tsx:12:  <button>Sign in</button>' }] } })
+  dsh.pushEvent(HELPER, 'assistant/message', { turn: 1, message: { content: [{ type: 'text', text: '`src/Login.tsx` 12번째 줄 한 곳에서만 씁니다.' }] } })
+  dsh.pushEvent(HELPER, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
   dsh.pushEvent(SECOND, 'session/title', { title: '배포 스크립트 점검' })
   dsh.pushEvent(SECOND, 'user/message', { source: { kind: 'user' }, content: [{ type: 'text', text: '배포 전에 빠진 검사가 있는지 봐 줘' }] })
 }
@@ -80,6 +88,7 @@ if (real) {
     sessions: [
       { sessionId: DEMO, cwd: '/home/user/app' },
       { sessionId: SECOND, cwd: '/home/user/deploy' },
+      { sessionId: HELPER, cwd: '/home/user/app', parentSessionId: DEMO, label: '문구 쓰인 곳 찾기', mode: 'one-shot' },
     ],
     workspaces: [{ workspaceId: 'ws-1', path: '/home/user/app', title: 'app', sessionIds: [DEMO] }],
     onPrompt: (request) => void respond(dsh, request),

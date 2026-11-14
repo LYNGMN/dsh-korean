@@ -166,3 +166,43 @@ export function summarizeSession(row) {
     parentId: row.parentSessionId ?? null,
   }
 }
+
+const SUBAGENT_MODES = new Set(['one-shot', 'continuable', 'unknown'])
+
+/** Opaque id the phone uses for a subagent conversation; only server/dsh/ reads its parts. */
+export function subagentRef(parentId, childId, mode) {
+  return ['sub', parentId, childId, SUBAGENT_MODES.has(mode) ? mode : 'unknown'].join('~')
+}
+
+/** @returns {{parentId: string, childId: string, mode: string} | null} */
+export function parseSubagentRef(id) {
+  const parts = typeof id === 'string' ? id.split('~') : []
+  if (parts.length !== 4 || parts[0] !== 'sub' || !parts[1] || !parts[2] || !SUBAGENT_MODES.has(parts[3])) return null
+  return { parentId: parts[1], childId: parts[2], mode: parts[3] }
+}
+
+function subagentState(row) {
+  if (row?.running === true) return 'running'
+  const completed = row?.projections?.values?.subagentTiming?.lastTurnCompleted
+  if (completed === true) return 'done'
+  if (completed === false) return 'stopped'
+  return 'idle'
+}
+
+/**
+ * Subagents of one session -> Subagent[] (server/protocol.js). The parent's
+ * `subagentCatalog` projection names them; `session/list` rows that point at the
+ * parent fill in titles and state, and stand in when the catalog is missing.
+ * Externally run subagents have no conversation to open and are left out.
+ */
+export function subagentsOf(parentId, projections, listRows) {
+  const values = projections?.values ?? projections?.projections?.values ?? {}
+  const catalog = Array.isArray(values.subagentCatalog) ? values.subagentCatalog.filter((e) => e && typeof e.id === 'string' && e.mode !== 'external') : []
+  const rows = new Map((listRows ?? []).filter((r) => r?.parentSessionId === parentId).map((r) => [r.sessionId, r]))
+  const entries = catalog.length > 0 ? catalog : [...rows.values()].map((r) => ({ id: r.sessionId, mode: 'unknown', createdAt: r.updatedAt }))
+  return entries.map((entry) => {
+    const row = rows.get(entry.id)
+    const title = entry.label || row?.projections?.values?.title || '하위 에이전트'
+    return { id: subagentRef(parentId, entry.id, entry.mode), title, mode: SUBAGENT_MODES.has(entry.mode) ? entry.mode : 'unknown', state: subagentState(row), createdAt: entry.createdAt ?? 0 }
+  }).sort((a, b) => a.createdAt - b.createdAt)
+}

@@ -80,3 +80,9 @@ export function usePageTitle(title) {
 export function focusHeading() {
   document.querySelector('.screen h1')?.focus({ preventScroll: true })
 }
+
+/** Parent session of a subagent conversation id (server/protocol.js), or null for a session. */
+export function subagentParent(sessionId) {
+  const parts = typeof sessionId === 'string' ? sessionId.split('~') : []
+  return parts.length === 4 && parts[0] === 'sub' ? parts[1] : null
+}

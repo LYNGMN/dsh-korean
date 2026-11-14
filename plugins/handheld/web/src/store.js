@@ -15,6 +15,8 @@ export const state = {
   /** @type {Record<string, Feed>} */
   feeds: {},
   toasts: [],
+  /** Titles of subagent conversations seen so far, by id: they are not in `sessions`. */
+  subagentTitles: {},
 }
 
 /**

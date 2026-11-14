@@ -9,6 +9,9 @@ const MAX_IDLE_FEEDS = 30
 const MAX_WATCHES_PER_CONN = 4
 const NOTIFIED_MEMORY = 200
 
+// Subagent conversations are read through the gateway but never written to.
+const isSubagent = (sessionId) => typeof sessionId === 'string' && sessionId.startsWith('sub~')
+
 export class HubError extends Error {
   constructor(code, message, status = 400) {
     super(message)
@@ -116,6 +119,10 @@ export class Hub extends EventEmitter {
     return this.rows ?? []
   }
 
+  subagents(sessionId) {
+    return this.api.subagents(sessionId)
+  }
+
   history(sessionId, beforeSeq) {
     return this.api.history(sessionId, { beforeSeq })
   }
@@ -123,10 +130,12 @@ export class Hub extends EventEmitter {
   prompt(sessionId, text, mode) {
     if (typeof text !== 'string' || text.trim().length === 0) throw new HubError('prompt/empty', '보낼 글이 비어 있습니다')
     if (text.length > 100_000) throw new HubError('prompt/too-long', '글이 너무 깁니다')
+    if (isSubagent(sessionId)) throw new HubError('prompt/view-only', '하위 에이전트 대화는 보기만 할 수 있습니다')
     return this.api.prompt(sessionId, text, { mode: mode === 'steer' ? 'steer' : 'queue' })
   }
 
   cancel(sessionId) {
+    if (isSubagent(sessionId)) throw new HubError('cancel/view-only', '하위 에이전트는 부모 세션에서 중단해 주세요')
     return this.api.cancel(sessionId)
   }
 

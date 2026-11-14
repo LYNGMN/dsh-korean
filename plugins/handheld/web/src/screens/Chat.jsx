@@ -5,10 +5,11 @@ import { api, sessionPath } from '../api.js'
 import { unwatchSession, watchSession } from '../live.js'
 import { feedOf, mergeItems, toast, update, useStore } from '../store.js'
 import { Markdown } from '../lib/markdown.jsx'
-import { baseName, go, storageGet, storageSet, usePageTitle } from '../lib/util.js'
+import { baseName, go, storageGet, storageSet, subagentParent, usePageTitle } from '../lib/util.js'
 import { Composer } from '../components/Composer.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { buildRows, ItemView } from '../components/ItemView.jsx'
+import { Sheet } from '../components/Sheet.jsx'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -38,6 +39,50 @@ function useRows(items) {
   }, [items])
 }
 
+const SUBAGENT_STATE = { running: '실행 중', done: '끝남', stopped: '중단됨', idle: '대기 중' }
+const SUBAGENT_POLL_MS = 8000
+
+/** Subagents of a session; asked again while it works, since new ones appear mid-turn. */
+function useSubagents(sessionId, running, enabled) {
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    if (!enabled) return undefined
+    let alive = true
+    const load = () => api(`${sessionPath(sessionId)}/subagents`).then((r) => {
+      if (!alive) return
+      setItems(r.items)
+      update((s) => { for (const item of r.items) s.subagentTitles[item.id] = item.title })
+    }).catch(() => {})
+    void load()
+    const timer = running ? setInterval(load, SUBAGENT_POLL_MS) : null
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [sessionId, running, enabled])
+  return items
+}
+
+function SubagentSheet({ items, onClose }) {
+  return (
+    <Sheet title="하위 에이전트" onClose={onClose}>
+      <p class="muted small">이 세션이 맡긴 일의 대화입니다. 보기만 할 수 있습니다.</p>
+      <ul class="list sub-list">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button type="button" class="row" data-qa-multiline onClick={() => { onClose(); go(`#/s/${encodeURIComponent(item.id)}`) }}>
+              <span class="row-main">
+                <span class="row-title one-line">{item.title}</span>
+              </span>
+              <span class={`badge ${item.state === 'running' ? 'badge-run' : 'badge-quiet'}`}>{item.state === 'running' ? <span class="dot dot-run" aria-hidden="true" /> : null}{SUBAGENT_STATE[item.state] ?? item.state}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Sheet>
+  )
+}
+
 function StreamBubble({ stream }) {
   if (!stream) return null
   return (
@@ -49,8 +94,10 @@ function StreamBubble({ stream }) {
 }
 
 export function Chat({ sessionId }) {
-  const { row, feed, pending } = useStore((s) => ({
+  const parentId = subagentParent(sessionId)
+  const { row, feed, pending, subTitle } = useStore((s) => ({
     row: s.sessions.find((r) => r.id === sessionId),
+    subTitle: s.subagentTitles[sessionId],
     feed: s.feeds[sessionId] ?? feedOf(sessionId),
     pending: s.pending.filter((p) => p.sessionId === sessionId),
   }))
@@ -62,6 +109,9 @@ export function Chat({ sessionId }) {
   const [showDown, setShowDown] = useState(false)
   const [far, setFar] = useState(false)
   const running = row?.running === true
+  const subagents = useSubagents(sessionId, running, parentId === null)
+  const [showSubagents, setShowSubagents] = useState(false)
+  const activeSubagents = subagents.filter((s) => s.state === 'running').length
   const [announcement, setAnnouncement] = useState('')
   const before = useRef({ running, waiting: pending.length })
 
@@ -142,16 +192,16 @@ export function Chat({ sessionId }) {
     }
   }
 
-  const title = row?.title ?? '세션'
+  const title = parentId ? subTitle ?? '하위 에이전트' : row?.title ?? '세션'
   usePageTitle(title)
   return (
     <div class="screen chat">
       <header class="topbar">
-        <button type="button" class="icon-btn" aria-label="세션 목록" onClick={() => go('#/')}><Icon name="back" /></button>
+        <button type="button" class="icon-btn" aria-label={parentId ? '부모 세션으로' : '세션 목록'} onClick={() => go(parentId ? `#/s/${encodeURIComponent(parentId)}` : '#/')}><Icon name="back" /></button>
         <div class="topbar-title">
           <h1 class="one-line" tabIndex={-1}>{title}</h1>
           <p class="topbar-sub one-line">
-            {running ? <><span class="dot dot-run" aria-hidden="true" />실행 중</> : '대기 중'}
+            {parentId ? '하위 에이전트 · 보기 전용' : running ? <><span class="dot dot-run" aria-hidden="true" />실행 중</> : '대기 중'}
             {row?.cwd ? ` · ${baseName(row.cwd)}` : ''}
           </p>
         </div>
@@ -170,6 +220,16 @@ export function Chat({ sessionId }) {
         </div>
       ) : null}
 
+      {subagents.length > 0 ? (
+        <div class="sub-strip">
+          <button type="button" class="sub-btn" onClick={() => setShowSubagents(true)}>
+            <Icon name="branch" size={18} />
+            <span class="one-line">하위 에이전트 {subagents.length}개{activeSubagents > 0 ? ` · 실행 중 ${String(activeSubagents)}` : ''}</span>
+            <span class="pending-go">보기</span>
+          </button>
+        </div>
+      ) : null}
+
       <div class="messages-wrap">
       <main class="messages" ref={scroller} onScroll={onScroll} aria-label="대화" aria-busy={!feed.synced}>
         {feed.hasMore && feed.items.length > 0 ? (
@@ -180,7 +240,7 @@ export function Chat({ sessionId }) {
           </div>
         ) : null}
         {!feed.synced ? <p class="muted center pad">불러오는 중…</p> : null}
-        {feed.synced && rows.length === 0 && !feed.stream ? <p class="muted center pad">아직 대화가 없습니다. 아래에서 첫 글을 보내 보세요.</p> : null}
+        {feed.synced && rows.length === 0 && !feed.stream ? <p class="muted center pad">{parentId ? '아직 기록이 없습니다.' : '아직 대화가 없습니다. 아래에서 첫 글을 보내 보세요.'}</p> : null}
         {rows.map((r) => <ItemView key={r.key} row={r} />)}
         <StreamBubble stream={feed.stream} />
       </main>
@@ -190,7 +250,8 @@ export function Chat({ sessionId }) {
       </div>
 
       <p class="visually-hidden" role="status">{announcement}</p>
-      <Composer sessionId={sessionId} running={running} />
+      {parentId ? <p class="view-only">하위 에이전트 대화는 보기만 할 수 있습니다. 지시는 부모 세션에서 보내 주세요.</p> : <Composer sessionId={sessionId} running={running} />}
+      {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
     </div>
   )
 }

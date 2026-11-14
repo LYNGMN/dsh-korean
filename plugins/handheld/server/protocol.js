@@ -54,6 +54,9 @@ export const STREAM_FLUSH_MS = 100
  *   ping     { at }
  *
  * SessionRow: { id, title, cwd, running, updatedAt }
+ * Subagent:   { id, title, mode: 'one-shot'|'continuable'|'unknown', state: 'running'|'done'|'stopped'|'idle', createdAt }
+ *             `id` is opaque and works wherever a session id is read (watch, history); a subagent
+ *             conversation is view-only, so prompt and cancel refuse it. REST: GET /sessions/:id/subagents
  * Pending:    { id, sessionId, kind: 'approval', tool, reason?, callId?, at }   callId pairs with the `tool` item
  *           | { id, sessionId, kind: 'question', questions: Question[], at }
  * Question:   { id, question, header?, detail?, options?: string[], multiSelect: boolean }

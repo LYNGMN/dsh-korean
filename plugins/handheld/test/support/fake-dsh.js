@@ -54,6 +54,14 @@ export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt }
     wss.handleUpgrade(req, socket, head, (ws) => onMux(ws))
   })
 
+  // A subagent address must name its real parent, as the Host checks.
+  function addressedSession(address) {
+    if (address.kind !== 'subagent') return address.sessionId
+    const child = state.sessions.get(address.childSessionId)
+    if (!child || child.parentSessionId !== address.parentSessionId) throw Object.assign(new Error('unknown subagent'), { code: 'session/not-found' })
+    return address.childSessionId
+  }
+
   function sessionOf(id) {
     const s = state.sessions.get(id)
     if (!s) throw Object.assign(new Error(`unknown session ${id}`), { code: 'session/not-found' })
@@ -82,13 +90,22 @@ export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt }
         return {
           items: [...state.sessions.values()].map((s) => ({
             sessionId: s.sessionId, cwd: s.cwd ?? '/home/user/project', running: s.running, blank: false,
+            ...(s.parentSessionId ? { parentSessionId: s.parentSessionId } : {}),
             updatedAt: s.events.at(-1)?.time ?? 0,
             projections: { values: { title: s.events.findLast((e) => e.type === 'session/title')?.data.title ?? s.title } },
           })),
         }
+      case 'session/projections':
+        sessionOf(args.request.sessionId)
+        return {
+          values: {
+            subagentCatalog: [...state.sessions.values()].filter((s) => s.parentSessionId === args.request.sessionId)
+              .map((s, n) => ({ id: s.sessionId, createdAt: n + 1, mode: s.mode ?? 'continuable', label: s.label })),
+          },
+        }
       case 'session/events': {
         const { address, beforeSeq, maxMessages = 20 } = args.request
-        const s = sessionOf(address.sessionId)
+        const s = sessionOf(addressedSession(address))
         const before = typeof beforeSeq === 'number' ? s.events.filter((e) => e.seq < beforeSeq) : s.events
         const { slice, hasMore } = tail(before, maxMessages)
         return { cursor: s.events.at(-1)?.seq ?? -1, records: recordsOf(slice), hasMore }
@@ -152,7 +169,7 @@ export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt }
     }
     if (endpoint === 'session/follow') {
       const { address, maxMessages = 20 } = args.request
-      const s = state.sessions.get(address.sessionId)
+      const s = state.sessions.get(addressedSession(address))
       if (!s) { stream.end(); return }
       const { slice, hasMore } = tail(s.events, maxMessages)
       const follow = { sessionId: s.sessionId, stream }

@@ -1,11 +1,13 @@
 // Gateway operations expressed as DSH calls. Outside server/dsh/ nobody sees
 // DSH endpoint names, argument wrappers or event names.
 import { randomUUID } from 'node:crypto'
-import { normalizeEvent, StreamAssembler, summarizeSession } from './normalize.js'
+import { normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession } from './normalize.js'
 
 const HISTORY_PAGE_MESSAGES = 20
 
 function sessionAddress(sessionId) {
+  const sub = parseSubagentRef(sessionId)
+  if (sub) return { kind: 'subagent', parentSessionId: sub.parentId, childSessionId: sub.childId, mode: sub.mode }
   return { kind: 'session', sessionId }
 }
 
@@ -76,7 +78,22 @@ export class DshApi {
     }
   }
 
+  /** Conversations a session started for its subagents, oldest first. */
+  async subagents(sessionId) {
+    if (parseSubagentRef(sessionId)) return []
+    const [projections, rows] = await Promise.all([
+      // Older Hosts may not answer this; the list rows alone still name the children.
+      this.client.rpc('session/projections', { request: { sessionId } }).catch(() => null),
+      this.#listRows(),
+    ])
+    return subagentsOf(sessionId, projections, rows)
+  }
+
   async listSessions() {
+    return (await this.#listRows()).map(summarizeSession).filter((r) => !r.parentId)
+  }
+
+  async #listRows() {
     const rows = []
     let cursor
     for (let page = 0; page < 10; page += 1) {
@@ -85,7 +102,7 @@ export class DshApi {
       cursor = result.nextCursor ?? result.cursor
       if (!cursor || (result.items ?? []).length === 0) break
     }
-    return rows.filter((r) => !r.blank).map(summarizeSession).filter((r) => !r.parentId)
+    return rows.filter((r) => !r.blank)
   }
 
   async workspaces() {

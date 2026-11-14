@@ -9,7 +9,8 @@ export class RouteError extends Error {
   }
 }
 
-const SESSION_ID = /^[A-Za-z0-9._:-]{1,128}$/
+// A subagent conversation's id joins three ids with `~` (see server/protocol.js).
+const SESSION_ID = /^[A-Za-z0-9._:~-]{1,400}$/
 
 function sessionIdOf(raw) {
   const id = decodeURIComponent(raw)
@@ -38,6 +39,7 @@ export function createRoutes({ hub, store, notifier, version }) {
         return { sessionId: await hub.createSession({ workspaceId: body.workspaceId }) }
       },
     },
+    { method: 'GET', pattern: /^\/sessions\/([^/]+)\/subagents$/, handle: async ({ params }) => ({ items: await hub.subagents(sessionIdOf(params[0])) }) },
     {
       method: 'GET',
       pattern: /^\/sessions\/([^/]+)\/history$/,
