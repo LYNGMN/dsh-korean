@@ -1,0 +1,19 @@
+# Exa Search bundle for DSH.
+# It registers:
+#   exa          - a web_search provider backed by the Exa Search API
+#   exa_search   - a tool that searches on Exa directly
+#   /exa <question> - a command that uses Exa for that one request
+# The API key is not stored here: EXA_API_KEY resolves through the DSH
+# credential store, the launch environment, ~/.dsh/.env, or ~/.dsh/exa-api-key.
+# Pick the web_search provider with web.searchProvider in the profile's
+# cordis.patch.yml or on the Web search settings page.
+- insert:
+    - id: exa-search
+      name: '@lyngmn/dsh-search-exa'
+      config:
+        apiKeyEnv: EXA_API_KEY
+        apiKeyFile: "~/.dsh/exa-api-key"
+        endpoint: https://api.exa.ai/search
+        type: auto
+        count: 8
+        snippetChars: 400

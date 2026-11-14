@@ -1,0 +1,13 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "key-round" (ISC License, https://lucide.dev/icons/key-round). -->
+  <g transform="translate(18 18) scale(1) translate(-12 -12)" stroke="url(#model-key-failover-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+    <circle cx="16.5" cy="7.5" r=".5" fill="url(#model-key-failover-icon)" />
+  </g>
+  <defs>
+    <linearGradient id="model-key-failover-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

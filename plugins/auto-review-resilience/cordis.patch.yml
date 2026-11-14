@@ -1,0 +1,24 @@
+# 자동 검토 복구 번들.
+# Auto review의 검토 요청이 429·5xx·시간 초과로 끝나면 같은 검토를 다시 시도한다.
+# 재시도를 다 써도 실패하면 도구를 막는 대신 사람에게 직접 승인을 묻는다.
+# 승인은 사람이 누를 때만 일어나며, 이 플러그인은 도구를 자동으로 허용하지 않는다.
+- insert:
+    - id: auto-review-resilience
+      name: '@lyngmn/dsh-auto-review-resilience'
+      config:
+        # false면 이 플러그인이 아무 것도 하지 않는다.
+        enabled: true
+        # 첫 시도 뒤에 더 해 볼 횟수(0~10).
+        maxRetries: 3
+        # 재시도 간격: 500ms에서 시작해 두 배씩, 최대 8000ms.
+        initialDelayMs: 500
+        maxDelayMs: 8000
+        jitterRatio: 0.2
+        # 재시도를 다 써도 실패하면 도구를 막지 않고 직접 승인을 묻는다.
+        askOnFailure: true
+        # 검토를 다른 모델로도 시도하려면 아래 두 줄의 주석을 풀고 값을 맞춘다.
+        # 검토 이력이 그 제공자로 전송되므로 데이터·비용을 확인한 뒤 켠다.
+        # fallback:
+        #   provider: altare
+        #   model: deepseek-v4.1-flash
+        # fallbackAfter: 2

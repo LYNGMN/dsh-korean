@@ -1,0 +1,27 @@
+# Search Fallback bundle for DSH.
+# Each order below becomes one web_search provider. It runs the listed
+# providers in turn: when one fails (quota, key, network) or finds nothing, the
+# same query runs on the next. Providers are looked up by id at search time, so
+# this bundle does not depend on the bundles that register them; a missing
+# provider is skipped like a failed one.
+# Pick an order with web.searchProvider in the profile's cordis.patch.yml or on
+# the Web search settings page.
+- insert:
+    - id: search-fallback
+      name: '@lyngmn/dsh-search-fallback'
+      config:
+        # Also move on when a provider answers with zero results.
+        fallbackOnEmpty: true
+        orders:
+          - id: brave-exa
+            title: Brave → Exa
+            providers: [brave, exa]
+            description:
+              en: Searches Brave first. If Brave fails (quota, key, network) or finds nothing, the same query runs on Exa.
+              ko: 먼저 Brave로 검색해요. Brave가 실패하거나(한도·키·네트워크) 결과가 없으면 같은 검색어로 Exa를 써요.
+          - id: exa-brave
+            title: Exa → Brave
+            providers: [exa, brave]
+            description:
+              en: Searches Exa first, which suits research and long questions. If Exa fails (credits, key, network) or finds nothing, the same query runs on Brave.
+              ko: 먼저 Exa로 검색해요. 자료 조사나 긴 질문에 잘 맞아요. Exa가 실패하거나(크레딧·키·네트워크) 결과가 없으면 같은 검색어로 Brave를 써요.

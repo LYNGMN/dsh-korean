@@ -1,0 +1,14 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "corner-down-left" (ISC License, https://lucide.dev/icons/corner-down-left). -->
+  <!-- 광학 보정: 꺾인 화살표가 다른 플러그인 아이콘보다 0.77배로 작게 보여 1.35배로 키우고(선 굵기는 1.48로 줄여 그려진 굵기 2를 유지), 잉크가 오른쪽 아래로 쏠려 왼쪽 0.2칸·위 0.8칸 옮겼다. -->
+  <g transform="translate(17.8 17.2) scale(1.35) translate(-12 -12)" stroke="url(#dsh-enter-keys-icon)" stroke-width="1.48" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+    <path d="m9 10-5 5 5 5" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-enter-keys-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

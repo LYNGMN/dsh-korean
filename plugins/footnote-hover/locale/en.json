@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Footnote Preview",
+    "description": "Previews a footnote when you rest the pointer on its number, and jumps to it when you click, in chat answers and the markdown preview. Click ↩ to go back. Not an official DeepSeek plugin."
+  }
+}

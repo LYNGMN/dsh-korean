@@ -1,0 +1,19 @@
+{
+  "name": "DSH 휴대폰",
+  "short_name": "DSH",
+  "description": "DeepSeek Harness 세션을 휴대폰에서 이어 보고 승인합니다",
+  "lang": "ko",
+  "id": "/h/",
+  "start_url": "/h/",
+  "scope": "/h/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0f16",
+  "theme_color": "#0c0f16",
+  "icons": [
+    { "src": "/h/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/h/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/h/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/h/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

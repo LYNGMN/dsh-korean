@@ -1,0 +1,17 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "list-checks" (ISC License, https://lucide.dev/icons/list-checks). -->
+  <!-- 광학 보정: 체크 표시가 왼쪽에 가벼워 눈에 보이는 중심이 오른쪽으로 0.26칸 쏠려 왼쪽으로 0.25칸 옮겼다. -->
+  <g transform="translate(17.75 18) scale(1) translate(-12 -12)" stroke="url(#dsh-plan-view-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 5h8" />
+    <path d="M13 12h8" />
+    <path d="M13 19h8" />
+    <path d="m3 17 2 2 4-4" />
+    <path d="m3 7 2 2 4-4" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-plan-view-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

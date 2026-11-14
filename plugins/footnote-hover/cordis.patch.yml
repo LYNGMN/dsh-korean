@@ -1,0 +1,7 @@
+# Footnote Hover bundle for DSH.
+# The browser half (client.js) shows a footnote's text when the pointer rests
+# on its number, or when the number gets keyboard focus. It works wherever DSH
+# renders markdown with footnotes: chat answers and the markdown preview.
+- insert:
+    - id: footnote-hover
+      name: '@lyngmn/dsh-footnote-hover'

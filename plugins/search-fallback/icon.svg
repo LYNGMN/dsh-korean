@@ -1,0 +1,16 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "arrow-right-left" (ISC License, https://lucide.dev/icons/arrow-right-left). -->
+  <!-- 24칸 원본을 36칸 가운데에 그대로 놓았다. 같은 묶음(열쇠 기준) 보이는 크기 0.98, 중심 어긋남 0px라 보정하지 않았다. -->
+  <g transform="translate(18 18) scale(1) translate(-12 -12)" stroke="url(#search-fallback-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m16 3 4 4-4 4" />
+    <path d="M20 7H4" />
+    <path d="m8 21-4-4 4-4" />
+    <path d="M4 17h16" />
+  </g>
+  <defs>
+    <linearGradient id="search-fallback-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

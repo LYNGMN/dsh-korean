@@ -1,0 +1,17 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "languages" (ISC License, https://lucide.dev/icons/languages). 24칸 원본을 36칸 가운데에 그대로 놓았다. -->
+  <g transform="translate(6 6)" stroke="url(#dsh-korean-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m5 8 6 6" />
+    <path d="m4 14 6-6 2-3" />
+    <path d="M2 5h12" />
+    <path d="M7 2h1" />
+    <path d="m22 22-5-10-5 10" />
+    <path d="M14 18h6" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-korean-icon" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

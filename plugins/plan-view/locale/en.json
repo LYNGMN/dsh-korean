@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Plan View",
+    "description": "Adds a Plan tab to the conversation views that keeps the agent's todo list and submitted plans on one screen. Not an official DeepSeek plugin."
+  }
+}

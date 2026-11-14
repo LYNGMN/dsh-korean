@@ -1,0 +1,16 @@
+{
+  "menu.copyMarkdown": "세션을 Markdown으로 복사",
+  "menu.download": "세션 로그 다운로드",
+  "menu.feedback": "피드백",
+  "toast.copied": "세션을 Markdown으로 복사했어요.",
+  "toast.preparationFailed": "복사할 세션을 읽지 못했어요. 다시 시도해 주세요.",
+  "toast.clipboardFailed": "클립보드에 쓰지 못했어요. 클립보드 권한을 확인한 뒤 다시 시도해 주세요.",
+  "dialog.session": "세션: {sessionId}",
+  "dialog.preparingTitle": "세션 내보내는 중",
+  "dialog.preparingDescription": "선택한 세션과 그 하위 세션, 첨부 파일을 담은 ZIP을 준비하고 있어요.",
+  "dialog.successTitle": "세션 다운로드 시작됨",
+  "dialog.successDescription": "브라우저가 세션 ZIP을 다운로드하고 있어요.",
+  "dialog.errorTitle": "세션을 내보내지 못했어요",
+  "dialog.close": "닫기",
+  "dialog.commandFailed": "세션 내보내기를 시작하지 못했어요."
+}
