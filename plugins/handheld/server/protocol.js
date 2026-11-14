@@ -54,7 +54,7 @@ export const STREAM_FLUSH_MS = 100
  *   ping     { at }
  *
  * SessionRow: { id, title, cwd, running, updatedAt }
- * Pending:    { id, sessionId, kind: 'approval', tool, reason?, at }
+ * Pending:    { id, sessionId, kind: 'approval', tool, reason?, callId?, at }   callId pairs with the `tool` item
  *           | { id, sessionId, kind: 'question', questions: Question[], at }
  * Question:   { id, question, header?, detail?, options?: string[], multiSelect: boolean }
  */

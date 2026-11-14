@@ -5,7 +5,7 @@ import { api, sessionPath } from '../api.js'
 import { unwatchSession, watchSession } from '../live.js'
 import { feedOf, mergeItems, toast, update, useStore } from '../store.js'
 import { Markdown } from '../lib/markdown.jsx'
-import { baseName, go, storageGet, storageSet } from '../lib/util.js'
+import { baseName, go, storageGet, storageSet, usePageTitle } from '../lib/util.js'
 import { Composer } from '../components/Composer.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { buildRows, ItemView } from '../components/ItemView.jsx'
@@ -60,7 +60,19 @@ export function Chat({ sessionId }) {
   const restored = useRef(false)
   const prevHeight = useRef(0)
   const [showDown, setShowDown] = useState(false)
+  const [far, setFar] = useState(false)
   const running = row?.running === true
+  const [announcement, setAnnouncement] = useState('')
+  const before = useRef({ running, waiting: pending.length })
+
+  // Screen readers do not see the status dot or the request strip appear.
+  useEffect(() => {
+    const was = before.current
+    before.current = { running, waiting: pending.length }
+    if (pending.length > was.waiting) setAnnouncement(`답을 기다리는 요청이 ${String(pending.length)}건 있습니다`)
+    else if (running && !was.running) setAnnouncement('작업을 시작했습니다')
+    else if (!running && was.running) setAnnouncement('작업이 끝났습니다')
+  }, [running, pending.length])
 
   useEffect(() => {
     watchSession(sessionId)
@@ -98,8 +110,11 @@ export function Chat({ sessionId }) {
   const onScroll = () => {
     const el = scroller.current
     if (!el) return
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    const atBottom = fromBottom < NEAR_BOTTOM_PX
     stick.current = atBottom
+    // More than half a screen up: keep a way down to the newest content on screen.
+    setFar(fromBottom > el.clientHeight / 2)
     if (atBottom) setShowDown(false)
     if (el.scrollTop < 300 && feed.hasMore && !feed.loadingOlder) void loadOlder(sessionId)
     clearTimeout(onScroll.timer)
@@ -115,6 +130,7 @@ export function Chat({ sessionId }) {
     el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
     stick.current = true
     setShowDown(false)
+    setFar(false)
   }
 
   const cancel = async () => {
@@ -127,12 +143,13 @@ export function Chat({ sessionId }) {
   }
 
   const title = row?.title ?? '세션'
+  usePageTitle(title)
   return (
     <div class="screen chat">
       <header class="topbar">
         <button type="button" class="icon-btn" aria-label="세션 목록" onClick={() => go('#/')}><Icon name="back" /></button>
         <div class="topbar-title">
-          <h1 class="one-line">{title}</h1>
+          <h1 class="one-line" tabIndex={-1}>{title}</h1>
           <p class="topbar-sub one-line">
             {running ? <><span class="dot dot-run" aria-hidden="true" />실행 중</> : '대기 중'}
             {row?.cwd ? ` · ${baseName(row.cwd)}` : ''}
@@ -167,11 +184,12 @@ export function Chat({ sessionId }) {
         {rows.map((r) => <ItemView key={r.key} row={r} />)}
         <StreamBubble stream={feed.stream} />
       </main>
-      {showDown ? (
-        <button type="button" class="down-btn" onClick={toBottom}><Icon name="down" size={18} />새 내용</button>
+      {showDown || far ? (
+        <button type="button" class="down-btn" onClick={toBottom}><Icon name="down" size={18} />{showDown ? '새 내용' : '맨 아래로'}</button>
       ) : null}
       </div>
 
+      <p class="visually-hidden" role="status">{announcement}</p>
       <Composer sessionId={sessionId} running={running} />
     </div>
   )

@@ -87,6 +87,8 @@ function receive(frame) {
       })
       break
     case 'stream':
+      // A frame already on its way when this tab stopped watching: its end would never come.
+      if (frame.sessionId !== watching) break
       update(() => {
         const feed = feedOf(frame.sessionId)
         let stream = feed.stream
@@ -134,6 +136,8 @@ export function startLive() {
   })
 }
 
+export const watchedSession = () => watching
+
 /** Follow one session (the one on screen); resumes from what this tab already holds. */
 export function watchSession(sessionId) {
   if (watching && watching !== sessionId) send({ type: 'unwatch', sessionId: watching })
@@ -144,5 +148,7 @@ export function watchSession(sessionId) {
 export function unwatchSession(sessionId) {
   if (watching !== sessionId) return
   send({ type: 'unwatch', sessionId })
+  // Its end frame will not arrive any more; the finished reply comes back as an item.
+  update(() => { feedOf(sessionId).stream = null })
   watching = null
 }

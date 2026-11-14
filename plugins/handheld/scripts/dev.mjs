@@ -32,7 +32,7 @@ function seed(dsh) {
   dsh.pushEvent(DEMO, 'tool/call', { callId: 'c3', name: 'write', arguments: JSON.stringify({ file_path: '/home/user/app/src/login.css', content: '.btn-lg {\n  font-size: 1.125rem;\n  min-height: 44px;\n}\n' }) })
   dsh.pushEvent(DEMO, 'tool/result', { message: { toolCallId: 'c3', isError: false, content: [{ type: 'text', text: 'written' }] } })
   dsh.pushEvent(DEMO, 'workspace/changes', { turn: 1 })
-  reply(1, '버튼을 `btn-lg`로 키우고 오류 문구를 바꿨습니다.\n\n- 버튼 글자: **로그인**\n- 오류: 비밀번호가 맞지 않습니다 (`role="alert"`로 화면 낭독기에도 읽힙니다)')
+  reply(1, '버튼을 `btn-lg`로 키우고 오류 문구를 바꿨습니다.\n\n- 버튼 글자: **로그인**\n- 오류: 비밀번호가 맞지 않습니다 (`role="alert"`로 화면 낭독기에도 읽힙니다)\n\n```css\n.btn-lg {\n  font-size: 1.125rem;\n  min-height: 44px;\n}\n```')
   dsh.pushEvent(DEMO, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
   dsh.pushEvent(SECOND, 'session/title', { title: '배포 스크립트 점검' })
   dsh.pushEvent(SECOND, 'user/message', { source: { kind: 'user' }, content: [{ type: 'text', text: '배포 전에 빠진 검사가 있는지 봐 줘' }] })

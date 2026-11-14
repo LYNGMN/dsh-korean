@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import { api } from '../api.js'
 import { toast, update, useStore } from '../store.js'
-import { baseName, go, relativeTime } from '../lib/util.js'
+import { setPref } from '../lib/prefs.js'
+import { baseName, go, relativeTime, usePageTitle } from '../lib/util.js'
 import { Icon } from '../components/Icon.jsx'
 import { Sheet } from '../components/Sheet.jsx'
 
@@ -48,16 +49,18 @@ function NewSession({ onClose }) {
 }
 
 export function SessionList() {
-  const { sessions, loaded, pending } = useStore((s) => ({ sessions: s.sessions, loaded: s.sessionsLoaded, pending: s.pending }))
+  const { sessions, loaded, pending, dark } = useStore((s) => ({ sessions: s.sessions, loaded: s.sessionsLoaded, pending: s.pending, dark: s.prefs.shownTheme === 'dark' }))
   const [creating, setCreating] = useState(false)
+  usePageTitle('세션')
   const waiting = new Set(pending.map((p) => p.sessionId))
   const titleOf = (id) => sessions.find((s) => s.id === id)?.title ?? '세션'
   return (
     <div class="screen">
-      <header class="topbar">
-        <div class="topbar-title"><h1 class="one-line">DSH 세션</h1></div>
-        <button type="button" class="icon-btn" aria-label="새 세션" onClick={() => setCreating(true)}><Icon name="plus" /></button>
+      <header class="topbar topbar-home">
+        <div class="topbar-title"><h1 class="one-line" tabIndex={-1}>DSH 세션</h1></div>
+        <button type="button" class="icon-btn" aria-label={dark ? '밝은 화면으로 바꾸기' : '어두운 화면으로 바꾸기'} onClick={() => setPref('theme', dark ? 'light' : 'dark')}><Icon name={dark ? 'sun' : 'moon'} /></button>
         <button type="button" class="icon-btn" aria-label="설정" onClick={() => go('#/settings')}><Icon name="settings" /></button>
+        <button type="button" class="icon-btn primary round" aria-label="새 세션" onClick={() => setCreating(true)}><Icon name="plus" /></button>
       </header>
       <main class="page">
         {pending.length > 0 ? (
@@ -86,10 +89,15 @@ export function SessionList() {
             <li key={s.id}>
               <a class="row" href={`#/s/${encodeURIComponent(s.id)}`}>
                 <span class="row-main">
-                  <span class="row-title one-line">{s.title}</span>
-                  <span class="row-meta one-line">{[baseName(s.cwd), relativeTime(s.updatedAt)].filter(Boolean).join(' · ')}</span>
+                  <span class="row-line">
+                    <span class="row-title one-line">{s.title}</span>
+                    <span class="row-time">{relativeTime(s.updatedAt)}</span>
+                  </span>
+                  <span class="row-line">
+                    <span class="row-meta one-line">{baseName(s.cwd)}</span>
+                    {waiting.has(s.id) ? <span class="badge badge-attn">답 필요</span> : s.running ? <span class="badge badge-run"><span class="dot dot-run" aria-hidden="true" />실행 중</span> : null}
+                  </span>
                 </span>
-                {waiting.has(s.id) ? <span class="badge badge-attn">답 필요</span> : s.running ? <span class="badge badge-run"><span class="dot dot-run" aria-hidden="true" />실행 중</span> : null}
               </a>
             </li>
           ))}

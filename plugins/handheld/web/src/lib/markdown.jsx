@@ -1,7 +1,51 @@
 // A small Markdown subset rendered straight to elements (never innerHTML):
 // fenced code, headings, lists, quotes, paragraphs, `code`, **bold**, *em*, links.
 
+import { toast } from '../store.js'
+import { Icon } from '../components/Icon.jsx'
+
 const SAFE_LINK = /^https?:\/\//i
+
+// For browsers that refuse the clipboard API (older WebViews, some in-app browsers).
+function copyBySelection(text) {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px'
+  // Inside an open sheet only the sheet can take focus.
+  const host = document.querySelector('dialog[open]') ?? document.body
+  host.append(area)
+  area.select()
+  const done = document.execCommand('copy')
+  area.remove()
+  return done
+}
+
+async function copyText(text, opener) {
+  let done = false
+  try {
+    await navigator.clipboard.writeText(text)
+    done = true
+  } catch {
+    done = copyBySelection(text)
+    opener?.focus({ preventScroll: true })
+  }
+  if (done) toast('복사했습니다')
+  else toast('복사하지 못했습니다. 글자를 길게 눌러 복사해 주세요', { tone: 'error' })
+}
+
+function CodeBlock({ lang, code }) {
+  const name = lang ? `${lang} 코드` : '코드'
+  return (
+    <div class="md-codeblock">
+      <div class="md-code-head">
+        <span class="md-code-lang muted small one-line">{lang || '코드'}</span>
+        <button type="button" class="link-btn" aria-label={`${name} 복사`} onClick={(e) => copyText(code, e.currentTarget)}><Icon name="copy" size={16} />복사</button>
+      </div>
+      <pre class="md-code" tabIndex={0} role="group" aria-label={name}><code>{code}</code></pre>
+    </div>
+  )
+}
 
 function inline(text, keyBase) {
   const out = []
@@ -44,7 +88,7 @@ export function Markdown({ text }) {
       i += 1
       while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) body.push(lines[i++])
       i += 1
-      blocks.push(<pre key={key} class="md-code" tabIndex={0} aria-label={fence[1] ? `${fence[1]} 코드` : '코드'}><code>{body.join('\n')}</code></pre>)
+      blocks.push(<CodeBlock key={key} lang={fence[1]} code={body.join('\n')} />)
       continue
     }
     const heading = /^(#{1,4})\s+(.*)$/.exec(line)

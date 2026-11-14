@@ -40,8 +40,8 @@ class ToolRow extends Component {
         ) : null}
         {open ? (
           <div class="tool-body" id={id}>
-            {call?.input ? <pre class="pre" tabIndex={0} aria-label="입력">{call.input}</pre> : null}
-            {result?.output ? <pre class={`pre${result.isError ? ' pre-error' : ''}`} tabIndex={0} aria-label="결과">{result.output}</pre> : null}
+            {call?.input ? <pre class="pre" role="group" tabIndex={0} aria-label="입력">{call.input}</pre> : null}
+            {result?.output ? <pre class={`pre${result.isError ? ' pre-error' : ''}`} role="group" tabIndex={0} aria-label="결과">{result.output}</pre> : null}
             {result?.truncated ? <p class="muted small">결과가 길어 앞부분만 보입니다.</p> : null}
             {!call?.input && !result?.output ? <p class="muted small">표시할 내용이 없습니다.</p> : null}
           </div>
@@ -78,13 +78,17 @@ export class ItemView extends Component {
         return <div data-seq={row.item.seq}><Assistant item={row.item} /></div>
       case 'tool':
         return <div data-seq={(row.call ?? row.result).seq}><ToolRow row={row} /></div>
-      case 'approval':
+      case 'approval': {
+        const { phase, decision, tool } = row.item
+        const allowed = decision === 'allowed-once' || decision === 'allowed'
+        const state = phase === 'asked' ? 'asked' : decision === 'rejected' ? 'rejected' : allowed ? 'allowed' : 'answered'
         return (
-          <p class="note" data-seq={row.item.seq}>
-            <Icon name="shield" size={16} />
-            {row.item.phase === 'asked' ? `승인 요청: ${row.item.tool ?? '도구'}` : row.item.decision === 'rejected' ? '거부됨' : row.item.decision === 'allowed-once' || row.item.decision === 'allowed' ? '허용됨' : '승인 답 받음'}
+          <p class={`note note-${state}`} data-seq={row.item.seq}>
+            <Icon name={state === 'rejected' ? 'close' : state === 'allowed' ? 'check' : 'shield'} size={16} />
+            {state === 'asked' ? `승인 요청: ${tool ?? '도구'}` : state === 'rejected' ? '거부됨' : state === 'allowed' ? '허용됨' : '승인 답 받음'}
           </p>
         )
+      }
       case 'changes':
         return row.diffs.length > 0 ? (
           <div class="note" data-seq={row.item.seq}>

@@ -1,9 +1,11 @@
 import { render } from 'preact'
+import { useEffect, useRef } from 'preact/hooks'
 import './app.css'
 import { api } from './api.js'
 import { startLive } from './live.js'
 import { state, update, useStore } from './store.js'
-import { storageGet, useRoute } from './lib/util.js'
+import { startPrefs } from './lib/prefs.js'
+import { focusHeading, storageGet, useRoute } from './lib/util.js'
 import { ConnectionBanner, Toasts } from './components/Chrome.jsx'
 import { DiffSheet } from './components/DiffSheet.jsx'
 import { PendingSheet } from './components/PendingSheet.jsx'
@@ -26,6 +28,12 @@ function Overlays() {
 
 function App() {
   const route = useRoute()
+  const first = useRef(true)
+  // A new screen replaces the old one in place: start reading from its heading.
+  useEffect(() => {
+    if (first.current) first.current = false
+    else focusHeading()
+  }, [route.name, route.sessionId])
   return (
     <div class="app">
       <ConnectionBanner />
@@ -52,6 +60,7 @@ if (!location.hash) {
 }
 
 trackViewport()
+startPrefs()
 render(<App />, document.getElementById('app'))
 startLive()
 api('/me').then((me) => update((s) => { s.me = me })).catch(() => {})

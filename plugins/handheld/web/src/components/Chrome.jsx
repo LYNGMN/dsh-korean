@@ -29,8 +29,13 @@ export function ConnectionBanner() {
 export function Toasts() {
   const toasts = useStore((s) => s.toasts)
   return (
-    <div class="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => <p key={t.id} class={`toast toast-${t.tone}`}>{t.message}</p>)}
+    <div class="toasts">
+      <div class="toast-group" role="status" aria-live="polite">
+        {toasts.filter((t) => t.tone !== 'error').map((t) => <p key={t.id} class={`toast toast-${t.tone}`}>{t.message}</p>)}
+      </div>
+      <div class="toast-group" role="alert">
+        {toasts.filter((t) => t.tone === 'error').map((t) => <p key={t.id} class={`toast toast-${t.tone}`}>{t.message}</p>)}
+      </div>
     </div>
   )
 }

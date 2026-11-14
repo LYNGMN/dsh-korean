@@ -77,8 +77,9 @@ function segmentDistance(px, py, [ax, ay], [bx, by]) {
 }
 // Mark in a 0..1 box, inside the maskable safe zone: a prompt chevron and a cursor bar.
 const STROKES = [[[0.3, 0.36], [0.45, 0.5]], [[0.45, 0.5], [0.3, 0.64]], [[0.53, 0.64], [0.7, 0.64]]]
-const BG = [15, 23, 42]
-const FG = [94, 234, 212]
+// DeepSeek blue ground, white mark (same as web/static/icon.svg).
+const BG = [77, 107, 254]
+const FG = [255, 255, 255]
 function icon(size) {
   const width = 0.075
   const samples = 4
@@ -101,6 +102,43 @@ for (const [name, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['appl
 fs.copyFileSync(path.join(WEB, 'static', 'icon.svg'), path.join(DIST, 'icon.svg'))
 fs.copyFileSync(path.join(WEB, 'static', 'manifest.webmanifest'), path.join(DIST, 'manifest.webmanifest'))
 
+// ---- fonts -------------------------------------------------------------------
+// Pretendard (UI and reading) and D2Coding (code) ship with the app so every
+// device shows the same letters. Both are SIL OFL 1.1 and come from pinned
+// devDependencies; nothing is fetched from another origin at run time. Pretendard
+// is split into unicode-range pieces, so a phone downloads only the ones it shows.
+// In the kit the packages are hoisted to the workspace root, so look upward.
+function packageDir(name) {
+  for (let dir = WEB; ; dir = path.dirname(dir)) {
+    const found = path.join(dir, 'node_modules', name)
+    if (fs.existsSync(path.join(found, 'package.json'))) return found
+    if (dir === path.dirname(dir)) throw new Error(`${name} is not installed: run npm install at the kit root`)
+  }
+}
+const versionOf = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version
+const pretendardPkg = packageDir('pretendard')
+const d2Pkg = packageDir('d2coding')
+const pretendardDir = `fonts/pretendard-${versionOf(pretendardPkg)}`
+const d2Dir = `fonts/d2coding-${versionOf(d2Pkg)}`
+const pretendardSrc = path.join(pretendardPkg, 'dist', 'web', 'variable')
+fs.cpSync(path.join(pretendardSrc, 'woff2-dynamic-subset'), path.join(DIST, 'assets', pretendardDir), { recursive: true })
+fs.mkdirSync(path.join(DIST, 'assets', d2Dir), { recursive: true })
+for (const file of ['d2coding-subset.woff2', 'd2coding-bold-subset.woff2']) {
+  fs.copyFileSync(path.join(d2Pkg, 'fonts', file), path.join(DIST, 'assets', d2Dir, file))
+}
+// The OFL asks that the licence travel with the font files.
+fs.copyFileSync(path.join(pretendardPkg, 'dist', 'LICENSE.txt'), path.join(DIST, 'assets', pretendardDir, 'LICENSE.txt'))
+fs.writeFileSync(path.join(DIST, 'assets', d2Dir, 'LICENSE.txt'), 'D2Coding\nCopyright (c) 2015, NAVER Corporation (http://www.navercorp.com), with Reserved Font Name D2Coding.\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThe license text is the same as in ../' + path.basename(pretendardDir) + '/LICENSE.txt and is available at https://openfontlicense.org\n')
+const d2Face = (weight, file) => `@font-face{font-family:'D2Coding';font-style:normal;font-weight:${String(weight)};font-display:swap;src:url(./${d2Dir}/${file}) format('woff2')}`
+const fontCss = [
+  fs.readFileSync(path.join(pretendardSrc, 'pretendardvariable-dynamic-subset.css'), 'utf8').replaceAll('./woff2-dynamic-subset/', `./${pretendardDir}/`),
+  '/*\nD2Coding: Copyright (c) 2015, NAVER Corporation (http://www.navercorp.com), with Reserved Font Name D2Coding.\nLicensed under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL).\n*/',
+  d2Face(400, 'd2coding-subset.woff2'),
+  d2Face(700, 'd2coding-bold-subset.woff2'),
+].join('\n')
+const fontsCss = `assets/fonts-${createHash('sha256').update(fontCss).digest('hex').slice(0, 8).toUpperCase()}.css`
+fs.writeFileSync(path.join(DIST, fontsCss), fontCss)
+
 // ---- index.html ------------------------------------------------------------
 const html = `<!doctype html>
 <html lang="ko">
@@ -108,8 +146,8 @@ const html = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0f16" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -119,6 +157,7 @@ const html = `<!doctype html>
 <link rel="manifest" href="${BASE}manifest.webmanifest">
 <link rel="icon" href="${BASE}icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${BASE}apple-touch-icon.png">
+<link rel="stylesheet" href="${BASE}${fontsCss}">
 <link rel="stylesheet" href="${BASE}${css}">
 <script type="module" src="${BASE}${js}"></script>
 </head>
@@ -131,7 +170,7 @@ const html = `<!doctype html>
 fs.writeFileSync(path.join(DIST, 'index.html'), html)
 
 // ---- service worker ----------------------------------------------------------
-const shell = [BASE, `${BASE}${js}`, `${BASE}${css}`, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`, `${BASE}icon-192.png`]
+const shell = [BASE, `${BASE}${js}`, `${BASE}${css}`, `${BASE}${fontsCss}`, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`, `${BASE}icon-192.png`]
 const shellVersion = createHash('sha256').update(shell.join('|')).digest('hex').slice(0, 12)
 await esbuild.build({
   entryPoints: [path.join(WEB, 'src', 'sw.js')],

@@ -1,7 +1,8 @@
 // Approval or question waiting for a person. Answers go out only from these buttons.
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { api } from '../api.js'
-import { state, toast, update } from '../store.js'
+import { unwatchSession, watchedSession, watchSession } from '../live.js'
+import { state, toast, update, useStore } from '../store.js'
 import { Sheet } from './Sheet.jsx'
 import { Icon } from './Icon.jsx'
 
@@ -34,9 +35,22 @@ function ErrorLine({ error }) {
   return <p class="form-error" role="alert">{error ?? ''}</p>
 }
 
+/** The tool call an approval is about, once that session's items are on the phone. */
+function useApprovalCall(item) {
+  useEffect(() => {
+    // Opened from the list or a notification: nothing is loading this session yet.
+    if (watchedSession() !== null) return undefined
+    watchSession(item.sessionId)
+    return () => unwatchSession(item.sessionId)
+  }, [item.sessionId])
+  return useStore((s) => (item.callId ? s.feeds[item.sessionId]?.items.find((i) => i.kind === 'tool' && i.callId === item.callId) ?? null : null))
+}
+
 function Approval({ item, onClose }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const call = useApprovalCall(item)
+  const diffs = call?.diffs ?? []
   return (
     <>
       <div class="pending-meta">
@@ -44,6 +58,18 @@ function Approval({ item, onClose }) {
         <span class="muted one-line">{sessionTitle(item.sessionId)}</span>
       </div>
       <p class="pending-reason">{item.reason ?? '이 도구를 실행하려면 허용이 필요합니다.'}</p>
+      {call ? (
+        <section class="pending-call" aria-labelledby="pending-call-title">
+          <h3 id="pending-call-title" class="pending-call-title">허용하면 실행할 내용</h3>
+          <p class="pending-call-name">{call.title}</p>
+          {call.input && call.input !== call.title ? <pre class="pre" role="group" tabIndex={0} aria-label="실행할 명령">{call.input}</pre> : null}
+          {diffs.length > 0 ? (
+            <button type="button" class="link-btn" onClick={() => update((s) => { s.openDiff = { title: '바뀔 내용', files: diffs } })}>
+              <Icon name="diff" size={16} />바뀔 내용 보기 · 파일 {diffs.length}개
+            </button>
+          ) : null}
+        </section>
+      ) : null}
       <p class="muted small">허용은 이번 한 번만 적용됩니다. Desktop 창에서 먼저 답하면 그 답이 쓰입니다.</p>
       <div class="btn-grid">
         <button type="button" class="btn btn-danger" disabled={busy} autofocus onClick={() => answer(item, { decision: 'reject' }, onClose, setBusy, setError)}>거부</button>
@@ -94,8 +120,9 @@ function Question({ item, onClose }) {
         </fieldset>
       ))}
       <div class="btn-grid one">
-        <button type="submit" class="btn btn-primary" disabled={busy || !complete}>답 보내기</button>
+        <button type="submit" class="btn btn-primary" disabled={busy || !complete} aria-describedby="answer-hint">답 보내기</button>
       </div>
+      <p class="muted small form-hint" id="answer-hint">{complete ? '' : '질문마다 하나를 고르거나 직접 입력하면 보낼 수 있습니다.'}</p>
       <ErrorLine error={error} />
     </form>
   )

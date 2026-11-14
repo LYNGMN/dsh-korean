@@ -67,4 +67,16 @@ export function go(hash) {
   if (location.hash !== hash) location.hash = hash
 }
 
-export const isTouch = () => window.matchMedia('(pointer: coarse)').matches
+const APP_TITLE = 'DSH 휴대폰'
+
+/** Names the current screen in the tab and task switcher. */
+export function usePageTitle(title) {
+  useEffect(() => {
+    document.title = title ? `${title} · ${APP_TITLE}` : APP_TITLE
+  }, [title])
+}
+
+/** Puts keyboard and screen-reader focus on the screen's heading. */
+export function focusHeading() {
+  document.querySelector('.screen h1')?.focus({ preventScroll: true })
+}

@@ -4,6 +4,7 @@
 // person's answer and goes to the same endpoint the app uses.
 const CACHE = `dsh-handheld-${__SHELL_VERSION__}`
 const SHELL = __SHELL__
+const FONTS = 'dsh-handheld-fonts'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()))
@@ -11,7 +12,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    for (const key of await caches.keys()) if (key !== CACHE && key.startsWith('dsh-handheld-')) await caches.delete(key)
+    for (const key of await caches.keys()) if (key !== CACHE && key !== FONTS && key.startsWith('dsh-handheld-')) await caches.delete(key)
     await self.clients.claim()
   })())
 })
@@ -23,6 +24,18 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     // Network first so an expired Access session can redirect to its login page.
     event.respondWith(fetch(event.request).catch(async () => (await caches.match('/h/')) ?? Response.error()))
+    return
+  }
+  if (url.pathname.startsWith('/h/assets/fonts/')) {
+    // Font pieces arrive as the text on screen needs them; keep each one so the
+    // letters look the same offline. Their folder name carries the font version.
+    event.respondWith(caches.open(FONTS).then(async (cache) => {
+      const hit = await cache.match(event.request)
+      if (hit) return hit
+      const response = await fetch(event.request)
+      if (response.ok) void cache.put(event.request, response.clone())
+      return response
+    }))
     return
   }
   if (url.pathname.startsWith('/h/assets/')) {

@@ -8,6 +8,19 @@ const PATHS = {
       <circle cx="9.5" cy="17" r="2.5" />
     </>
   ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+    </>
+  ),
+  moon: <path d="M20 14.2A8 8 0 0 1 9.8 4a8 8 0 1 0 10.2 10.2Z" />,
+  auto: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" />
+    </>
+  ),
   send: <path d="M12 19V5M6 11l6-6 6 6" />,
   mic: (
     <>
@@ -23,6 +36,12 @@ const PATHS = {
     <>
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
       <path d="M14 3v5h5M9.5 11.5h5M12 9v5M9.5 17h5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
     </>
   ),
   chevron: <path d="m6 9 6 6 6-6" />,

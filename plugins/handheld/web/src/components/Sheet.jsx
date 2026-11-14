@@ -1,6 +1,7 @@
 // Modal sheet on the native <dialog>: focus stays inside, Escape and the
 // backdrop close it, focus returns to whatever opened it.
 import { useEffect, useRef } from 'preact/hooks'
+import { focusHeading } from '../lib/util.js'
 import { Icon } from './Icon.jsx'
 
 export function Sheet({ title, onClose, children, full = false, labelId = 'sheet-title' }) {
@@ -11,7 +12,11 @@ export function Sheet({ title, onClose, children, full = false, labelId = 'sheet
     if (dialog && !dialog.open) dialog.showModal()
     return () => {
       if (dialog?.open) dialog.close()
-      if (opener instanceof HTMLElement) opener.focus({ preventScroll: true })
+      // The opener may leave the page in this same update (an answered request): decide after it.
+      setTimeout(() => {
+        if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) opener.focus({ preventScroll: true })
+        else if (!document.querySelector('dialog[open]')) focusHeading()
+      }, 0)
     }
   }, [])
   return (
