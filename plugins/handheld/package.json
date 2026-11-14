@@ -1,0 +1,41 @@
+{
+  "name": "@lyngmn/dsh-handheld",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Follow sessions and send messages from an app installed on your phone. Approval requests arrive as notifications for you to allow or deny, and you can review changed code. Not an official DeepSeek plugin.",
+  "author": "LYNGMN",
+  "type": "module",
+  "main": "server/plugin.js",
+  "exports": {
+    ".": "./server/plugin.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LYNGMN/dsh-korean.git",
+    "directory": "plugins/handheld"
+  },
+  "engines": {
+    "node": ">=22.15"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.js'",
+    "build": "node web/build.mjs",
+    "dev": "node scripts/dev.mjs"
+  },
+  "dependencies": {
+    "ws": "8.22.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "preact": "10.29.8"
+  }
+}

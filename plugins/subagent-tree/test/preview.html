@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>하위 에이전트 미리보기</title>
+<!-- 실제 DSH 없이 lib/client.js를 DSH와 비슷한 사이드바 줄에 올려 보는 틀. ?theme=dark 로 어두운 테마. -->
+<style>
+  :root {
+    --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
+    --dsw-alias-interactive-bg-hover: rgba(0, 0, 0, .06); --dsw-alias-state-business-primary: #3964fe;
+    --dsw-alias-border-l3: rgba(0, 0, 0, .08); --dsw-alias-border-l4: rgba(0, 0, 0, .18);
+    --dsw-alias-hovercard-label-primary: #1f1f1f; --dsw-alias-hovercard-label-secondary: #5f5f5f; --dsw-alias-hovercard-label-tertiary: #8a8a8a;
+    --dsw-specific-sidebar-fill: #eef0f6; --card: #fff;
+    --dsh-sidebar-row-padding: 12px; --dsh-sidebar-paint-inset: 4px; --dsh-sidebar-label-gap: 6px;
+  }
+  :root[data-theme='dark'] {
+    --dsw-alias-label-primary: #ececec; --dsw-alias-label-secondary: #b4b4b4; --dsw-alias-label-tertiary: #8d8d8d;
+    --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, .08); --dsw-alias-state-business-primary: #7b9bff;
+    --dsw-alias-border-l3: rgba(255, 255, 255, .1); --dsw-alias-border-l4: rgba(255, 255, 255, .24);
+    --dsw-alias-hovercard-label-primary: #ececec; --dsw-alias-hovercard-label-secondary: #b4b4b4; --dsw-alias-hovercard-label-tertiary: #8d8d8d;
+    --dsw-specific-sidebar-fill: #1d1e22; --card: #2a2b30;
+  }
+  body { margin: 0; font: 14px/20px -apple-system, BlinkMacSystemFont, sans-serif; background: var(--dsw-specific-sidebar-fill); color: var(--dsw-alias-label-primary); }
+  .side { width: min(100vw, 320px); box-sizing: border-box; padding: 12px 0; }
+  .group { padding: 8px 16px; color: var(--dsw-alias-label-secondary); font-size: 13px; }
+  .sessionRow { display: flex; align-items: center; gap: var(--dsh-sidebar-label-gap); height: 32px; border-radius: 8px;
+    border-inline: var(--dsh-sidebar-paint-inset) solid transparent; background-clip: padding-box; box-sizing: border-box;
+    padding: 0 8px; padding-inline-start: calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset)); cursor: pointer; }
+  .sessionRow.selected, .sessionRow:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
+  .slot { flex: none; width: 16px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary); }
+  .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 6px 0 var(--dsh-sidebar-label-gap); }
+  .rowResting { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+  .rowActions { display: none; align-items: center; gap: 2px; }
+  .sessionRow:hover .rowResting, .sessionRow:focus-within .rowResting { display: none; }
+  .sessionRow:hover .rowActions, .sessionRow:focus-within .rowActions { display: inline-flex; }
+  .card { margin: 16px 12px; padding: 12px; border-radius: 12px; background: var(--card); width: 260px; box-sizing: border-box; }
+  .card-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+  if (new URLSearchParams(location.search).get('theme') === 'dark') document.documentElement.dataset.theme = 'dark'
+  window.__ModuleLoader__ = { load(entry) { window.__entry = entry } }
+</script>
+<script src="../lib/client.js"></script>
+<script>
+  const h = React.createElement
+  const list = {
+    ids: ['p1', 'p2', 'p3'],
+    byId: {
+      p1: { id: 'p1', title: 'YouTube ID 플레이스홀더 추가', running: true, retainedBy: { mainView: 1 } },
+      p2: { id: 'p2', title: '보안사항 검토 요청', running: false, retainedBy: {} },
+      p3: { id: 'p3', title: 'RSS 봇에서 개선할 부분을 찾고 정리하기', running: false, retainedBy: {} },
+      c1: { id: 'c1', running: true, retainedBy: {} },
+      c2: { id: 'c2', running: false, retainedBy: {}, projectionValues: { subagentTiming: { lastTurnCompleted: true } } },
+      c3: { id: 'c3', running: false, retainedBy: {}, projectionValues: { subagentTiming: { lastTurnCompleted: false } } },
+    },
+    projectionsBySession: {
+      p1: { state: 'ready', values: { subagentCatalog: [
+        { id: 'c1', createdAt: 1, mode: 'continuable', label: '자막 정리 검토' },
+        { id: 'c2', createdAt: 2, mode: 'one-shot', label: '테스트 보강과 실패 원인 정리' },
+      ] } },
+      p2: { state: 'ready', values: { subagentCatalog: [] } },
+      p3: { state: 'ready', values: { subagentCatalog: [{ id: 'c3', createdAt: 3, mode: 'one-shot', label: '트리거 겹침 조사' }] } },
+    },
+  }
+  const slots = {}
+  const ctx = {
+    sessions: { list: { getSnapshot: () => list, subscribe: () => () => {} }, refreshProjections: async () => {} },
+    uiWorkspace: { openSession: a => { window.__opened = a } },
+    slots: { inject: (n, f) => f(), register: (o, C) => { slots[o.name] = C } },
+    effect: fn => fn(),
+  }
+  const mod = window.__entry.factory(name => ({ react: React, 'react-dom': ReactDOM })[name])
+  mod.apply(ctx)
+  const Trailing = slots['sidebar.session.row.trailing']
+  const Hover = slots['sidebar.session.row.hover']
+  const Toggle = slots['sidebar.workspaces.session.row.action']
+  const times = { p1: '1시간', p2: '7시간', p3: '20시간' }
+  function Row({ id }) {
+    const s = list.byId[id]
+    return h('div', { 'data-row-key': `session:${id}`, role: 'treeitem', tabIndex: 0, className: 'sessionRow' + (id === 'p1' ? ' selected' : '') },
+      h('span', { className: 'slot' }, s.running ? h('span', { className: 'dot' }) : null),
+      h('span', { className: 'title' }, s.title),
+      h('span', { className: 'rowResting' }, h('span', null, times[id]), h(Trailing, { sessionId: id })),
+      h('span', { className: 'rowActions' }, h(Toggle, { sessionId: id, displayTitle: s.title })))
+  }
+  function App() {
+    return h('div', null,
+      h('div', { className: 'side', role: 'tree' },
+        h('div', { className: 'group' }, 'rss-bot'),
+        h('div', { role: 'group' }, h(Row, { id: 'p1' }), h(Row, { id: 'p2' })),
+        h('div', { className: 'group' }, '구글스크립트'),
+        h('div', { role: 'group' }, h(Row, { id: 'p3' }))),
+      h('div', { className: 'card', id: 'hovercard' },
+        h('div', { className: 'card-title' }, list.byId.p1.title),
+        h(Hover, { sessionId: 'p1' })))
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App))
+</script>
+</body>
+</html>

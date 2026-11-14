@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Model Spare Keys",
+    "description": "Keeps spare API keys for a model and switches to the next one when the current key stops working. Not an official DeepSeek plugin."
+  }
+}

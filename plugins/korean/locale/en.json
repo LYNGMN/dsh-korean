@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Korean language pack",
+    "description": "Adds Korean (한국어) to Settings → General → Language, and a font picker for text, code and terminal fonts. Not an official DeepSeek plugin."
+  }
+}

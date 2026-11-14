@@ -1,0 +1,15 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "superscript" (ISC License, https://lucide.dev/icons/superscript). -->
+  <!-- 24칸 원본을 36칸 가운데에 놓고 1.2배 키웠다(선 굵기는 2 ÷ 1.2). 열쇠 기준 보이는 크기 0.84 → 0.98, 중심 어긋남 0.19px. -->
+  <g transform="translate(18 18) scale(1.2) translate(-12 -12)" stroke="url(#footnote-hover-icon)" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4 19 8-8" />
+    <path d="m12 19-8-8" />
+    <path d="M20 12h-4c0-1.5.442-2 1.5-2.5S20 8.334 20 7.002c0-.472-.17-.93-.484-1.29a2.105 2.105 0 0 0-2.617-.436c-.42.239-.738.614-.899 1.06" />
+  </g>
+  <defs>
+    <linearGradient id="footnote-hover-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

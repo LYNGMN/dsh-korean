@@ -1,0 +1,14 @@
+@lyngmn/dsh-korean is a Korean language pack for DeepSeek Harness made by
+LYNGMN. It is not an official DeepSeek language pack and is not affiliated
+with or endorsed by DeepSeek.
+
+The files under source/ are English user-interface strings extracted from
+DeepSeek Harness packages (@deepseek-ai/*), which are distributed under the
+MIT License, Copyright (c) 2026 DeepSeek. They are kept here only as the
+reference text that the Korean translation is checked against.
+
+The Korean translations under ko/ and all code in this repository were
+written independently for this project.
+
+icon.svg uses the "languages" icon from Lucide (https://lucide.dev),
+distributed under the ISC License, Copyright (c) Lucide Contributors.

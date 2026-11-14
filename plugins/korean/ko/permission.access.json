@@ -1,0 +1,19 @@
+{
+  "mode": "접근 모드, 현재: {name}",
+  "close": "닫기",
+  "preset.readOnly": "읽기 전용",
+  "preset.workspaceWrite": "작업 공간 쓰기",
+  "preset.fullAccess": "전체 접근",
+  "confirm.title": "전체 접근을 켤까요?",
+  "confirm.description": "전체 접근을 켜면 확인 단계가 줄고 에이전트가 더 많은 동작을 바로 수행할 수 있어요. 민감한 작업, 파일 변경, 외부 명령도 여기에 포함돼요. 현재 작업을 신뢰할 때만 사용하세요.",
+  "confirm.acknowledge": "위험을 이해했으며 계속할게요",
+  "confirm.cancel": "취소",
+  "confirm.enable": "전체 접근 켜기",
+  "auto.label": "자동 검토",
+  "auto.badge": "EXP",
+  "auto.description": "모든 네이티브 도구 호출과 PTC 내부 호출을 같은 모델이 실험적으로 검토한 뒤 샌드박스 없이 실행해요.",
+  "auto.confirm.title": "자동 검토(실험적)를 켤까요?",
+  "auto.confirm.description": "자동 검토는 샌드박스 없이 실행돼요. 모든 네이티브 도구 호출과 PTC 내부 호출에 앞서, 현재 에이전트와 같은 모델이 허용할지 검토해요. 모델이 거부한 호출은 하나씩 직접 승인하거나 거부해요. 이 기능은 실험적이어서 동작을 잘못 허용하거나 거부할 수 있고, 토큰을 추가로 써요.",
+  "auto.confirm.acknowledge": "이 위험을 이해했으며 계속할게요",
+  "auto.confirm.enable": "자동 검토 켜기"
+}

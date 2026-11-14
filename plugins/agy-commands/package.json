@@ -1,0 +1,38 @@
+{
+  "name": "@lyngmn/dsh-agy-commands",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Antigravity-style /agy commands for plans, goals, interviews, boosts, and teamwork. Not an official DeepSeek plugin.",
+  "author": "LYNGMN",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "host-locale.js",
+    "prompts.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LYNGMN/dsh-korean.git",
+    "directory": "plugins/agy-commands"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
