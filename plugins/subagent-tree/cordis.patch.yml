@@ -1,0 +1,7 @@
+# 하위 에이전트 나무 보기. 서버 쪽에서는 아무 일도 하지 않고, 화면 쪽 번들(lib/client.js)만 싣는다.
+- insert:
+    - id: dsh-subagent-tree
+      name: '@lyngmn/dsh-subagent-tree'
+      config:
+        # false로 바꾸면 부모 줄 아래 자식 줄(클로드식)을 끄고 줄 끝 아이콘과 카드만 남깁니다.
+        nestedRows: true

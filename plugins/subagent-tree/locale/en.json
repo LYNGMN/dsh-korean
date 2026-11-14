@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Subagent Tree",
+    "description": "Shows subagents nested under their parent session in the sidebar. Not an official DeepSeek plugin."
+  }
+}

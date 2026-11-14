@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Auto review recovery",
+    "description": "Retries a rate-limited or temporarily failed Auto review, then asks you to approve the call if it still fails. Not an official DeepSeek plugin."
+  }
+}

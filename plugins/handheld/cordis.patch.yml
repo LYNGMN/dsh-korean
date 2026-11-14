@@ -1,0 +1,13 @@
+# dsh-handheld: phone gateway for this DSH Host.
+# The gateway listens on 127.0.0.1 only; reach it from outside through a
+# Cloudflare named tunnel protected by Cloudflare Access (docs/setup-cloudflare.md).
+- insert:
+    - id: dsh-handheld
+      name: '@lyngmn/dsh-handheld'
+      config:
+        # Fixed loopback port the tunnel points at.
+        port: 3090
+        # Writes the upstream URL to $DSH_HOME/dsh-handheld/upstream.json (0600)
+        # so `npm run dev -- --real` and scripts/probe.mjs can attach to this Host.
+        # The file holds a launch token: keep it off unless you are developing.
+        devUpstreamFile: false

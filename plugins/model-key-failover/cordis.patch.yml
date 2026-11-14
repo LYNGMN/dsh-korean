@@ -1,0 +1,20 @@
+# Model-key failover bundle for DSH.
+# New providers: follow README.md and name the key <PROVIDER>_API_KEY.
+# Providers are not listed here: the plugin finds every model provider that
+# authenticates with a named key (apiKeyEnv) from the Host's settings, so a
+# provider added on the Models page gets spare-key slots automatically.
+# For a key reference ACME_API_KEY the spare keys are ACME_API_KEY_2 … _5;
+# ACME_API_KEY_1 mirrors the main key, and ACME_ACTIVE_KEY records the key in
+# use. A failover changes ACME_ACTIVE_KEY only, never the main key.
+- insert:
+    - id: model-key-failover
+      name: '@lyngmn/dsh-model-key-failover'
+      config:
+        # How many spare keys one provider may hold.
+        spareSlots: 4
+        # A rate-limited key rests this long, then is used again.
+        rateLimitCooldownMs: 60000
+        # A rejected or exhausted key rests this long before it is tried again.
+        rejectedCooldownMs: 21600000
+        # Provider routes that must never switch keys.
+        exclude: []

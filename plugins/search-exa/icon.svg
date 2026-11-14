@@ -1,0 +1,9 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Exa logomark from the official brand assets (https://exa.ai/brand, "Exa Logomark Blue/White.svg"), scaled only.
+       Brand rule: blue on light backgrounds, white on dark ones. DSH passes its theme to nativeTheme, so
+       prefers-color-scheme inside this image follows the app theme. -->
+  <!-- 광학 보정: 사각형 타일 없이 마크만 둔다(타일 안에 넣으면 실제 앱에서 작아 보인다). 높이 19.5칸(볼록 외곽 기준 열쇠 아이콘과 1.03),
+       왼쪽 세로 막대가 꽉 차 눈에 보이는 중심이 왼쪽으로 쏠리므로 오른쪽으로 0.65칸 옮겨 둔다. -->
+  <style>.mark{fill:#0143D9}@media (prefers-color-scheme: dark){.mark{fill:#fff}}</style>
+  <path class="mark" transform="translate(10.5875 8.2500) scale(0.107143)" fill-rule="evenodd" clip-rule="evenodd" d="M150.5 14.1064C150.5 14.3356 150.421 14.5579 150.277 14.736L88.4766 91L150.277 167.264C150.421 167.442 150.5 167.664 150.5 167.894V181C150.5 181.552 150.052 182 149.5 182H1C0.44772 182 0 181.552 0 181V0.999995C0 0.44771 0.447715 0 1 0H149.5C150.052 0 150.5 0.447715 150.5 1V14.1064ZM30.4059 162.719H121.728L76.0664 106.326L30.4059 162.719ZM19.2949 100.261V145.787L56.1572 100.261H19.2949ZM19.2949 80.9801H55.5434L19.2949 36.2121V80.9801ZM76.0664 75.6731L121.728 19.281H30.4059L76.0664 75.6731Z"/>
+</svg>

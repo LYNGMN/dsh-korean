@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Brave Search",
+    "description": "web_search 도구에 Brave Search API를 연결하는 검색 공급자예요. API 키가 필요해요. DeepSeek 공식 플러그인이 아니에요."
+  }
+}

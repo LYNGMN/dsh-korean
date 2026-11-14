@@ -1,0 +1,37 @@
+{
+  "name": "@lyngmn/dsh-skill-hints",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shows each skill's argument-hint in the composer. Not an official DeepSeek plugin.",
+  "author": "LYNGMN",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "host-locale.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LYNGMN/dsh-korean.git",
+    "directory": "plugins/skill-hints"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

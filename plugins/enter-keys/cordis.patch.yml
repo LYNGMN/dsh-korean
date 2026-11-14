@@ -1,0 +1,4 @@
+# 입력창 Enter 설정. 서버 쪽에서는 아무 일도 하지 않고, 화면 쪽 번들(lib/client.js)만 싣는다.
+- insert:
+    - id: dsh-enter-keys
+      name: '@lyngmn/dsh-enter-keys'

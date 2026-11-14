@@ -1,0 +1,1096 @@
+{
+ "created": {
+  "sessionId": "session-3859416c-6980-4afe-8a95-15b72ad1295f",
+  "agentPreset": "standard"
+ },
+ "follow": [
+  {
+   "type": "snapshot",
+   "header": {
+    "version": 4,
+    "id": "session-3859416c-6980-4afe-8a95-15b72ad1295f",
+    "createdAt": 1794664592588,
+    "cwd": "/home/user/Dev/dsh-handheld/.dev-home/probe-workspace",
+    "isSeeded": false,
+    "agentPreset": "standard"
+   },
+   "projections": {
+    "asOfSeq": 5,
+    "values": {}
+   },
+   "cursor": 5,
+   "records": [
+    {
+     "type": "event",
+     "event": {
+      "type": "permission/preset",
+      "seq": 0,
+      "time": 1794664592602,
+      "data": {
+       "preset": "workspace-write"
+      }
+     }
+    },
+    {
+     "type": "event",
+     "event": {
+      "type": "sandbox/mode",
+      "seq": 1,
+      "time": 1794664592602,
+      "data": {
+       "mode": "workspace-write"
+      }
+     }
+    },
+    {
+     "type": "event",
+     "event": {
+      "type": "approval/policy",
+      "seq": 2,
+      "time": 1794664592603,
+      "data": {
+       "policy": "ask"
+      }
+     }
+    },
+    {
+     "type": "event",
+     "event": {
+      "type": "agent/inbox/spliced",
+      "seq": 3,
+      "time": 1794664592620,
+      "data": {
+       "target": "next-turn",
+       "start": 0,
+       "inserted": [
+        {
+         "content": [
+          {
+           "type": "text",
+           "text": "Write the text 'outside probe' into the file /home/user/Dev/dsh-handheld/.dev-home/outside.txt. It is outside your working directory on purpose. If the sandbox refuses and offers escalation, retry once with the escalation exactly as the error says so that I get an approval prompt. If the approval is rejected, stop and reply with one short sentence."
+          }
+         ],
+         "source": {
+          "kind": "user",
+          "rpcId": "4b5b835e-3e99-4800-bb88-7a2f68b8171c"
+         },
+         "role": "user",
+         "id": "0e7a481e-2bb1-46b4-86cc-530ffae4daba"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "type": "event",
+     "event": {
+      "type": "turn/start",
+      "seq": 4,
+      "time": 1794664592621,
+      "data": {
+       "turn": 1
+      }
+     }
+    },
+    {
+     "type": "event",
+     "event": {
+      "type": "agent/inbox/spliced",
+      "seq": 5,
+      "time": 1794664592623,
+      "data": {
+       "target": "next-turn",
+       "start": 0,
+       "removedCount": 1,
+       "inserted": []
+      }
+     }
+    }
+   ],
+   "hasMore": false,
+   "assistantStream": {
+    "revision": 0
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/start",
+    "seq": 6,
+    "time": 1794664593116,
+    "data": {
+     "turn": 1,
+     "step": 1
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "user/message",
+    "seq": 8,
+    "time": 1794664593117,
+    "data": {
+     "content": [
+      {
+       "type": "text",
+       "text": "Write the text 'outside probe' into the file /home/user/Dev/dsh-handheld/.dev-home/outside.txt. It is outside your working directory on purpose. If the sandbox refuses and offers escalation, retry once with the escalation exactly as the error says so that I get an approval prompt. If the approval is rejected, stop and reply with one short sentence."
+      }
+     ],
+     "source": {
+      "kind": "user",
+      "rpcId": "4b5b835e-3e99-4800-bb88-7a2f68b8171c"
+     },
+     "role": "user",
+     "id": "0e7a481e-2bb1-46b4-86cc-530ffae4daba"
+    },
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "start",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 1,
+    "turn": 1,
+    "step": 1,
+    "startedAfterSeq": 14
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "session/title",
+    "seq": 15,
+    "time": 1794664593174,
+    "data": {
+     "title": "Write the text 'outside probe'",
+     "messageSeqs": [
+      8
+     ],
+     "source": {
+      "kind": "fallback"
+     }
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "session/title",
+    "seq": 17,
+    "time": 1794664594483,
+    "data": {
+     "title": "Test writing outside the sandbox directory",
+     "messageSeqs": [
+      8
+     ],
+     "source": {
+      "kind": "provider",
+      "provider": "session-title-first-prompt-llm",
+      "model": {
+       "provider": "river",
+       "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 2,
+    "index": 0,
+    "time": 1794664595396,
+    "chunk": {
+     "type": "block-start",
+     "index": 0,
+     "blockType": "reasoning"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 22,
+    "index": 20,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "block-start",
+     "index": 1,
+     "blockType": "tool-call"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 23,
+    "index": 21,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "tool-call-delta",
+     "index": 1,
+     "id": "call_0_cc7f8d424c73214c",
+     "name": "write",
+     "argumentsDelta": "{\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"content\":\"outside probe\\n\"}"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 24,
+    "index": 22,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "block-end",
+     "index": 0,
+     "block": {
+      "type": "reasoning",
+      "text": "The user wants me to write 'outside probe' into /home/user/Dev/dsh-handheld/.dev-home/outside.txt, which is outside"
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 25,
+    "index": 23,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "block-end",
+     "index": 1,
+     "block": {
+      "type": "tool-call",
+      "id": "call_0_cc7f8d424c73214c",
+      "name": "write",
+      "arguments": "{\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"content\":\"outside probe\\n\"}"
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 26,
+    "index": 24,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "usage",
+     "usage": {
+      "inputTokens": 16009,
+      "outputTokens": 144,
+      "totalTokens": 21273,
+      "cacheReadTokens": 5120
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 27,
+    "index": 25,
+    "time": 1794664596037,
+    "chunk": {
+     "type": "finish",
+     "reason": {
+      "kind": "tool-calls"
+     },
+     "replayState": {
+      "response": {
+       "kind": "pi-ai",
+       "version": 2,
+       "api": "openai-completions",
+       "provider": "river",
+       "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+       "responseId": "chatcmpl-6af8689213609",
+       "stopReason": "toolUse"
+      },
+      "blocks": [
+       {
+        "type": "reasoning",
+        "thinkingSignature": "reasoning_content"
+       },
+       {
+        "type": "tool-call"
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "assistant/message",
+    "seq": 18,
+    "time": 1794664596038,
+    "data": {
+     "turn": 1,
+     "step": 1,
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "reasoning",
+        "text": "The user wants me to write 'outside probe' into /home/user/Dev/dsh-handheld/.dev-home/outside.txt, which is outside"
+       },
+       {
+        "type": "tool-call",
+        "id": "call_0_cc7f8d424c73214c",
+        "name": "write",
+        "arguments": "{\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"content\":\"outside probe\\n\"}"
+       }
+      ],
+      "source": {
+       "kind": "model"
+      },
+      "id": "2bcda44a-c7c6-4042-98b8-05bc173808aa"
+     },
+     "usage": {
+      "inputTokens": 16009,
+      "outputTokens": 144,
+      "totalTokens": 21273,
+      "cacheReadTokens": 5120
+     }
+    },
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "end",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:1",
+    "revision": 28,
+    "index": 26,
+    "outcome": {
+     "kind": "committed",
+     "eventType": "assistant/message",
+     "seq": 18
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "tool/call",
+    "seq": 19,
+    "time": 1794664596039,
+    "data": {
+     "turn": 1,
+     "step": 1,
+     "callId": "call_0_cc7f8d424c73214c",
+     "name": "write",
+     "arguments": "{\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"content\":\"outside probe\\n\"}"
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "tool/result",
+    "seq": 20,
+    "time": 1794664596055,
+    "data": {
+     "turn": 1,
+     "step": 1,
+     "message": {
+      "role": "tool",
+      "source": {
+       "kind": "tool",
+       "callId": "call_0_cc7f8d424c73214c"
+      },
+      "toolCallId": "call_0_cc7f8d424c73214c",
+      "content": [
+       {
+        "type": "text",
+        "text": "Error: [sandbox: file access denied under workspace-write mode]\n[sandbox: escalation available — retry this exact operation once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]"
+       }
+      ],
+      "isError": true,
+      "id": "727aa058-a01f-499b-b750-8afe5a048b3b"
+     },
+     "error": {
+      "name": "FsError",
+      "code": "FS_SANDBOX_DENIED"
+     }
+    },
+    "sourceEventSeqs": [
+     19
+    ],
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/end",
+    "seq": 21,
+    "time": 1794664596055,
+    "data": {
+     "turn": 1,
+     "step": 1
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/start",
+    "seq": 22,
+    "time": 1794664596071,
+    "data": {
+     "turn": 1,
+     "step": 2
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "start",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 29,
+    "turn": 1,
+    "step": 2,
+    "startedAfterSeq": 22
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 30,
+    "index": 0,
+    "time": 1794664597270,
+    "chunk": {
+     "type": "block-start",
+     "index": 0,
+     "blockType": "reasoning"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 66,
+    "index": 36,
+    "time": 1794664598755,
+    "chunk": {
+     "type": "block-start",
+     "index": 1,
+     "blockType": "tool-call"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 67,
+    "index": 37,
+    "time": 1794664598756,
+    "chunk": {
+     "type": "tool-call-delta",
+     "index": 1,
+     "id": "call_0_eee5d24b72358efc",
+     "name": "write",
+     "argumentsDelta": "{\"content\":\"outside probe\\n\",\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"justification\":\"사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.\",\"sandbox_permissions\":\"danger-full-access\"}"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 68,
+    "index": 38,
+    "time": 1794664598756,
+    "chunk": {
+     "type": "block-end",
+     "index": 0,
+     "block": {
+      "type": "reasoning",
+      "text": "The sandbox refused. The error says retry with sandbox_permissions — the narrowest wider mode that suffices. The file is"
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 69,
+    "index": 39,
+    "time": 1794664598756,
+    "chunk": {
+     "type": "block-end",
+     "index": 1,
+     "block": {
+      "type": "tool-call",
+      "id": "call_0_eee5d24b72358efc",
+      "name": "write",
+      "arguments": "{\"content\":\"outside probe\\n\",\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"justification\":\"사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.\",\"sandbox_permissions\":\"danger-full-access\"}"
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 70,
+    "index": 40,
+    "time": 1794664598756,
+    "chunk": {
+     "type": "usage",
+     "usage": {
+      "inputTokens": 345,
+      "outputTokens": 282,
+      "totalTokens": 21619,
+      "cacheReadTokens": 20992
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 71,
+    "index": 41,
+    "time": 1794664598756,
+    "chunk": {
+     "type": "finish",
+     "reason": {
+      "kind": "tool-calls"
+     },
+     "replayState": {
+      "response": {
+       "kind": "pi-ai",
+       "version": 2,
+       "api": "openai-completions",
+       "provider": "river",
+       "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+       "responseId": "chatcmpl-6af86895134f2",
+       "stopReason": "toolUse"
+      },
+      "blocks": [
+       {
+        "type": "reasoning",
+        "thinkingSignature": "reasoning_content"
+       },
+       {
+        "type": "tool-call"
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "assistant/message",
+    "seq": 23,
+    "time": 1794664598757,
+    "data": {
+     "turn": 1,
+     "step": 2,
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "reasoning",
+        "text": "The sandbox refused. The error says retry with sandbox_permissions — the narrowest wider mode that suffices. The file is"
+       },
+       {
+        "type": "tool-call",
+        "id": "call_0_eee5d24b72358efc",
+        "name": "write",
+        "arguments": "{\"content\":\"outside probe\\n\",\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"justification\":\"사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.\",\"sandbox_permissions\":\"danger-full-access\"}"
+       }
+      ],
+      "source": {
+       "kind": "model"
+      },
+      "id": "4a1ce4cf-9828-4abe-9edc-26f60afc215f"
+     },
+     "usage": {
+      "inputTokens": 345,
+      "outputTokens": 282,
+      "totalTokens": 21619,
+      "cacheReadTokens": 20992
+     }
+    },
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "end",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:2",
+    "revision": 72,
+    "index": 42,
+    "outcome": {
+     "kind": "committed",
+     "eventType": "assistant/message",
+     "seq": 23
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "tool/call",
+    "seq": 24,
+    "time": 1794664598757,
+    "data": {
+     "turn": 1,
+     "step": 2,
+     "callId": "call_0_eee5d24b72358efc",
+     "name": "write",
+     "arguments": "{\"content\":\"outside probe\\n\",\"file_path\":\"/home/user/Dev/dsh-handheld/.dev-home/outside.txt\",\"justification\":\"사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.\",\"sandbox_permissions\":\"danger-full-access\"}"
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "approval/asked",
+    "seq": 25,
+    "time": 1794664598778,
+    "data": {
+     "id": "0e31b1e0-82f9-4071-a598-5f4ca5cad1ca",
+     "toolName": "write",
+     "callId": "call_0_eee5d24b72358efc",
+     "reason": "escalate sandbox to danger-full-access: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다."
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "approval/decided",
+    "seq": 26,
+    "time": 1794664598799,
+    "data": {
+     "id": "0e31b1e0-82f9-4071-a598-5f4ca5cad1ca",
+     "outcome": "rejected"
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "tool/result",
+    "seq": 27,
+    "time": 1794664598808,
+    "data": {
+     "turn": 1,
+     "step": 2,
+     "message": {
+      "role": "tool",
+      "source": {
+       "kind": "tool",
+       "callId": "call_0_eee5d24b72358efc"
+      },
+      "toolCallId": "call_0_eee5d24b72358efc",
+      "content": [
+       {
+        "type": "text",
+        "text": "Error: the user rejected escalating this operation to \"danger-full-access\"; it stays denied, so stop and explain instead of working around it"
+       }
+      ],
+      "isError": true,
+      "id": "ff0702c5-44cb-4278-abab-3025d40c8bab"
+     },
+     "error": {
+      "name": "SandboxEscalationError",
+      "code": "SANDBOX_ESCALATION_REJECTED"
+     }
+    },
+    "sourceEventSeqs": [
+     24
+    ],
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/end",
+    "seq": 28,
+    "time": 1794664598810,
+    "data": {
+     "turn": 1,
+     "step": 2
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/start",
+    "seq": 29,
+    "time": 1794664598855,
+    "data": {
+     "turn": 1,
+     "step": 3
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "start",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 73,
+    "turn": 1,
+    "step": 3,
+    "startedAfterSeq": 29
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 74,
+    "index": 0,
+    "time": 1794664601386,
+    "chunk": {
+     "type": "block-start",
+     "index": 0,
+     "blockType": "text"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 75,
+    "index": 1,
+    "time": 1794664601387,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": "승인이"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 76,
+    "index": 2,
+    "time": 1794664601406,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": " 거부"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 77,
+    "index": 3,
+    "time": 1794664601426,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": "되어 파일"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 78,
+    "index": 4,
+    "time": 1794664601449,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": "을 쓰지 못했"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 79,
+    "index": 5,
+    "time": 1794664601469,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": "고,"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 80,
+    "index": 6,
+    "time": 1794664601490,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": " 그대로"
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 81,
+    "index": 7,
+    "time": 1794664601532,
+    "chunk": {
+     "type": "text-delta",
+     "index": 0,
+     "text": " 멈췄습니다."
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 82,
+    "index": 8,
+    "time": 1794664601533,
+    "chunk": {
+     "type": "block-end",
+     "index": 0,
+     "block": {
+      "type": "text",
+      "text": "승인이 거부되어 파일을 쓰지 못했고, 그대로 멈췄습니다."
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 83,
+    "index": 9,
+    "time": 1794664601533,
+    "chunk": {
+     "type": "usage",
+     "usage": {
+      "inputTokens": 409,
+      "outputTokens": 24,
+      "totalTokens": 21681,
+      "cacheReadTokens": 21248
+     }
+    }
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "chunk",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 84,
+    "index": 10,
+    "time": 1794664601534,
+    "chunk": {
+     "type": "finish",
+     "reason": {
+      "kind": "stop"
+     },
+     "replayState": {
+      "response": {
+       "kind": "pi-ai",
+       "version": 2,
+       "api": "openai-completions",
+       "provider": "river",
+       "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+       "responseId": "chatcmpl-6af8689713366",
+       "stopReason": "stop"
+      },
+      "blocks": [
+       {
+        "type": "text"
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "assistant/message",
+    "seq": 30,
+    "time": 1794664601536,
+    "data": {
+     "turn": 1,
+     "step": 3,
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "승인이 거부되어 파일을 쓰지 못했고, 그대로 멈췄습니다."
+       }
+      ],
+      "source": {
+       "kind": "model"
+      },
+      "id": "dcaa379e-3c1d-4c31-a524-fd8129d26c95"
+     },
+     "usage": {
+      "inputTokens": 409,
+      "outputTokens": 24,
+      "totalTokens": 21681,
+      "cacheReadTokens": 21248
+     }
+    },
+    "surfaceOp": "append"
+   }
+  },
+  {
+   "type": "assistant-stream",
+   "frame": {
+    "type": "end",
+    "attemptId": "session-3859416c-6980-4afe-8a95-15b72ad1295f:3",
+    "revision": 85,
+    "index": 11,
+    "outcome": {
+     "kind": "committed",
+     "eventType": "assistant/message",
+     "seq": 30
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "step/end",
+    "seq": 31,
+    "time": 1794664601539,
+    "data": {
+     "turn": 1,
+     "step": 3
+    }
+   }
+  },
+  {
+   "type": "event",
+   "event": {
+    "type": "turn/end",
+    "seq": 32,
+    "time": 1794664601637,
+    "data": {
+     "turn": 1,
+     "reason": {
+      "kind": "completed"
+     }
+    }
+   }
+  }
+ ],
+ "events": [
+  {
+   "type": "emit",
+   "event": "api-session/added",
+   "args": []
+  },
+  {
+   "type": "emit",
+   "event": "api-session/added",
+   "args": []
+  },
+  {
+   "type": "emit",
+   "event": "api-session/status",
+   "args": []
+  },
+  {
+   "type": "emit",
+   "event": "api-session/activity",
+   "args": []
+  },
+  {
+   "type": "waterfall",
+   "event": "approval/request",
+   "eventId": "00a36a8a-9a50-4bb1-a80f-858af63f8a96",
+   "agentId": "session-3859416c-6980-4afe-8a95-15b72ad1295f",
+   "request": {
+    "toolName": "write",
+    "callId": "call_0_eee5d24b72358efc",
+    "reason": "escalate sandbox to danger-full-access: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+    "displayReason": {
+     "en": "Allow this operation with danger-full-access permissions: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "zh": "允许本次操作使用 danger-full-access 权限：사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "ja": "danger-full-access 権限でこの操作を許可します：사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "es": "Permitir esta operación con permisos danger-full-access: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "fr": "Autoriser cette opération avec les permissions danger-full-access : 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "de": "Diesen Vorgang mit danger-full-access-Berechtigungen zulassen: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "ru": "Разрешить эту операцию с правами danger-full-access: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다.",
+     "pt": "Permitir esta operação com permissões danger-full-access: 사용자가 작업공간 밖의 .dev-home/outside.txt 파일에 글자를 쓰도록 명시적으로 요청했고, workspace-write 샌드박스가 이를 거부해 승인이 필요합니다."
+    }
+   }
+  },
+  {
+   "type": "emit",
+   "event": "api-session/status",
+   "args": []
+  }
+ ],
+ "answered": {
+  "eventId": "00a36a8a-9a50-4bb1-a80f-858af63f8a96",
+  "value": "rejected"
+ }
+}

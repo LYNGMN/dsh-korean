@@ -1,0 +1,557 @@
+{
+  "appVersion": "0.2.2-rc.2",
+  "namespaces": {
+    "account.notifications": {
+      "package": "@deepseek-ai/dsh-client-ui-account-notifications",
+      "file": "dsh-client-ui-account-notifications/src/client/index.ts",
+      "keys": 1
+    },
+    "actionCards": {
+      "package": "@deepseek-ai/dsh-client-ui-action-cards",
+      "file": "dsh-client-ui-action-cards/src/client/mount.ts",
+      "keys": 14
+    },
+    "agent-team": {
+      "package": "@deepseek-ai/dsh-client-ui-agent-team",
+      "file": "dsh-client-ui-agent-team/src/client/mount.ts",
+      "keys": 30
+    },
+    "approval": {
+      "package": "@deepseek-ai/dsh-client-ui-approval",
+      "file": "dsh-client-ui-approval/src/client/index.ts",
+      "keys": 7
+    },
+    "chat": {
+      "package": "@deepseek-ai/dsh-client-ui-chat",
+      "file": "dsh-client-ui-chat/src/client/apply.ts",
+      "keys": 207,
+      "sameInEveryLanguage": [
+        "number.groupSeparator",
+        "duration.milliseconds",
+        "message.referenceSeparator",
+        "message.turnProcess.separator",
+        "clock.md",
+        "clock.ymd"
+      ]
+    },
+    "command": {
+      "package": "@deepseek-ai/dsh-client-ui-commands",
+      "file": "dsh-client-ui-commands/src/client/index.ts",
+      "keys": 28
+    },
+    "common": {
+      "package": "@deepseek-ai/dsh-client-locale",
+      "file": "dsh-client-locale/src/client/index.ts",
+      "keys": 41,
+      "sameInEveryLanguage": [
+        "ok",
+        "json.label",
+        "number.thousand",
+        "number.million"
+      ]
+    },
+    "contextMenu": {
+      "package": "@deepseek-ai/dsh-client-ui-context-menu",
+      "file": "dsh-client-ui-context-menu/src/client/index.ts",
+      "keys": 2
+    },
+    "conversation": {
+      "package": "@deepseek-ai/dsh-client-ui-conversation",
+      "file": "dsh-client-ui-conversation/src/client/apply.ts",
+      "keys": 392,
+      "sameInEveryLanguage": [
+        "tool.preparing.content",
+        "detail.weekday.join",
+        "detail.field.id",
+        "row.input",
+        "row.output",
+        "web.http"
+      ]
+    },
+    "cordis": {
+      "package": "@deepseek-ai/dsh-client-ui-cordis",
+      "file": "dsh-client-ui-cordis/src/client/index.ts",
+      "keys": 51
+    },
+    "cotTranslation": {
+      "package": "@deepseek-ai/dsh-experimental-client-ui-cot-translation",
+      "file": "dsh-experimental-client-ui-cot-translation/src/client/mount.ts",
+      "keys": 32
+    },
+    "creationRecommendations": {
+      "package": "@deepseek-ai/dsh-client-ui-creation-recommendations",
+      "file": "dsh-client-ui-creation-recommendations/src/client/mount.ts",
+      "keys": 53
+    },
+    "cuaPermissions": {
+      "package": "@deepseek-ai/dsh-cua",
+      "file": "dsh-cua/src/client/mount.ts",
+      "keys": 66
+    },
+    "deliverables": {
+      "package": "@deepseek-ai/dsh-client-ui-deliverables",
+      "file": "dsh-client-ui-deliverables/src/client/index.ts",
+      "keys": 57,
+      "sameInEveryLanguage": [
+        "changes.added",
+        "changes.deleted"
+      ]
+    },
+    "directory-browser": {
+      "package": "@deepseek-ai/dsh-client-ui-directory-picker-browse",
+      "file": "dsh-client-ui-directory-picker-browse/src/client/index.ts",
+      "keys": 13
+    },
+    "documentHtml": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/html/index.ts",
+      "keys": 4,
+      "sameInEveryLanguage": [
+        "title"
+      ]
+    },
+    "documentMarkdown": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/markdown/index.ts",
+      "keys": 4,
+      "sameInEveryLanguage": [
+        "viewer.label"
+      ]
+    },
+    "entryCustomization": {
+      "package": "@deepseek-ai/dsh-client-ui-entry-customization",
+      "file": "dsh-client-ui-entry-customization/src/client/index.ts",
+      "keys": 7
+    },
+    "feedback": {
+      "package": "@deepseek-ai/dsh-client-ui-message-feedback",
+      "file": "dsh-client-ui-message-feedback/src/client/index.ts",
+      "keys": 20
+    },
+    "fileActions": {
+      "package": "@deepseek-ai/dsh-client-ui-file-actions",
+      "file": "dsh-client-ui-file-actions/src/client/index.ts",
+      "keys": 12
+    },
+    "fileDrag": {
+      "package": "@deepseek-ai/dsh-client-ui-file-drag",
+      "file": "dsh-client-ui-file-drag/src/client/index.ts",
+      "keys": 1
+    },
+    "forgePanel": {
+      "package": "@deepseek-ai/dsh-experimental-client-ui-forge",
+      "file": "dsh-experimental-client-ui-forge/src/client/mount.ts",
+      "keys": 425,
+      "sameInEveryLanguage": [
+        "changes.local.refs",
+        "change.number",
+        "list.stateChecks",
+        "viewed.count",
+        "commits.range",
+        "diff.renamedPath",
+        "time.finished"
+      ]
+    },
+    "goal": {
+      "package": "@deepseek-ai/dsh-client-ui-goal",
+      "file": "dsh-client-ui-goal/src/client/index.ts",
+      "keys": 12
+    },
+    "inspectorPanel": {
+      "package": "@deepseek-ai/dsh-experimental-inspector",
+      "file": "dsh-experimental-inspector/src/client/bottom/page.tsx",
+      "keys": 5
+    },
+    "job": {
+      "package": "@deepseek-ai/dsh-client-ui-jobs",
+      "file": "dsh-client-ui-jobs/src/client/index.ts",
+      "keys": 38
+    },
+    "liveshare": {
+      "package": "@deepseek-ai/dsh-experimental-liveshare",
+      "file": "dsh-experimental-liveshare/src/client/index.ts",
+      "keys": 223,
+      "sameInEveryLanguage": [
+        "viewer.picker.version",
+        "viewer.brand"
+      ]
+    },
+    "messageQuotes": {
+      "package": "@deepseek-ai/dsh-message-quotes",
+      "file": "dsh-message-quotes/src/client/index.ts",
+      "keys": 1
+    },
+    "model": {
+      "package": "@deepseek-ai/dsh-client-ui-model-selection",
+      "file": "dsh-client-ui-model-selection/src/client/index.ts",
+      "keys": 23
+    },
+    "open-in-app": {
+      "package": "@deepseek-ai/dsh-client-ui-open-in-app",
+      "file": "dsh-client-ui-open-in-app/src/client/index.ts",
+      "keys": 59,
+      "sameInEveryLanguage": [
+        "app.cursor",
+        "app.vscode",
+        "app.vscodeinsiders",
+        "app.windsurf",
+        "app.zed",
+        "app.sublimetext",
+        "app.xcode",
+        "app.androidstudio",
+        "app.intellij",
+        "app.pycharm",
+        "app.webstorm",
+        "app.phpstorm",
+        "app.goland",
+        "app.rider",
+        "app.rustrover",
+        "app.fork",
+        "app.sourcetree",
+        "app.github",
+        "app.tower",
+        "app.gitkraken",
+        "app.smartgit",
+        "app.sublimemerge",
+        "app.ghostty",
+        "app.warp",
+        "app.iterm",
+        "app.kitty",
+        "app.windowsterminal",
+        "app.gitbash",
+        "app.gnometerminal",
+        "app.konsole",
+        "app.finder"
+      ]
+    },
+    "permission.access": {
+      "package": "@deepseek-ai/dsh-client-ui-permission-presets",
+      "file": "dsh-client-ui-permission-presets/src/client/index.ts",
+      "keys": 17,
+      "sameInEveryLanguage": [
+        "auto.badge"
+      ]
+    },
+    "plan": {
+      "package": "@deepseek-ai/dsh-client-ui-plan",
+      "file": "dsh-client-ui-plan/src/client/index.ts",
+      "keys": 16
+    },
+    "pluginManager": {
+      "package": "@deepseek-ai/dsh-client-ui-plugin-manager",
+      "file": "dsh-client-ui-plugin-manager/src/client/index.ts",
+      "keys": 293,
+      "sameInEveryLanguage": [
+        "versionTag",
+        "registryCustomPlaceholder",
+        "registryListSeparator"
+      ]
+    },
+    "pluginMarket": {
+      "package": "@deepseek-ai/dsh-client-ui-plugin-market",
+      "file": "dsh-client-ui-plugin-market/src/client/index.ts",
+      "keys": 89,
+      "sameInEveryLanguage": [
+        "sourcePlaceholder",
+        "entryMeta",
+        "entryMetaAuthor"
+      ]
+    },
+    "pluginRecommendations": {
+      "package": "@deepseek-ai/dsh-client-ui-plugin-recommendations",
+      "file": "dsh-client-ui-plugin-recommendations/src/client/mount.ts",
+      "keys": 25
+    },
+    "question": {
+      "package": "@deepseek-ai/dsh-client-ui-user-questions",
+      "file": "dsh-client-ui-user-questions/src/client/index.ts",
+      "keys": 31
+    },
+    "reference": {
+      "package": "@deepseek-ai/dsh-client-ui-reference",
+      "file": "dsh-client-ui-reference/src/client/index.ts",
+      "keys": 15
+    },
+    "schedule.catalog": {
+      "package": "@deepseek-ai/dsh-client-ui-schedule",
+      "file": "dsh-client-ui-schedule/src/client/index.ts",
+      "keys": 76,
+      "sameInEveryLanguage": [
+        "frequency.hostZone",
+        "time.utcPrefix",
+        "frequency.cronRule",
+        "cron.weekday.name",
+        "cron.day.weekdays",
+        "cron.hours.list"
+      ]
+    },
+    "schedule.manager": {
+      "package": "@deepseek-ai/dsh-client-ui-schedule",
+      "file": "dsh-client-ui-schedule/src/client/index.ts",
+      "keys": 215,
+      "sameInEveryLanguage": [
+        "frequency.hostZone",
+        "time.utcPrefix",
+        "frequency.cronRule",
+        "cron.weekday.name",
+        "cron.day.weekdays",
+        "cron.hours.list"
+      ]
+    },
+    "secretMask": {
+      "package": "@deepseek-ai/dsh-client-ui-secret-mask",
+      "file": "dsh-client-ui-secret-mask/src/client/index.ts",
+      "keys": 2
+    },
+    "session-inspector": {
+      "package": "@deepseek-ai/dsh-experimental-session-inspector",
+      "file": "dsh-experimental-session-inspector/src/client/index.ts",
+      "keys": 52,
+      "sameInEveryLanguage": [
+        "table.location"
+      ]
+    },
+    "session-log-download": {
+      "package": "@deepseek-ai/dsh-session-log-export",
+      "file": "dsh-session-log-export/src/client/index.ts",
+      "keys": 14
+    },
+    "settings": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-general",
+      "file": "dsh-client-ui-settings-general/src/client/index.ts",
+      "keys": 65,
+      "sameInEveryLanguage": [
+        "desktop.update.progress"
+      ]
+    },
+    "settings.account": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-account",
+      "file": "dsh-client-ui-settings-account/src/client/index.ts",
+      "keys": 93,
+      "sameInEveryLanguage": [
+        "onboardingArtworkLocale",
+        "onboardingBrand"
+      ]
+    },
+    "settings.agentLoop": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-agent-loop",
+      "file": "dsh-client-ui-settings-agent-loop/src/client/index.ts",
+      "keys": 12
+    },
+    "settings.agentPreset": {
+      "package": "@deepseek-ai/dsh-client-ui-agent-preset",
+      "file": "dsh-client-ui-agent-preset/src/client/index.ts",
+      "keys": 47,
+      "notFoundInBuiltBundle": [
+        "guideStandardExplanation",
+        "guideStandardUsage",
+        "guidePtcExplanation",
+        "guidePtcUsage",
+        "guideMinimalExplanation",
+        "guideMinimalUsage",
+        "guideCordisExplanation",
+        "guideCordisUsage"
+      ]
+    },
+    "settings.locale": {
+      "package": "@deepseek-ai/dsh-client-locale",
+      "file": "dsh-client-locale/src/client/index.ts",
+      "keys": 1
+    },
+    "settings.models": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-models",
+      "file": "dsh-client-ui-settings-models/src/client/index.ts",
+      "keys": 173,
+      "sameInEveryLanguage": [
+        "baseUrlPlaceholder",
+        "protocolGemini",
+        "customBaseUrlPlaceholder",
+        "customAnthropicBaseUrlPlaceholder",
+        "customGeminiBaseUrlPlaceholder"
+      ]
+    },
+    "settings.permission": {
+      "package": "@deepseek-ai/dsh-client-ui-permission-presets",
+      "file": "dsh-client-ui-permission-presets/src/client/index.ts",
+      "keys": 12
+    },
+    "settings.pluginInventory": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
+      "file": "dsh-client-ui-settings-plugin-inventory/src/client/index.ts",
+      "keys": 37
+    },
+    "settings.plugins": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-plugins",
+      "file": "dsh-client-ui-settings-plugins/src/client/index.ts",
+      "keys": 5
+    },
+    "settings.sessionLog": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-session-log",
+      "file": "dsh-client-ui-settings-session-log/src/client/index.ts",
+      "keys": 4
+    },
+    "settings.shell": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-shell",
+      "file": "dsh-client-ui-settings-shell/src/client/index.ts",
+      "keys": 14
+    },
+    "settings.subagent": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-subagent",
+      "file": "dsh-client-ui-settings-subagent/src/client/index.ts",
+      "keys": 35
+    },
+    "settings.theme": {
+      "package": "@deepseek-ai/dsh-client-ui-theme",
+      "file": "dsh-client-ui-theme/src/client/index.ts",
+      "keys": 25
+    },
+    "settings.webSearch": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-web-search",
+      "file": "dsh-client-ui-settings-web-search/src/client/index.ts",
+      "keys": 43,
+      "sameInEveryLanguage": [
+        "providerDeepSeek",
+        "providerDeepSeekFetch",
+        "searchGuideUrl"
+      ]
+    },
+    "shortcuts": {
+      "package": "@deepseek-ai/dsh-client-ui-shortcuts",
+      "file": "dsh-client-ui-shortcuts/src/client/index.ts",
+      "keys": 56
+    },
+    "shortcuts.layout": {
+      "package": "@deepseek-ai/dsh-client-ui-layout",
+      "file": "dsh-client-ui-layout/src/client/index.ts",
+      "keys": 1
+    },
+    "sidebar": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar",
+      "file": "dsh-client-ui-sidebar/src/client/index.ts",
+      "keys": 10
+    },
+    "sidebarBrowser": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-browser",
+      "file": "dsh-client-ui-sidebar-browser/src/client/index.ts",
+      "keys": 26
+    },
+    "sidebarCodePreview": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/code/index.ts",
+      "keys": 3
+    },
+    "sidebarDocumentPreview": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/index.ts",
+      "keys": 22
+    },
+    "sidebarExcel": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/excel/index.ts",
+      "keys": 15
+    },
+    "sidebarFiles": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-files",
+      "file": "dsh-client-ui-sidebar-files/src/client/index.ts",
+      "keys": 53
+    },
+    "sidebarImage": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/image/index.ts",
+      "keys": 11,
+      "sameInEveryLanguage": [
+        "zoomValue"
+      ]
+    },
+    "sidebarOffice": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/office/index.ts",
+      "keys": 15
+    },
+    "sidebarPdf": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "file": "dsh-client-ui-sidebar-documentpreview/src/client/pdf/index.ts",
+      "keys": 15,
+      "sameInEveryLanguage": [
+        "zoomValue",
+        "title"
+      ]
+    },
+    "sidebarRight": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-right",
+      "file": "dsh-client-ui-sidebar-right/src/client/index.ts",
+      "keys": 38
+    },
+    "sidebarTerminal": {
+      "package": "@deepseek-ai/dsh-client-ui-sidebar-terminal",
+      "file": "dsh-client-ui-sidebar-terminal/src/client/index.ts",
+      "keys": 33
+    },
+    "skill": {
+      "package": "@deepseek-ai/dsh-client-ui-skill",
+      "file": "dsh-client-ui-skill/src/client/index.ts",
+      "keys": 8
+    },
+    "slash.menu": {
+      "package": "@deepseek-ai/dsh-client-ui-input-trigger",
+      "file": "dsh-client-ui-input-trigger/src/client/index.ts",
+      "keys": 9
+    },
+    "stats": {
+      "package": "@deepseek-ai/dsh-experimental-client-ui-stats",
+      "file": "dsh-experimental-client-ui-stats/src/client/index.ts",
+      "keys": 177,
+      "sameInEveryLanguage": [
+        "trigger.webhook",
+        "event.approval.detail"
+      ]
+    },
+    "subagent": {
+      "package": "@deepseek-ai/dsh-client-ui-subagent",
+      "file": "dsh-client-ui-subagent/src/client/index.ts",
+      "keys": 47,
+      "sameInEveryLanguage": [
+        "tokens.thousand",
+        "tokens.million"
+      ]
+    },
+    "trajectory": {
+      "package": "@deepseek-ai/dsh-client-ui-trajectory",
+      "file": "dsh-client-ui-trajectory/src/client/index.ts",
+      "keys": 199,
+      "sameInEveryLanguage": [
+        "timing.ttft",
+        "record.json"
+      ]
+    },
+    "voice-input": {
+      "package": "@deepseek-ai/dsh-experimental-client-ui-voice-input",
+      "file": "dsh-experimental-client-ui-voice-input/src/client/mount.ts",
+      "keys": 114
+    },
+    "workflowRun": {
+      "package": "@deepseek-ai/dsh-client-ui-workflow-run",
+      "file": "dsh-client-ui-workflow-run/src/client/index.ts",
+      "keys": 18,
+      "sameInEveryLanguage": [
+        "run.title"
+      ]
+    },
+    "workspace": {
+      "package": "@deepseek-ai/dsh-client-ui-workspace",
+      "file": "dsh-client-ui-workspace/src/client/index.ts",
+      "keys": 119,
+      "sameInEveryLanguage": [
+        "date.ymd"
+      ]
+    }
+  },
+  "mainProcessKeys": 189,
+  "packages": {
+    "keys": 167,
+    "identifierTitles": 186,
+    "sameInEveryLanguage": [
+      "@deepseek-ai/dsh-skill-badge:title"
+    ]
+  }
+}

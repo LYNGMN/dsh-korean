@@ -1,0 +1,14 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "smartphone" (ISC License, https://lucide.dev/icons/smartphone). -->
+  <!-- 광학 보정: 세로로 긴 사각형이라 열쇠 아이콘보다 커 보여 0.93배로 줄였다(선 굵기는 2 ÷ 0.93). 보정 전 보이는 크기 1.08 → 1.01, 중심 어긋남 0.07px. -->
+  <g transform="translate(18 18) scale(0.93) translate(-12 -12)" stroke="url(#dsh-handheld-icon)" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+    <path d="M12 18h.01" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-handheld-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>
