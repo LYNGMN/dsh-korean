@@ -38,13 +38,21 @@ export function stagesOf(facts, extra = {}) {
   const merged = prMerged || (facts.ahead === 0 && facts.hadCommits === true && !facts.isBase)
   const pushed = typeof facts.upstream === 'string' && facts.unpushed === 0
   const verify = verifyOf(extra.todos, extra.verifiedAt, facts.headTime)
+  // 승인 전에 보여 줄 "이번에 올라가는 것"(원본에 없는 저장 기록·바뀐 파일)과 "올라가지 않는 것"(저장 안 된 변경).
+  const outgoing = {
+    commits: Array.isArray(facts.commits) ? facts.commits : [],
+    total: facts.ahead ?? 0,
+    files: facts.files ?? null,
+    pending: Array.isArray(facts.pending) ? facts.pending : [],
+    changes: facts.changes ?? 0,
+  }
 
   const info = {
     branch: { branch: facts.branch, base: facts.base, isBase: facts.isBase, detached: facts.branch === null, nameOk: typeof facts.branch === 'string' && BRANCH_NAME.test(facts.branch) },
     commit: { changes: facts.changes, ahead: facts.ahead },
     verify,
-    share: { pushed, upstream: facts.upstream, unpushed: facts.unpushed, pr, prError: facts.prError ?? null },
-    merge: { merged, by: prMerged ? 'pr' : merged ? 'local' : null, pr, base: facts.base },
+    share: { pushed, upstream: facts.upstream, unpushed: facts.unpushed, pr, prError: facts.prError ?? null, outgoing },
+    merge: { merged, by: prMerged ? 'pr' : merged ? 'local' : null, pr, base: facts.base, outgoing },
     deploy: { tag: facts.tag ?? null },
   }
   const reached = {

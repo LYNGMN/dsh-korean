@@ -7,10 +7,10 @@ import { join } from 'node:path'
 import { createFakeDsh } from './support/fake-dsh.js'
 import { DshClient } from '../server/dsh/client.js'
 import { DshApi } from '../server/dsh/api.js'
-import { workStateOf } from '../server/dsh/normalize.js'
+import { commandsOf, workStateOf } from '../server/dsh/normalize.js'
 import { Hub } from '../server/gateway/hub.js'
 import { stagesOf } from '../web/src/lib/stages.js'
-import { stageFacts, stageNext, stageSummary } from '../web/src/lib/stage-view.js'
+import { stageAsk, stageFacts, stageNext, stageOutgoing, stageSummary } from '../web/src/lib/stage-view.js'
 import { setLang } from '../web/src/lib/i18n.js'
 
 const quiet = { info() {}, warn() {} }
@@ -109,6 +109,39 @@ test('a folder holding repositories follows the latest one, and a picked one whe
   assert.equal(picked.facts.folder, 'a')
   assert.equal(picked.facts.within.auto, false)
   assert.equal((await hub.stages('s1', '../..')).facts.folder, 'b')
+  assert.equal(auto.facts.within.reason, 'recent')
+})
+
+test('a folder holding repositories follows the one the session ran commands in', async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'handheld-ws2-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  for (const name of ['a', 'b']) {
+    const dir = join(root, name)
+    mkdirSync(dir)
+    git(dir, 'init', '-q', '-b', 'main')
+    writeFileSync(join(dir, 'x.txt'), 'x\n')
+    git(dir, 'add', '.')
+    git(dir, 'commit', '-q', '-m', 'first')
+  }
+  utimesSync(join(root, 'b', '.git', 'index'), 9_999_999_999, 9_999_999_999)
+  const events = [
+    { seq: 1, time: 1, type: 'tool/call', data: { turn: 1, step: 1, callId: 'c1', name: 'bash', arguments: JSON.stringify({ command: 'cd a && git status', description: 'x' }) } },
+    { seq: 2, time: 2, type: 'tool/result', data: { turn: 1, step: 1, message: { role: 'tool', toolCallId: 'c1', content: [] }, meta: { cwd: root } } },
+  ]
+  const hub = await setup(t, [{ sessionId: 's1', cwd: root, title: 'x', events }])
+  const reply = await hub.stages('s1')
+  assert.equal(reply.facts.folder, 'a')
+  assert.equal(reply.facts.within.reason, 'session')
+})
+
+test('commandsOf pairs shell commands with the folder DSH resolved for them', () => {
+  const records = [
+    { event: { type: 'tool/call', data: { callId: 'c1', name: 'bash', arguments: JSON.stringify({ command: 'cd a && git status' }) } } },
+    { event: { type: 'tool/result', data: { message: { toolCallId: 'c1' }, meta: { cwd: '/w' } } } },
+    { event: { type: 'tool/call', data: { callId: 'c2', name: 'read', arguments: '{}' } } },
+  ]
+  assert.deepEqual(commandsOf(records), [{ command: 'cd a && git status', cwd: '/w' }])
+  assert.deepEqual(commandsOf(undefined), [])
 })
 
 test('stage text follows the language and names the approval step', (t) => {
@@ -122,4 +155,42 @@ test('stage text follows the language and names the approval step', (t) => {
   setLang('en')
   assert.equal(stageSummary(snap), 'Share · 3/6 · needs approval')
   assert.equal(stageSummary(stagesOf(null), 'boom'), 'Could not read the work stage: boom')
+})
+
+test('before share the sheet lists the commits going up and the changes that stay', (t) => {
+  t.after(() => setLang('ko'))
+  const facts = {
+    repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 1, ahead: 2, upstream: null, unpushed: 0,
+    hadCommits: true, headTime: 1, pr: null, prError: null, tag: null,
+    commits: [{ id: 'a', subject: 'bigger button' }, { id: 'b', subject: 'fix copy' }], files: { changed: 3, added: 10, removed: 2 },
+    pending: [{ path: 'notes.md', kind: 'new' }],
+  }
+  const share = stagesOf(facts).stages[3]
+  setLang('ko')
+  assert.deepEqual(stageOutgoing(share), {
+    title: '이번에 GitHub에 올라가는 것', commits: ['bigger button', 'fix copy'], more: null,
+    files: '파일 3개 · 10줄 더함 · 2줄 뺌', left: '저장 안 된 변경 1개는 올라가지 않습니다.', pending: ['새 파일 · notes.md'],
+  })
+  setLang('en')
+  assert.equal(stageOutgoing(share).left, '1 unsaved changes will not go up.')
+  assert.equal(stageOutgoing(stagesOf(facts).stages[1]), null)
+})
+
+test('the sheet offers one request for the current stage, naming the repository in a workspace folder', (t) => {
+  t.after(() => setLang('ko'))
+  const base = {
+    repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: null, unpushed: 0,
+    hadCommits: true, headTime: 1, pr: null, prError: null, tag: null,
+  }
+  const current = (facts, extra) => { const snap = stagesOf(facts, extra); return snap.stages[snap.current] }
+  const verified = { todos: [{ content: 'run tests', status: 'completed' }] }
+  setLang('ko')
+  assert.equal(stageAsk(current(base)), '테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  assert.equal(stageAsk(current(base), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x' }, verified)), '검토 요청(PR)을 초안으로 열어 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x', pr: { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null } }, verified)), '검토 요청(PR)을 스쿼시 머지해 주세요.')
+  assert.equal(stageAsk(current({ ...base, prError: 'auth' }, verified)), null)
+  assert.equal(stageAsk(stagesOf(base).stages[0]), null)
+  setLang('en')
+  assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please push and open a draft pull request.')
 })

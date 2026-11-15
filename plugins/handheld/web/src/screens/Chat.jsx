@@ -13,7 +13,7 @@ import { Sheet } from '../components/Sheet.jsx'
 import { t } from '../lib/i18n.js'
 import { pendingIcon, pendingStripText } from '../lib/pending.js'
 import { stagesOf } from '../lib/stages.js'
-import { stageFacts, stageNext, stagePlain, stageStep, stageSummary, statusText } from '../lib/stage-view.js'
+import { stageAsk, stageFacts, stageNext, stageOutgoing, stagePlain, stageStep, stageSummary, statusText } from '../lib/stage-view.js'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -143,11 +143,45 @@ function StageDots({ snapshot }) {
   )
 }
 
-function StageSheet({ snapshot, facts, choose, onClose }) {
+/** Before approving share or merge: commit titles going up, and unsaved changes that stay behind. */
+function StageOutgoing({ stage }) {
+  const out = stageOutgoing(stage)
+  if (!out) return null
+  return (
+    <div class="stage-out">
+      <h4 class="stage-out-title">{out.title}</h4>
+      <ol class="stage-out-list">{out.commits.map((subject, i) => <li key={i}>{subject}</li>)}</ol>
+      {out.more ? <p class="muted small">{out.more}</p> : null}
+      {out.files ? <p class="muted small">{out.files}</p> : null}
+      {out.left ? (
+        <details class="stage-out-left">
+          <summary class="muted small">{out.left}</summary>
+          <ul class="stage-out-files mono-line">{out.pending.map((line) => <li key={line}>{line}</li>)}</ul>
+        </details>
+      ) : null}
+    </div>
+  )
+}
+
+/** A request for the current stage. The button puts it in the message box and never sends it. */
+function StageAsk({ stage, facts, onAsk }) {
+  const ask = onAsk ? stageAsk(stage, facts?.within ? facts.folder : null) : null
+  if (!ask) return null
+  return (
+    <div class="stage-ask">
+      <p class="muted small">{t('stage.ask.label')}</p>
+      <p class="stage-ask-text">{ask}</p>
+      <button type="button" class="btn btn-ghost btn-small stage-ask-btn" onClick={() => onAsk(ask)}>{t('stage.ask.put')}</button>
+    </div>
+  )
+}
+
+function StageSheet({ snapshot, facts, choose, onAsk, onClose }) {
   return (
     <Sheet title={t('stage.title')} onClose={onClose} labelId="stage-sheet-title">
       {facts?.within ? <RepoPicker within={facts.within} choose={choose} /> : null}
       {facts?.repo ? <p class="muted small mono-line">{`${facts.folder} · ${facts.branch ?? t('stage.noBranch')}`}</p> : null}
+      {facts?.within && facts.within.reason !== 'picked' ? <p class="muted small stage-why">{t(`stage.why.${facts.within.reason === 'session' ? 'session' : 'recent'}`)}</p> : null}
       {snapshot.doing ? <p class="stage-doing"><span class="stage-label">{t('stage.doing')}</span><span>{snapshot.doing}</span></p> : null}
       <ol class="stage-list">
         {snapshot.stages.map((stage, i) => {
@@ -165,7 +199,9 @@ function StageSheet({ snapshot, facts, choose, onClose }) {
                 <div class="stage-detail">
                   <p class="muted small">{stagePlain(stage.key)}</p>
                   <ul class="stage-facts">{stageFacts(stage).map((line) => <li key={line}>{line}</li>)}</ul>
+                  <StageOutgoing stage={stage} />
                   {next ? <p class="stage-next"><span class="stage-label">{t('stage.next')}</span><span>{next}</span></p> : null}
+                  <StageAsk stage={stage} facts={facts} onAsk={onAsk} />
                 </div>
               </details>
             </li>
@@ -209,6 +245,13 @@ export function Chat({ sessionId }) {
   const [showStages, setShowStages] = useState(false)
   const activeSubagents = subagents.filter((s) => s.state === 'running').length
   const [announcement, setAnnouncement] = useState('')
+  // A stage request waiting to go into the message box; n changes on every tap so the same text can go in twice.
+  const [fill, setFill] = useState(null)
+  const askInBox = (text) => {
+    setFill((prev) => ({ text, n: (prev?.n ?? 0) + 1 }))
+    setShowStages(false)
+    setAnnouncement(t('stage.ask.done'))
+  }
   const before = useRef({ running, waiting: pending.length })
 
   // Screen readers do not see the status dot or the request strip appear.
@@ -357,9 +400,9 @@ export function Chat({ sessionId }) {
       </div>
 
       <p class="visually-hidden" role="status">{announcement}</p>
-      {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} />}
+      {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} fill={fill} />}
       {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
-      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} choose={stages.choose} onClose={() => setShowStages(false)} /> : null}
+      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} choose={stages.choose} onAsk={parentId ? null : askInBox} onClose={() => setShowStages(false)} /> : null}
     </div>
   )
 }

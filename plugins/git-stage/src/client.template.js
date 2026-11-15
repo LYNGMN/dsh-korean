@@ -73,10 +73,13 @@ window.__ModuleLoader__.load({
     // 작업 폴더 이름 · 브랜치. 묶음 폴더면 저장소 이름이 상대 경로로 온다.
     function Where({ facts }) {
       if (!facts?.repo) return null
-      return h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`)
+      const why = whyOf(facts.within)
+      return h(React.Fragment, null,
+        h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`),
+        why ? h('p', { className: 'dgs-why' }, why) : null)
     }
 
-    // 묶음 폴더일 때만: 최근 활동을 따라갈지, 저장소 하나를 고정할지 고른다. 읽는 저장소 이름은 바로 아래 줄(Where)에 보인다.
+    // 묶음 폴더일 때만: 자동으로 따라갈지(세션이 명령을 돌린 저장소, 없으면 최근 활동), 저장소 하나를 고정할지 고른다.
     function RepoPicker({ within, choose }) {
       const id = useId()
       return h('div', { className: 'dgs-repo' },
@@ -85,7 +88,7 @@ window.__ModuleLoader__.load({
           id, className: 'dgs-repo-select', value: within.auto ? '' : within.picked,
           onChange: event => choose(event.target.value),
         },
-        h('option', { value: '' }, '최근 활동 따라가기'),
+        h('option', { value: '' }, '자동으로 따라가기'),
         within.repos.map(name => h('option', { key: name, value: name }, name))))
     }
 
@@ -117,7 +120,41 @@ window.__ModuleLoader__.load({
         stage.blocked ? h('span', { className: 'dgs-badge', 'data-tone': 'blocked' }, '로그인 필요') : null)
     }
 
-    function StageDetail({ stage, index, id }) {
+    // 승인 전에 보는 목록: 올라갈 저장 기록 제목, 바뀐 파일 수, 올라가지 않는 저장 안 된 변경(펼쳐 봄).
+    function Outgoing({ stage }) {
+      const out = outgoingOf(stage)
+      if (out === null) return null
+      return h('div', { className: 'dgs-out' },
+        h('h4', { className: 'dgs-out-title' }, out.title),
+        h('ol', { className: 'dgs-out-list' }, out.commits.map((subject, i) => h('li', { key: i }, subject))),
+        out.more ? h('p', { className: 'dgs-out-more' }, out.more) : null,
+        out.files ? h('p', { className: 'dgs-out-more' }, out.files) : null,
+        out.left
+          ? h('details', { className: 'dgs-out-left' },
+            h('summary', null, out.left),
+            h('ul', { className: 'dgs-out-files' }, out.pending.map(line => h('li', { key: line }, line))))
+          : null)
+    }
+
+    // 지금 단계에서 할 만한 요청을 입력창에 넣는다. 보내기는 부르지 않는다. 사람이 읽고 고친 뒤 직접 보낸다.
+    function Ask({ stage, facts, inputActions }) {
+      const text = askOf(stage, facts?.within ? facts.folder : null)
+      const [note, setNote] = useState('')
+      useEffect(() => { setNote('') }, [text])
+      if (text === null || !inputActions) return null
+      const put = () => {
+        const ok = inputActions.insertText(text, inputActions.captureInsertion())
+        setNote(ok ? '입력창에 넣었어요. 읽어 보고 직접 보내 주세요.' : '지금은 입력창에 넣지 못했어요. 답이 끝난 뒤 다시 눌러 주세요.')
+      }
+      return h('div', { className: 'dgs-ask' },
+        h('p', { className: 'dgs-ask-label' }, '이렇게 요청해 보세요'),
+        h('p', { className: 'dgs-ask-text' }, text),
+        h('div', { className: 'dgs-ask-row' },
+          h('button', { type: 'button', className: 'dgs-ask-btn', onClick: put }, '입력창에 넣기'),
+          h('p', { className: 'dgs-ask-note', role: 'status' }, note)))
+    }
+
+    function StageDetail({ stage, index, id, facts, inputActions }) {
       const text = STAGE_TEXT[stage.key]
       const next = nextOf(stage)
       return h('div', { className: 'dgs-detail', id, role: 'region', 'aria-label': `${index + 1}단계 ${text.step} 자세히` },
@@ -127,7 +164,9 @@ window.__ModuleLoader__.load({
           h(Badges, { stage })),
         h('p', { className: 'dgs-plain' }, text.plain),
         h('ul', { className: 'dgs-facts' }, factsOf(stage).map(line => h('li', { key: line }, line))),
-        next ? h('p', { className: 'dgs-next' }, h('span', { className: 'dgs-next-label' }, '다음'), h('span', { className: 'dgs-next-text' }, next)) : null)
+        h(Outgoing, { stage }),
+        next ? h('p', { className: 'dgs-next' }, h('span', { className: 'dgs-next-label' }, '다음'), h('span', { className: 'dgs-next-text' }, next)) : null,
+        h(Ask, { stage, facts, inputActions }))
     }
 
     // 6칸 단계 줄. 화살표 키로 칸을 옮기고, 누르면 아래 설명이 그 단계로 바뀐다.
@@ -186,7 +225,7 @@ window.__ModuleLoader__.load({
             ? h(Message, { snapshot, source, onRetry: () => void refresh() })
             : h(React.Fragment, null,
               h(Stepper, { snapshot, selected, onSelect: setPicked, detailId }),
-              h(StageDetail, { stage: snapshot.stages[selected], index: selected, id: detailId })),
+              h(StageDetail, { stage: snapshot.stages[selected], index: selected, id: detailId, facts, inputActions: props.inputActions })),
           h('p', { className: 'dgs-note' }, 'Git 상태를 10초마다 다시 읽어요. 이 화면은 보기만 하고, 푸시·합치기·배포는 사람이 승인한 뒤에만 해요.')))
     }
 
@@ -223,7 +262,6 @@ window.__ModuleLoader__.load({
         if (!open) return undefined
         const update = () => { if (button.current) setPlace(placePanel(button.current)) }
         update()
-        panel.current?.focus()
         const onPointer = (event) => {
           if (button.current?.contains(event.target) || panel.current?.contains(event.target)) return
           close(false)
@@ -241,6 +279,10 @@ window.__ModuleLoader__.load({
         }
       }, [open])
 
+      // 창은 자리를 잰 뒤에 그려지므로, 그려진 다음에 초점을 옮긴다.
+      const placed = open && place !== null
+      useEffect(() => { if (placed) panel.current?.focus() }, [placed])
+
       if (snapshot.kind !== 'ok') return null
       const current = snapshot.current === null ? null : snapshot.stages[snapshot.current]
       const label = `작업 단계 ${summaryOf(snapshot)}`
@@ -257,7 +299,14 @@ window.__ModuleLoader__.load({
             ref: panel, id: panelId, className: 'dgs-panel', role: 'dialog', 'aria-modal': false,
             'aria-labelledby': `${panelId}-title`, tabIndex: -1,
             style: { top: `${place.top}px`, left: `${place.left}px`, width: `${place.width}px`, maxHeight: `${place.maxHeight}px` },
-            onKeyDown: (event) => { if (event.key === 'Tab') { event.preventDefault(); close(true) } },
+            // 창 안 단추 사이는 Tab으로 옮기고, 처음·끝을 넘어가면 창을 닫고 칩으로 돌아간다.
+            onKeyDown: (event) => {
+              if (event.key !== 'Tab') return
+              const items = [...panel.current.querySelectorAll('button, select, summary')]
+              const at = document.activeElement
+              const out = items.length === 0 || (event.shiftKey ? at === items[0] || at === panel.current : at === items[items.length - 1])
+              if (out) { event.preventDefault(); close(true) }
+            },
           },
           h('div', { className: 'dgs-head' },
             h('h2', { className: 'dgs-title', id: `${panelId}-title` }, '작업 단계'),
@@ -271,6 +320,7 @@ window.__ModuleLoader__.load({
               h('span', { className: 'dgs-step-status' }, STATUS_TEXT[stage.status]),
               h(Badges, { stage })))),
           current && nextOf(current) ? h('p', { className: 'dgs-next' }, h('span', { className: 'dgs-next-label' }, '다음'), h('span', { className: 'dgs-next-text' }, nextOf(current))) : null,
+          current ? h(Ask, { stage: current, facts: source.facts, inputActions: props.inputActions }) : null,
           h('p', { className: 'dgs-note' }, '단계 설명은 … 메뉴의 ‘작업 단계’ 탭에서 볼 수 있어요.')), document.body)
           : null)
     }

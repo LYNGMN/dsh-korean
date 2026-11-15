@@ -80,7 +80,7 @@ function CommandRows({ commands, onPick }) {
   )
 }
 
-export function Composer({ sessionId, running }) {
+export function Composer({ sessionId, running, fill = null }) {
   const draftKey = `draft:${sessionId}`
   const [text, setText] = useState(() => storageGet(draftKey, ''))
   const [mode, setMode] = useState(() => storageGet(BUSY_ENTER_STORAGE, 'queue'))
@@ -102,6 +102,13 @@ export function Composer({ sessionId, running }) {
     setText(`/${command.name} `)
     setTimeout(() => area.current?.focus(), 0)
   }
+
+  // A request from the stage sheet goes after what the person already typed. Sending stays with the person.
+  useEffect(() => {
+    if (!fill) return
+    setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')}\n${fill.text}` : fill.text))
+    setTimeout(() => area.current?.focus(), 0)
+  }, [fill?.n])
 
   useEffect(() => {
     const timer = setTimeout(() => storageSet(draftKey, text), 300)

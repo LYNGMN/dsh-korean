@@ -219,3 +219,36 @@ export function workStateOf(projections) {
     .map((t) => ({ content: t.content.slice(0, 300), status: t.status }))
   return { cwd, todos }
 }
+
+const SHELL_TOOLS = new Set(['bash', 'pwsh'])
+
+/**
+ * Shell commands a session ran and the folder each ran in (DSH puts the resolved folder in the
+ * tool result's meta.cwd), oldest first. terminal_open counts as moving into its cwd.
+ * @param {Array<{event?: object}>} records session/events records
+ * @returns {Array<{command: string, cwd: string|null}>}
+ */
+export function commandsOf(records) {
+  const list = []
+  const byCall = new Map()
+  for (const record of Array.isArray(records) ? records : []) {
+    const event = record?.event
+    const data = event?.data ?? {}
+    if (event?.type === 'tool/call' || event?.type === 'tool/ptc-dispatch-start') {
+      const args = parseArgs(data.arguments)
+      const id = data.callId ?? data.subCallId
+      if (SHELL_TOOLS.has(data.name) && typeof args.command === 'string') {
+        const item = { command: args.command, cwd: null }
+        list.push(item)
+        if (id) byCall.set(id, item)
+      } else if (data.name === 'terminal_open' && typeof args.cwd === 'string') {
+        list.push({ command: `cd ${JSON.stringify(args.cwd)}`, cwd: null })
+      }
+    } else if (event?.type === 'tool/result' || event?.type === 'tool/ptc-dispatch') {
+      const id = data.message?.toolCallId ?? data.subCallId
+      const cwd = data.meta?.cwd
+      if (id && typeof cwd === 'string' && byCall.has(id)) byCall.get(id).cwd = cwd
+    }
+  }
+  return list
+}

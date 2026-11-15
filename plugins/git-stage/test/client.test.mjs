@@ -137,7 +137,7 @@ function find(node, match) {
 }
 
 test('묶음 폴더면 저장소 고르기를 보이고, 고른 저장소를 세션마다 기억해 그 이름으로 다시 읽는다', async () => {
-  const within = { folder: 'Dev', repos: ['DiscordActions', 'dsh-korean'], picked: 'DiscordActions', auto: true }
+  const within = { folder: 'Dev', repos: ['DiscordActions', 'dsh-korean'], picked: 'DiscordActions', auto: true, reason: 'session' }
   const facts = { ...FACTS, folder: 'DiscordActions', within }
   const urls = []
   const saved = new Map()
@@ -151,7 +151,8 @@ test('묶음 폴더면 저장소 고르기를 보이고, 고른 저장소를 세
   const select = find(tree, node => node.type === 'select')
   assert.equal(select.props.value, '')
   assert.deepEqual(select.children.map(option => option.props.value), ['', 'DiscordActions', 'dsh-korean'])
-  assert.equal(select.children[0].children.join(''), '최근 활동 따라가기')
+  assert.equal(select.children[0].children.join(''), '자동으로 따라가기')
+  assert.match(text(tree), /이 세션이 명령을 돌린 저장소예요/)
   assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1')
 
   select.props.onChange({ target: { value: 'dsh-korean' } })
@@ -171,4 +172,29 @@ test('저장소 하나만 연 세션에는 저장소 고르기가 없다', async
   render(slots['conversation.view'], mod, FACTS, [])
   await mod.internals.sources.get('s1').refresh()
   assert.equal(find(render(slots['conversation.view'], mod, FACTS, []), node => node.type === 'select'), null)
+})
+
+test('지금 단계의 요청 문장을 입력창에 넣기만 하고, 보내지 않는다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const calls = []
+  const inputActions = {
+    captureInsertion: () => { calls.push('capture'); return { start: 0, end: 0, draftRev: 1 } },
+    insertText: (value, span) => { calls.push(['insert', value, span.draftRev]); return true },
+    setDraft: () => calls.push('setDraft'),
+    submit: () => calls.push('submit'),
+  }
+  const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
+  const props = { sessionId: 's1', useSession: s => s({ running: false }), useProjection: key => (key === 'todos' ? todos : undefined), inputActions }
+  const tree = slots['conversation.view'].Component(props)
+  assert.match(text(tree), /이렇게 요청해 보세요\s+푸시하고 검토 요청\(PR\)을 초안으로 열어 주세요\./)
+  const button = find(tree, node => node.type === 'button' && node.children.join('') === '입력창에 넣기')
+  button.props.onClick()
+  assert.deepEqual(calls, ['capture', ['insert', '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.', 1]])
+
+  // 입력창 기능을 받지 못한 화면에는 단추가 없다.
+  const bare = slots['conversation.view'].Component({ ...props, inputActions: undefined })
+  assert.equal(find(bare, node => node.type === 'button' && node.children.join('') === '입력창에 넣기'), null)
 })

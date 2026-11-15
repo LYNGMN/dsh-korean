@@ -63,3 +63,48 @@ export function stageNext(stage) {
     default: return null
   }
 }
+
+/**
+ * Before approving share or merge: what goes up (commit titles, file counts) and what stays (unsaved changes).
+ * Null for a finished stage or when nothing would go up.
+ */
+export function stageOutgoing(stage) {
+  if ((stage.key !== 'share' && stage.key !== 'merge') || stage.status === 'done') return null
+  const out = stage.info.outgoing
+  if (!out || out.total === 0) return null
+  const hidden = out.total - out.commits.length
+  return {
+    title: stage.key === 'share' ? t('stage.o.share') : t('stage.o.merge', { base: stage.info.base }),
+    commits: out.commits.map((c) => c.subject),
+    more: hidden > 0 ? t('stage.o.more', { n: hidden }) : null,
+    files: out.files ? t('stage.o.files', { n: out.files.changed, added: out.files.added, removed: out.files.removed }) : null,
+    left: out.changes > 0 ? t('stage.o.left', { n: out.changes }) : null,
+    pending: out.pending.map((p) => `${t(`stage.o.kind.${p.kind}`)} · ${p.path}`),
+  }
+}
+
+/**
+ * One request to send the agent at the current stage. The button only puts it in the message box; the person sends it.
+ * Null for any other stage, when GitHub sign-in comes first, or when there is nothing to commit yet.
+ * @param {string|null} [repo] repository inside a workspace folder, named so the agent works in the right one.
+ */
+export function stageAsk(stage, repo = null) {
+  const key = askKeyOf(stage)
+  if (key === null) return null
+  return repo ? t('stage.a.inRepo', { repo, ask: t(key) }) : t(key)
+}
+
+function askKeyOf(stage) {
+  if (stage.status !== 'current' || stage.blocked) return null
+  const i = stage.info
+  switch (stage.key) {
+    case 'branch': return 'stage.a.branch'
+    case 'commit': return i.changes > 0 ? 'stage.a.commit' : null
+    case 'verify': return 'stage.a.verify'
+    case 'share': return 'stage.a.share'
+    // Pushed but no open review request yet: open one first.
+    case 'merge': return i.pr && i.pr.state === 'OPEN' ? 'stage.a.merge' : 'stage.a.openPr'
+    case 'deploy': return 'stage.a.deploy'
+    default: return null
+  }
+}

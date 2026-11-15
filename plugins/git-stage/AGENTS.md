@@ -54,3 +54,5 @@ DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭에 **작업 단계** �
 - 브랜치를 원본에 머지하고 지우지 않았으면 원본보다 앞선 커밋이 0개가 됩니다. 이것만으로 "합치기 끝남"이라 하면 새로 만든 빈 브랜치도 끝남이 되므로, 그 브랜치에 커밋했던 기록(reflog)이 있을 때만 머지로 봅니다. — 처음 2026-11-15 — 지키는 방법: `src/stages.js`, `test/stages.test.mjs`
 - 원본 브랜치(`main`)에 있으면 원본이 GitHub와 같다는 이유로 "공유 끝남", 지난 할 일 때문에 "검증 끝남"이 칠해졌습니다. 원본 브랜치에서는 작업실 뒤 단계를 모두 시작 전으로 봅니다. — 처음 2026-11-15 — 지키는 방법: `src/stages.js`, `test/stages.test.mjs`
 - DSH에서 `~/Dev`처럼 여러 저장소를 담은 폴더를 작업 공간으로 쓰면 세션 작업 폴더가 저장소가 아닙니다. 그 안의 저장소를 `.git`의 마지막 변경 시각으로 찾아 따라갑니다(명령 없이 파일만, `~/Dev` 246곳에 0.14초). — 처음 2026-11-15 — 지키는 방법: `lib/git-read.js`의 `findRepos`, `test/git-read.test.mjs`
+- DSH는 세션 자리(`conversation.view`, 머리 칩)에 표준 속성 `inputActions`를 넘깁니다. 입력창에 글을 넣을 때는 `insertText(text, captureInsertion())`을 쓰고(사람이 친 글·참조 칩을 지움 없이 커서 자리에 넣음), `setDraft`·`submit`은 쓰지 않습니다. — 처음 2026-11-15 — 지키는 방법: `src/client.template.js`의 `Ask`, `test/client.test.mjs`
+- 칩 창은 자리를 잰 뒤에 그려지므로, 여는 순간 `panel.focus()`를 부르면 아직 없는 창이라 초점이 칩에 남습니다. 창이 그려진 다음(`place`가 생긴 뒤) 초점을 옮깁니다. — 처음 2026-11-15 — 지키는 방법: `src/client.template.js`의 `StageChip`

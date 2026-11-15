@@ -37,7 +37,7 @@ flowchart LR
 | `server/gateway/access-auth.js` | Access JWT 검증, 허용 이메일 | 세션 쿠키(Access가 맡음) |
 | `server/gateway/server.js` | 누가 묻는지(Access·개발 우회), Origin 확인, 보안 헤더, 정적 파일, `/h/live` 연결 받기 | DSH 규약 |
 | `server/gateway/routes.js` | `/h/api` 하나하나의 처리 | 인증 |
-| `server/gateway/git-read.js` | 세션 작업 폴더의 Git 사실을 읽기 전용 `git`·`gh`로 읽기(`plugins/git-stage` 복사본). `GET /h/api/sessions/:id/stages`가 허브의 `stages()`로 부름. 작업 폴더·할 일은 `server/dsh/api.js`의 `workState()`(DSH `session/projections`) | 단계 판단(화면의 `web/src/lib/stages.js`) |
+| `server/gateway/git-read.js` | 세션 작업 폴더의 Git 사실을 읽기 전용 `git`·`gh`로 읽기(`plugins/git-stage` 복사본). `GET /h/api/sessions/:id/stages`가 허브의 `stages()`로 부름. 작업 폴더·할 일은 `server/dsh/api.js`의 `workState()`(DSH `session/projections`), 세션이 돌린 명령은 같은 함수가 `session/events`(최근 메시지 30개)에서 `normalize.js`의 `commandsOf()`로 뽑아 묶음 폴더 안 저장소를 고르는 데 씀 | 단계 판단(화면의 `web/src/lib/stages.js`) |
 | `server/gateway/live.js` | 휴대폰 WebSocket 하나의 규약(hello·watch·ping) | |
 | `server/push/web-push.js` | 암호화·VAPID·발송 | 언제 보낼지 |
 | `server/push/notifier.js` | 허브 알림 → 푸시 문구·긴급도, 사라진 구독 지우기 | 암호화 |
@@ -53,6 +53,8 @@ flowchart LR
 계획 검토: DSH가 질문으로 보내는 계획 검토는 `server/dsh/api.js`가 `review: { approve, revise }`를 붙여 넘기고, 휴대폰은 그것을 계획 본문과 "승인·수정 요청" 단추로 그립니다(`web/src/components/PendingSheet.jsx`).
 
 명령어: 세션이 받는 `/명령` 목록은 `GET /sessions/:id/commands`, 실행은 `POST /sessions/:id/command`입니다. 게이트웨이는 DSH의 `commands/list`·`commands/execute`를 그대로 잇고, 휴대폰 입력창(`web/src/components/Composer.jsx`)이 목록에 있는 이름으로 시작하는 줄만 명령으로 보냅니다. 고른 명령은 입력창에 넣기만 하고, 사람이 보내야 실행됩니다.
+
+작업 단계 요청: 단계 시트(`web/src/screens/Chat.jsx`의 `StageAsk`)의 "입력창에 넣기"는 `Composer`의 `fill` 속성(`{text, n}`)으로 문장을 넘깁니다. 입력창은 쓰던 글 뒤에 줄을 바꿔 붙이고 초점만 옮깁니다. 보내기는 사람이 누릅니다. 문장은 `web/src/lib/stage-view.js`의 `stageAsk()`가 단계와 5개 언어 문구(`stage.a.*`)로 만듭니다.
 
 하위 에이전트: 부모 세션의 하위 에이전트 목록은 `DshApi.subagents()`가 DSH의 세션 투영(`subagentCatalog`)과 세션 목록 줄에서 만듭니다. 휴대폰에는 `sub~부모~자식~방식` 꼴의 불투명한 이름으로 나가고, 이 이름을 DSH 주소로 푸는 곳은 `server/dsh/`뿐입니다. 하위 에이전트 대화는 세션과 같은 흐름(`SessionFeed`)으로 따라가되 보기 전용이라 허브가 글 보내기와 중단을 거절합니다.
 

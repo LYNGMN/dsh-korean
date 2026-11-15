@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { stagesOf, STAGE_KEYS } from '../src/stages.js'
-import { factsOf, nextOf, summaryOf } from '../src/stage-text.js'
+import { askOf, factsOf, nextOf, outgoingOf, summaryOf } from '../src/stage-text.js'
 
 const base = {
   repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false,
@@ -101,4 +101,44 @@ test('단계 이름은 여섯 개이고 지금 단계만 다음 할 일이 있�
   assert.deepEqual(STAGE_KEYS, ['branch', 'commit', 'verify', 'share', 'merge', 'deploy'])
   const snap = at({ ahead: 1 })
   assert.equal(snap.stages.filter(s => nextOf(s) !== null).length, 1)
+})
+
+test('공유·합치기 전에는 올라가는 저장 기록·파일 수와 올라가지 않는 변경을 보여 준다', () => {
+  const facts = {
+    ahead: 3, changes: 2, commits: [{ id: 'a1', subject: '로그인 버튼 키우기' }, { id: 'a2', subject: '오류 문구 고치기' }],
+    files: { changed: 4, added: 30, removed: 5 }, pending: [{ path: 'notes.md', kind: 'new' }, { path: 'a.js', kind: 'modified' }],
+  }
+  const snap = at(facts, { todos: [{ content: 'npm test', status: 'completed' }] })
+  const share = outgoingOf(snap.stages[3])
+  assert.deepEqual(share, {
+    title: '이번에 GitHub에 올라가는 것', commits: ['로그인 버튼 키우기', '오류 문구 고치기'], more: '외 저장 1개',
+    files: '파일 4개 · 30줄 더함 · 5줄 뺌', left: '저장 안 된 변경 2개는 올라가지 않아요.', pending: ['새 파일 · notes.md', '고침 · a.js'],
+  })
+  assert.equal(outgoingOf(snap.stages[4]).title, '원본(main)에 합쳐지는 것')
+  assert.equal(outgoingOf(snap.stages[1]), null)
+  // 올라갈 저장이 없거나 끝난 단계는 목록이 없다.
+  assert.equal(outgoingOf(at({ ahead: 0 }).stages[3]), null)
+  assert.equal(outgoingOf(at({ ahead: 1, upstream: 'origin/x', pr: { number: 1, state: 'MERGED', draft: false, url: null, mergeCommit: 'm' } }).stages[3]), null)
+})
+
+test('다음 요청 문장은 지금 단계에만 있고, 로그인이 막히면 없다', () => {
+  const current = snap => snap.stages[snap.current]
+  assert.equal(askOf(current(at({ branch: 'main', isBase: true }))), '이번 일을 위한 새 작업 브랜치를 만들어 주세요.')
+  assert.match(askOf(current(at({ changes: 2 }))), /목적별로 나눠 커밋/)
+  assert.equal(askOf(current(at({ ahead: 1 }))), '테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  const verified = { todos: [{ content: 'npm test', status: 'completed' }] }
+  assert.equal(askOf(current(at({ ahead: 1 }, verified))), '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.')
+  // 올렸지만 검토 요청이 없으면 합치기 단계에서 먼저 연다.
+  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0 }, verified))), '검토 요청(PR)을 초안으로 열어 주세요.')
+  const open = { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null }
+  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0, pr: open }, verified))), '검토 요청(PR)을 스쿼시 머지해 주세요.')
+  const merged = { ...open, state: 'MERGED', mergeCommit: 'm' }
+  assert.match(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0, pr: merged }, verified))), /포함되는 것과 포함하지 않는 것/)
+  const blocked = at({ ahead: 1, prError: 'auth' }, verified)
+  assert.equal(askOf(current(blocked)), null)
+  const snap = at({ ahead: 1 })
+  assert.equal(snap.stages.filter(s => askOf(s) !== null).length, 1)
+  // 묶음 폴더에서는 저장소 이름을 앞에 밝힌다.
+  assert.equal(askOf(current(snap), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  assert.equal(askOf(snap.stages[0], 'app'), null)
 })

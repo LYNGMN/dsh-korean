@@ -75,3 +75,56 @@ export function summaryOf(snapshot) {
   const stage = snapshot.stages[snapshot.current]
   return `${STAGE_TEXT[stage.key].title} 단계 · ${snapshot.done}/${snapshot.total}${stage.approval ? ' · 승인 필요' : ''}`
 }
+
+export const KIND_TEXT = { new: '새 파일', modified: '고침', deleted: '지움', renamed: '이름 바꿈', conflict: '충돌' }
+
+/**
+ * 공유·합치기를 승인하기 전에 볼 "이번에 올라가는 것"과 "올라가지 않는 것". 끝난 단계나 올라갈 저장이 없으면 null.
+ * @returns {{ title: string, commits: string[], more: string|null, files: string|null, left: string|null, pending: string[] } | null}
+ */
+export function outgoingOf(stage) {
+  if ((stage.key !== 'share' && stage.key !== 'merge') || stage.status === 'done') return null
+  const out = stage.info.outgoing
+  if (!out || out.total === 0) return null
+  const hidden = out.total - out.commits.length
+  return {
+    title: stage.key === 'share' ? '이번에 GitHub에 올라가는 것' : `원본(${stage.info.base})에 합쳐지는 것`,
+    commits: out.commits.map(c => c.subject),
+    more: hidden > 0 ? `외 저장 ${hidden}개` : null,
+    files: out.files ? `파일 ${out.files.changed}개 · ${out.files.added}줄 더함 · ${out.files.removed}줄 뺌` : null,
+    left: out.changes > 0 ? `저장 안 된 변경 ${out.changes}개는 올라가지 않아요.` : null,
+    pending: out.pending.map(p => `${KIND_TEXT[p.kind] ?? '바뀜'} · ${p.path}`),
+  }
+}
+
+/** 묶음 폴더에서 왜 이 저장소를 보여 주는지 한 줄. 사람이 고른 경우는 설명하지 않는다. */
+export function whyOf(within) {
+  if (!within || within.reason === 'picked') return null
+  if (within.reason === 'session') return '이 세션이 명령을 돌린 저장소예요.'
+  return '이 세션의 명령에서 저장소를 찾지 못해, 가장 최근에 Git 활동이 있던 저장소를 보여 줘요.'
+}
+
+/**
+ * 지금 단계에서 에이전트에게 보낼 만한 요청 한 문장. 단추가 입력창에 넣기만 하고, 보내기는 사람이 누른다.
+ * 끝난 단계, 로그인부터 해야 하는 경우, 아직 저장할 것이 없는 경우는 null.
+ * @param {string|null} [repo] 묶음 폴더 안 저장소 이름. 주면 어느 저장소의 일인지 문장 앞에 밝힌다.
+ */
+export function askOf(stage, repo = null) {
+  const ask = askTextOf(stage)
+  return ask !== null && repo ? `${repo} 저장소에서 ${ask}` : ask
+}
+
+function askTextOf(stage) {
+  if (stage.status !== 'current' || stage.blocked) return null
+  const i = stage.info
+  switch (stage.key) {
+    case 'branch': return '이번 일을 위한 새 작업 브랜치를 만들어 주세요.'
+    case 'commit': return i.changes > 0 ? '바뀐 내용을 목적별로 나눠 커밋해 주세요. 커밋 전에 무엇을 저장하는지 알려 주세요.' : null
+    case 'verify': return '테스트와 빌드를 돌리고 결과를 알려 주세요.'
+    case 'share': return '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.'
+    // 올렸지만 검토 요청이 없거나 닫혔으면 먼저 연다.
+    case 'merge': return i.pr && i.pr.state === 'OPEN' ? '검토 요청(PR)을 스쿼시 머지해 주세요.' : '검토 요청(PR)을 초안으로 열어 주세요.'
+    case 'deploy': return '배포 전에 이번 배포에 포함되는 것과 포함하지 않는 것을 알려 주세요.'
+    default: return null
+  }
+}

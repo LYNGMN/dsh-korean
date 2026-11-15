@@ -1,9 +1,10 @@
 // Gateway operations expressed as DSH calls. Outside server/dsh/ nobody sees
 // DSH endpoint names, argument wrappers or event names.
 import { randomUUID } from 'node:crypto'
-import { normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
+import { commandsOf, normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
 
 const HISTORY_PAGE_MESSAGES = 20
+const WORK_HISTORY_MESSAGES = 30
 
 function sessionAddress(sessionId) {
   const sub = parseSubagentRef(sessionId)
@@ -113,12 +114,17 @@ export class DshApi {
   /**
    * Working folder and todo list of a session, for the work-stage strip. A subagent
    * conversation reads its parent's folder and todos.
-   * @returns {Promise<{sessionId: string, cwd: string|null, todos: Array<{content: string, status: string}>|null}>}
+   * Also the shell commands of its recent history, so a folder holding many repositories can follow
+   * the one the session worked in.
+   * @returns {Promise<{sessionId: string, cwd: string|null, todos: Array<{content: string, status: string}>|null, commands: Array<{command: string, cwd: string|null}>}>}
    */
   async workState(sessionId) {
     const own = parseSubagentRef(sessionId)?.parentId ?? sessionId
-    const projections = await this.client.rpc('session/projections', { request: { sessionId: own } }).catch(() => null)
-    return { sessionId: own, ...workStateOf(projections) }
+    const [projections, page] = await Promise.all([
+      this.client.rpc('session/projections', { request: { sessionId: own } }).catch(() => null),
+      this.client.rpc('session/events', { request: { address: sessionAddress(own), maxMessages: WORK_HISTORY_MESSAGES } }).catch(() => null),
+    ])
+    return { sessionId: own, ...workStateOf(projections), commands: commandsOf(page?.records) }
   }
 
   async listSessions() {

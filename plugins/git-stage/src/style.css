@@ -23,6 +23,8 @@
 }
 .dgs-repo-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; }
 .dgs-panel .dgs-where { margin: 0; }
+.dgs-why { margin: -8px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
+.dgs-panel .dgs-why { margin: -6px 0 0; }
 .dgs-empty, .dgs-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 .dgs-note { font-size: 13px; line-height: 20px; }
 .dgs-card, .dgs-detail {
@@ -65,7 +67,7 @@
 
 /* 상태 아이콘 */
 .dgs-icon { flex: none; width: 16px; height: 16px; overflow: visible; }
-.dgs-icon-ring { stroke: var(--dsw-alias-label-tertiary, #8f959e); }
+.dgs-icon-ring { stroke: var(--dsw-alias-label-secondary, #646a73); }
 .dgs-icon-ring-now { stroke: var(--dsw-alias-state-business-primary, #3d7be0); }
 .dgs-icon-dot { fill: var(--dsw-alias-state-business-primary, #3d7be0); }
 .dgs-icon-fill { fill: var(--dsw-alias-state-business-primary, #3d7be0); }
@@ -87,6 +89,29 @@
 .dgs-badge[data-tone='approval'] { color: var(--dsw-alias-state-warning-primary, #b26a00); border-color: currentColor; }
 .dgs-badge[data-tone='blocked'] { color: var(--dsw-alias-state-danger-primary, #d83931); border-color: currentColor; }
 .dgs-link { min-height: 44px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 14px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }
+
+/* 승인 전에 보는 목록 */
+.dgs-out { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.03)); min-width: 0; }
+.dgs-out-title { margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; }
+.dgs-out-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
+.dgs-out-more { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }
+.dgs-out-left > summary { cursor: pointer; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); min-height: 24px; }
+.dgs-out-left > summary:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; border-radius: 4px; }
+.dgs-out-files { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 18px; font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; }
+
+/* 다음에 할 요청: 입력창에 넣기만 한다 */
+.dgs-ask { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 0; }
+.dgs-ask-label { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
+.dgs-ask-text { margin: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }
+.dgs-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.dgs-ask-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 12px; margin: 0;
+  border: 0; border-radius: 8px; font: inherit; font-size: 13px; line-height: 20px; font-weight: 500; white-space: nowrap; cursor: pointer;
+  color: var(--dsw-alias-label-primary, #1f2329); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.12));
+}
+@media (hover: hover) { .dgs-ask-btn:hover { background: var(--dsw-alias-state-business-secondary, rgba(61, 123, 224, 0.2)); } }
+.dgs-ask-btn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; }
+.dgs-ask-note { margin: 0; min-width: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 
 /* 채팅 머리 칩 */
 .dgs-chip {

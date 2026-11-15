@@ -2,11 +2,14 @@
 // 휴대폰 앱(plugins/handheld/server/gateway/git-read.js)이 같은 파일을 복사해 쓴다. 키트 test/git-stage-copies.test.mjs가 둘이 같은지 본다.
 import { execFile } from 'node:child_process'
 import { readdir, readFile, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 
 const TIMEOUT_MS = 5000
 const PR_TTL_MS = 30_000
 const MAX_REPOS = 40
+const MAX_COMMITS = 20
+const MAX_PENDING = 30
 const MAX_DIRS = 600
 const SKIP_DIRS = new Set(['node_modules'])
 const ENV = { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', LC_ALL: 'C' }
@@ -26,9 +29,20 @@ export function runCommand(file, args, cwd) {
   })
 }
 
-// `git status --porcelain=v2 --branch` → 브랜치·추적 브랜치·앞섬·변경 수.
+// porcelain v2 한 줄 → 경로와 종류(새 파일·고침·지움·이름 바꿈·충돌). 경로 앞 칸 수는 줄 종류마다 다르다.
+function pendingOf(line) {
+  const after = (count) => line.split(' ').slice(count).join(' ')
+  if (line.startsWith('? ')) return { path: line.slice(2), kind: 'new' }
+  if (line.startsWith('u ')) return { path: after(10), kind: 'conflict' }
+  const xy = line.slice(2, 4)
+  if (line.startsWith('2 ')) return { path: after(9).split('\t')[0], kind: 'renamed' }
+  if (line.startsWith('1 ')) return { path: after(8), kind: xy.includes('D') ? 'deleted' : xy.includes('A') ? 'new' : 'modified' }
+  return null
+}
+
+// `git status --porcelain=v2 --branch` → 브랜치·추적 브랜치·앞섬·변경 수·저장 안 된 파일(앞 30개).
 export function parseStatus(text) {
-  const result = { branch: null, upstream: null, unpushed: 0, changes: 0 }
+  const result = { branch: null, upstream: null, unpushed: 0, changes: 0, pending: [] }
   for (const line of text.split('\n')) {
     if (line === '') continue
     if (line.startsWith('# branch.head ')) {
@@ -39,8 +53,10 @@ export function parseStatus(text) {
     } else if (line.startsWith('# branch.ab ')) {
       const ahead = /\+(\d+)/.exec(line)
       result.unpushed = ahead ? Number(ahead[1]) : 0
-    } else if (!line.startsWith('#')) {
+    } else if (!line.startsWith('#') && !line.startsWith('! ')) {
       result.changes += 1
+      const item = pendingOf(line)
+      if (item !== null && result.pending.length < MAX_PENDING) result.pending.push(item)
     }
   }
   return result
@@ -124,6 +140,55 @@ export async function findRepos(folder) {
   return found.sort((a, b) => b.activeAt - a.activeAt || a.name.localeCompare(b.name))
 }
 
+// ── 세션이 명령을 돌린 저장소 ─────────────────────────────────────
+// 명령 글에서 폴더를 가리키는 말(cd 폴더, git -C 폴더, --prefix 폴더, 절대 경로·~/ 경로)을 찾아 절대 경로로 바꾼다.
+
+const PATH_WORD = `("[^"]+"|'[^']+'|[^\\s;&|()]+)`
+const PATH_PATTERNS = [
+  new RegExp(`(?:^|[\\s;&|(])cd\\s+${PATH_WORD}`, 'g'),
+  new RegExp(`\\s-C\\s+${PATH_WORD}`, 'g'),
+  new RegExp(`--prefix[=\\s]+${PATH_WORD}`, 'g'),
+  /(?:^|[\s=(])((?:~\/|\/)[^\s;&|()'"]+)/g,
+]
+
+/** 명령 하나가 가리키는 폴더들(나온 순서). cwd는 그 명령이 돈 폴더. */
+export function pathsOfCommand(command, cwd, home = homedir()) {
+  if (typeof command !== 'string' || typeof cwd !== 'string') return []
+  const found = []
+  for (const pattern of PATH_PATTERNS) {
+    for (const match of command.matchAll(pattern)) {
+      let word = match[1].replace(/^(["'])(.*)\1$/, '$2')
+      if (word === '-' || word.startsWith('$')) continue
+      if (word === '~' || word.startsWith('~/')) word = home + word.slice(1)
+      found.push({ at: match.index, path: resolve(cwd, word) })
+    }
+  }
+  return found.sort((a, b) => a.at - b.at).map(item => item.path)
+}
+
+/** 경로가 묶음 폴더 안 어느 저장소에 드는지. 긴 이름(작업본)부터 본다. */
+function repoOfPath(path, folder, names) {
+  for (const name of [...names].sort((a, b) => b.length - a.length)) {
+    const root = join(folder, name)
+    if (path === root || path.startsWith(`${root}/`)) return name
+  }
+  return null
+}
+
+/** 가장 최근 명령부터 거슬러 보며, 그 세션이 마지막으로 다룬 저장소 이름. 없으면 null. */
+export function repoOfCommands(commands, folder, names) {
+  const list = Array.isArray(commands) ? commands.slice(-60) : []
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const { command, cwd } = list[i] ?? {}
+    const where = typeof cwd === 'string' ? cwd : folder
+    for (const path of [...pathsOfCommand(command, where), where]) {
+      const name = repoOfPath(path, folder, names)
+      if (name !== null) return name
+    }
+  }
+  return null
+}
+
 /**
  * @param {{ run?: typeof runCommand, now?: () => number }} [options] run은 시험에서 바꿔 끼운다.
  */
@@ -156,18 +221,23 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
 
   /**
    * @param {string} cwd 세션 작업 폴더
-   * @param {{ pick?: string | null }} [options] 저장소 묶음 폴더일 때 사람이 고른 저장소(상대 경로). 목록에 없으면 무시.
+   * @param {{ pick?: string | null, commands?: Array<{ command: string, cwd?: string | null }> }} [options]
+   *   pick: 저장소 묶음 폴더일 때 사람이 고른 저장소(상대 경로). 목록에 없으면 무시.
+   *   commands: 그 세션이 돌린 명령(오래된 것부터). 고른 저장소가 없으면 마지막으로 다룬 저장소를 따라간다.
    * @returns {Promise<object>} stagesOf가 읽는 사실. 저장소도, 안에 저장소도 없으면 { repo: false }.
    *   묶음 폴더면 가장 최근에 Git 활동이 있던 저장소(또는 고른 저장소)를 읽고 within에 목록을 붙인다.
    */
-  async function read(cwd, { pick = null } = {}) {
+  async function read(cwd, { pick = null, commands = [] } = {}) {
     if (typeof cwd !== 'string' || cwd === '') return { repo: false }
     const top = await git(cwd, 'rev-parse', '--show-toplevel')
     if (top.ok) return readRepo(cwd, top.out.trim())
 
     const repos = await findRepos(cwd)
-    const chosen = repos.find(item => item.name === pick) ?? repos[0]
+    const picked = repos.find(item => item.name === pick)
+    const touched = picked ? null : repoOfCommands(commands, cwd, repos.map(item => item.name))
+    const chosen = picked ?? repos.find(item => item.name === touched) ?? repos[0]
     if (chosen === undefined) return { repo: false }
+    const reason = picked ? 'picked' : touched === chosen.name ? 'session' : 'recent'
     const path = join(cwd, chosen.name)
     const inner = await git(path, 'rev-parse', '--show-toplevel')
     if (!inner.ok) return { repo: false }
@@ -176,7 +246,7 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
     return {
       ...(await readRepo(path, inner.out.trim())),
       folder: chosen.name,
-      within: { folder: basename(cwd), repos: names, picked: chosen.name, auto: chosen.name !== pick },
+      within: { folder: basename(cwd), repos: names, picked: chosen.name, auto: reason !== 'picked', reason },
     }
   }
 
@@ -190,6 +260,24 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
     const aheadResult = await git(cwd, 'rev-list', '--count', `${baseRef}..HEAD`)
     const ahead = aheadResult.ok ? Number(aheadResult.out.trim()) || 0 : 0
     const headTime = Number((await git(cwd, 'log', '-1', '--format=%ct', 'HEAD')).out.trim()) * 1000 || null
+
+    // 원본에 없는 저장 기록(제목)과 바뀐 파일 수: 공유·합치기 때 "이번에 올라가는 것".
+    let commits = []
+    let files = null
+    if (ahead > 0) {
+      const log = await git(cwd, 'log', `--max-count=${MAX_COMMITS}`, '--format=%h%x09%s', `${baseRef}..HEAD`)
+      if (log.ok) {
+        commits = log.out.split('\n').filter(line => line !== '').map(line => {
+          const [id, ...rest] = line.split('\t')
+          return { id, subject: rest.join('\t').slice(0, 200) }
+        })
+      }
+      const stat = await git(cwd, 'diff', '--shortstat', `${baseRef}...HEAD`)
+      const changed = /(\d+) files? changed/.exec(stat.out)
+      if (stat.ok && changed) {
+        files = { changed: Number(changed[1]), added: Number(/(\d+) insertion/.exec(stat.out)?.[1] ?? 0), removed: Number(/(\d+) deletion/.exec(stat.out)?.[1] ?? 0) }
+      }
+    }
 
     let hadCommits = ahead > 0
     if (!hadCommits && status.branch !== null && !isBase) {
@@ -212,7 +300,10 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
       base,
       isBase,
       changes: status.changes,
+      pending: status.pending,
       ahead,
+      commits,
+      files,
       upstream: status.upstream,
       unpushed: status.unpushed,
       hadCommits,

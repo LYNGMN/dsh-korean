@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createGitReader, findRepos, parseStatus, prErrorOf, runCommand } from '../lib/git-read.js'
-import { createHandler, workingDirectoryOf } from '../lib/index.js'
+import { createGitReader, findRepos, parseStatus, pathsOfCommand, prErrorOf, repoOfCommands, runCommand } from '../lib/git-read.js'
+import { commandsOf, createHandler, workingDirectoryOf } from '../lib/index.js'
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, env, stdio: 'pipe' }).toString()
@@ -33,8 +33,11 @@ function readerWith(gh, calls = []) {
 const NO_PR = { ok: false, out: '', err: 'no pull requests found for branch "x"', code: 1, timedOut: false }
 
 test('parseStatus는 브랜치·추적·앞섬·변경 수를 읽는다', () => {
-  const s = parseStatus('# branch.oid abc\n# branch.head claude/feat/x\n# branch.upstream origin/claude/feat/x\n# branch.ab +2 -0\n1 .M N... a\n? b\n')
-  assert.deepEqual(s, { branch: 'claude/feat/x', upstream: 'origin/claude/feat/x', unpushed: 2, changes: 2 })
+  const s = parseStatus('# branch.oid abc\n# branch.head claude/feat/x\n# branch.upstream origin/claude/feat/x\n# branch.ab +2 -0\n1 .M N... 100644 100644 100644 h1 h2 src/a b.js\n? b\n1 D. N... 100644 000000 000000 h1 h2 old.txt\n2 R. N... 100644 100644 100644 h1 h2 R100 new.md\told.md\n')
+  assert.deepEqual(s, {
+    branch: 'claude/feat/x', upstream: 'origin/claude/feat/x', unpushed: 2, changes: 4,
+    pending: [{ path: 'src/a b.js', kind: 'modified' }, { path: 'b', kind: 'new' }, { path: 'old.txt', kind: 'deleted' }, { path: 'new.md', kind: 'renamed' }],
+  })
   assert.equal(parseStatus('# branch.head (detached)\n').branch, null)
 })
 
@@ -67,7 +70,10 @@ test('작업 브랜치의 미커밋·앞선 커밋·저장 기록을 센다', as
   writeFileSync(join(dir, 'b.txt'), 'b\n')
   let facts = await readerWith(NO_PR).read(dir)
   assert.equal(facts.changes, 1)
+  assert.deepEqual(facts.pending, [{ path: 'b.txt', kind: 'new' }])
   assert.equal(facts.ahead, 0)
+  assert.deepEqual(facts.commits, [])
+  assert.equal(facts.files, null)
   assert.equal(facts.hadCommits, false)
   assert.equal(facts.pr, null)
   assert.equal(facts.prError, null)
@@ -77,6 +83,8 @@ test('작업 브랜치의 미커밋·앞선 커밋·저장 기록을 센다', as
   facts = await readerWith(NO_PR).read(dir)
   assert.equal(facts.changes, 0)
   assert.equal(facts.ahead, 1)
+  assert.deepEqual(facts.commits.map(c => c.subject), ['b'])
+  assert.deepEqual(facts.files, { changed: 1, added: 1, removed: 0 })
   assert.equal(facts.hadCommits, true)
   assert.equal(facts.base, 'main')
   assert.ok(facts.headTime > 0)
@@ -137,13 +145,13 @@ test('주소 처리기는 세션 id를 검사하고 작업 폴더를 세션 기�
   assert.equal(await workingDirectoryOf(sessionQuery, 's1'), '/moved')
   assert.equal(disposed, 1)
   const seen = []
-  const handler = createHandler({ sessionQuery, reader: { read: async (cwd, options) => { seen.push([cwd, options.pick]); return { repo: false } } } })
+  const handler = createHandler({ sessionQuery, reader: { read: async (cwd, options) => { seen.push([cwd, options.pick, options.commands.length]); return { repo: false } } } })
   assert.equal((await handler(new Request('http://h/api/dsh-git-stage?sessionId=../etc'))).status, 400)
   assert.equal((await handler(new Request('http://h/api/dsh-git-stage?sessionId=zz'))).status, 404)
   const ok = await handler(new Request('http://h/api/dsh-git-stage?sessionId=s1&cwd=/evil'))
   assert.deepEqual(await ok.json(), { facts: { repo: false } })
   await handler(new Request('http://h/api/dsh-git-stage?sessionId=s1&repo=app'))
-  assert.deepEqual(seen, [['/moved', null], ['/moved', 'app']])
+  assert.deepEqual(seen, [['/moved', null, 0], ['/moved', 'app', 0]])
 })
 
 // 저장소 묶음 폴더: 바로 아래 저장소 둘(old·app), 저장소가 아닌 docs, worktrees/app/feat 작업본.
@@ -185,7 +193,7 @@ test('묶음 폴더 세션은 가장 최근 저장소를 읽고, 고른 저장�
   assert.equal(auto.repo, true)
   assert.equal(auto.folder, 'worktrees/app/feat')
   assert.equal(auto.branch, 'claude/feat/x')
-  assert.deepEqual(auto.within, { folder: root.split('/').pop(), repos: ['worktrees/app/feat', 'app', 'old'], picked: 'worktrees/app/feat', auto: true })
+  assert.deepEqual(auto.within, { folder: root.split('/').pop(), repos: ['worktrees/app/feat', 'app', 'old'], picked: 'worktrees/app/feat', auto: true, reason: 'recent' })
   const picked = await reader.read(root, { pick: 'old' })
   assert.equal(picked.folder, 'old')
   assert.equal(picked.branch, 'main')
@@ -203,4 +211,43 @@ test('안에 저장소도 없는 폴더는 repo: false', async t => {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, 'a', 'b'), { recursive: true })
   assert.deepEqual(await readerWith(NO_PR).read(root), { repo: false })
+})
+
+test('명령 글에서 cd·git -C·--prefix·절대 경로·~/ 경로를 찾는다', () => {
+  assert.deepEqual(pathsOfCommand('cd DiscordActions && git -C ~/Dev/app log; npm --prefix "/w/a b" test', '/w', '/home/u'),
+    ['/w/DiscordActions', '/home/u/Dev/app', '/home/u/Dev/app', '/w/a b'])
+  assert.deepEqual(pathsOfCommand('ls -la', '/w'), [])
+  assert.deepEqual(pathsOfCommand('cd - && cd $HOME', '/w'), [])
+})
+
+test('세션이 마지막으로 다룬 저장소를 최근 명령부터 찾는다(작업본은 긴 이름이 먼저)', () => {
+  const names = ['app', 'old', 'worktrees/app/feat']
+  assert.equal(repoOfCommands([{ command: 'cd old && ls', cwd: '/w' }, { command: 'cd app && git status', cwd: '/w' }, { command: 'ls', cwd: '/w' }], '/w', names), 'app')
+  assert.equal(repoOfCommands([{ command: 'npm test', cwd: '/w/worktrees/app/feat/web' }], '/w', names), 'worktrees/app/feat')
+  assert.equal(repoOfCommands([{ command: 'cat /etc/hosts', cwd: '/w' }], '/w', names), null)
+  assert.equal(repoOfCommands(undefined, '/w', names), null)
+})
+
+test('세션 기록에서 셸 명령과 DSH가 정한 폴더(meta.cwd)를 짝지어 꺼낸다', () => {
+  const events = [
+    { type: 'tool/call', data: { callId: 'c1', name: 'bash', arguments: JSON.stringify({ command: 'cd app && ls', description: 'x' }) } },
+    { type: 'tool/result', data: { message: { toolCallId: 'c1' }, meta: { cwd: '/w' } } },
+    { type: 'tool/call', data: { callId: 'c2', name: 'read', arguments: '{"file_path":"/w/old/a"}' } },
+    { type: 'tool/call', data: { callId: 'c3', name: 'terminal_open', arguments: '{"cwd":"/w/old"}' } },
+    { type: 'tool/ptc-dispatch-start', data: { subCallId: 's1', name: 'bash', arguments: { command: 'git status' } } },
+    { type: 'tool/ptc-dispatch', data: { subCallId: 's1', meta: { cwd: '/w/app' } } },
+  ]
+  assert.deepEqual(commandsOf(events), [{ command: 'cd app && ls', cwd: '/w' }, { command: 'cd "/w/old"', cwd: null }, { command: 'git status', cwd: '/w/app' }])
+  assert.deepEqual(commandsOf(undefined), [])
+})
+
+test('묶음 폴더 세션은 고른 저장소가 없으면 그 세션이 명령을 돌린 저장소를 따라간다', async t => {
+  const root = workspace(t)
+  const reader = readerWith(NO_PR)
+  const facts = await reader.read(root, { commands: [{ command: 'cd old && git status', cwd: root }] })
+  assert.equal(facts.folder, 'old')
+  assert.deepEqual({ auto: facts.within.auto, reason: facts.within.reason }, { auto: true, reason: 'session' })
+  assert.equal((await reader.read(root, { commands: [{ command: 'ls', cwd: root }] })).within.reason, 'recent')
+  const pinned = await reader.read(root, { pick: 'app', commands: [{ command: 'cd old', cwd: root }] })
+  assert.deepEqual({ folder: pinned.folder, reason: pinned.within.reason }, { folder: 'app', reason: 'picked' })
 })

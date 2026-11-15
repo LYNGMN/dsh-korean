@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작업 단계 미리보기</title>
 <!-- 실제 DSH 없이 lib/client.js의 작업 단계 탭과 채팅 머리 칩을 올려 보는 틀.
-     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?within=1 저장소 묶음 폴더(~/Dev처럼), ?fail=1 읽기 실패. -->
+     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?within=1 저장소 묶음 폴더(~/Dev처럼), ?left=1 저장 안 된 변경 2개, ?fail=1 읽기 실패. -->
 <style>
   :root {
     --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
@@ -25,6 +25,8 @@
   body { margin: 0; font: 14px/22px -apple-system, BlinkMacSystemFont, sans-serif; background: var(--page); color: var(--dsw-alias-label-primary); }
   .bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; background: var(--page); border-bottom: .5px solid var(--dsw-alias-border-l1); }
   .bar-title { flex: 1 1 auto; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .draft { display: flex; flex-direction: column; gap: 4px; max-width: 792px; margin: 0 auto; padding: 0 16px 24px; font-size: 12px; color: var(--dsw-alias-label-secondary); }
+  .draft textarea { font: inherit; font-size: 16px; padding: 8px; border-radius: 8px; border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); background: transparent; color: var(--dsw-alias-label-primary); }
 </style>
 </head>
 <body>
@@ -50,7 +52,10 @@
   const facts = params.get('repo') === '0' ? { repo: false } : {
     repo: true, folder: 'dsh-korean', branch: BRANCH, base: 'main', isBase: false, upstream: null, unpushed: 0,
     hadCommits: true, headTime: 1, pr: null, prError: params.get('blocked') === 'gh' ? 'auth' : null, tag: null,
+    commits: [{ id: 'a1', subject: 'feat(login): 로그인 버튼을 키우고 오류 문구를 화면 낭독기도 읽게 함' }, { id: 'a2', subject: 'docs: 변경 기록에 로그인 화면 줄 추가' }],
+    files: { changed: 4, added: 38, removed: 6 }, pending: [{ path: 'notes/할 일.md', kind: 'new' }, { path: 'src/components/LoginForm.tsx', kind: 'modified' }],
     ...FACTS[Math.min(Math.max(stage, 0), FACTS.length - 1)],
+    ...(params.get('left') === '1' ? { changes: 2 } : {}),
   }
   const REPOS = ['DiscordActions', 'dsh-korean', 'worktrees/summarize-feed/claude-fix-localized-search-all-languages', 'summarize-meta']
   window.fetch = async url => {
@@ -59,7 +64,7 @@
     if (params.get('within') === '1' && facts.repo) {
       const pick = new URL(url, location.href).searchParams.get('repo')
       const picked = REPOS.includes(pick) ? pick : REPOS[0]
-      body = { ...facts, folder: picked, within: { folder: 'Dev', repos: REPOS, picked, auto: picked !== pick } }
+      body = { ...facts, folder: picked, within: { folder: 'Dev', repos: REPOS, picked, auto: picked !== pick, reason: picked === pick ? 'picked' : 'session' } }
     }
     return new Response(JSON.stringify({ facts: body }), { headers: { 'content-type': 'application/json' } })
   }
@@ -84,6 +89,11 @@
     sessionId: 's1',
     useSession: select => select({ running: false }),
     useProjection: key => (key === 'todos' ? window.__todos : undefined),
+    // 가짜 입력창: 넣은 글을 아래 상자에 이어 붙인다. 보내기는 없다.
+    inputActions: {
+      captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
+      insertText: text => { const box = document.getElementById('draft'); box.value += text; return true },
+    },
   }
   function App() {
     const view = slots['conversation.view']
@@ -92,7 +102,8 @@
       h('div', { className: 'bar' },
         h('span', { className: 'bar-title' }, '작업 단계 보기 만들기'),
         h(chip.Component, props)),
-      h(view.Component, props))
+      h(view.Component, props),
+      h('label', { className: 'draft' }, '가짜 입력창', h('textarea', { id: 'draft', rows: 2 })))
   }
   ReactDOM.createRoot(document.getElementById('root')).render(h(App))
 </script>
