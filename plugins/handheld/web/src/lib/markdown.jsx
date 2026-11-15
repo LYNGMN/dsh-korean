@@ -3,6 +3,7 @@
 
 import { toast } from '../store.js'
 import { Icon } from '../components/Icon.jsx'
+import { t } from './i18n.js'
 
 const SAFE_LINK = /^https?:\/\//i
 
@@ -30,17 +31,17 @@ async function copyText(text, opener) {
     done = copyBySelection(text)
     opener?.focus({ preventScroll: true })
   }
-  if (done) toast('복사했습니다')
-  else toast('복사하지 못했습니다. 글자를 길게 눌러 복사해 주세요', { tone: 'error' })
+  if (done) toast(t('copy.done'))
+  else toast(t('copy.failed'), { tone: 'error' })
 }
 
 function CodeBlock({ lang, code }) {
-  const name = lang ? `${lang} 코드` : '코드'
+  const name = lang ? t('code.named', { lang }) : t('code.plain')
   return (
     <div class="md-codeblock">
       <div class="md-code-head">
-        <span class="md-code-lang muted small one-line">{lang || '코드'}</span>
-        <button type="button" class="link-btn" aria-label={`${name} 복사`} onClick={(e) => copyText(code, e.currentTarget)}><Icon name="copy" size={16} />복사</button>
+        <span class="md-code-lang muted small one-line">{lang || t('code.plain')}</span>
+        <button type="button" class="link-btn" aria-label={t('code.copyLabel', { name })} onClick={(e) => copyText(code, e.currentTarget)}><Icon name="copy" size={16} />{t('copy')}</button>
       </div>
       <pre class="md-code" tabIndex={0} role="group" aria-label={name}><code>{code}</code></pre>
     </div>

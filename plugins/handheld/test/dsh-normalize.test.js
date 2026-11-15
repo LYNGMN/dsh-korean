@@ -87,3 +87,19 @@ test('summarizeSession maps a session/list row', () => {
   const row = summarizeSession({ sessionId: 's1', updatedAt: 5, running: true, cwd: '/home/user/x', projections: { values: { title: 'T', userQuestions: { active: [{}] } } } })
   assert.deepEqual(row, { id: 's1', title: 'T', cwd: '/home/user/x', running: true, updatedAt: 5, parentId: null })
 })
+
+test('a plan review question keeps its two answer values and a per-language approval reason is kept', async () => {
+  const { pendingFromWaterfall } = await import('../server/dsh/api.js')
+  const review = pendingFromWaterfall({ eventId: 'e1', agentId: 's1', event: 'user-questions/request', request: { questions: [{
+    id: 'plan-review', header: 'Plan review', question: 'Approve this plan and leave plan mode?', detail: '# 계획',
+    options: [{ label: 'Approve', description: 'x' }, { label: 'Keep planning', description: 'y' }],
+    intent: { kind: 'plan-review', approve: 'Approve', callId: 'c1' },
+  }] } })
+  assert.deepEqual(review.questions[0].review, { approve: 'Approve', revise: 'Keep planning' })
+  assert.deepEqual(review.questions[0].options, ['Approve', 'Keep planning'])
+  const plain = pendingFromWaterfall({ eventId: 'e2', agentId: 's1', event: 'user-questions/request', request: { questions: [{ id: 'a', question: '?', options: ['A'] }] } })
+  assert.equal(plain.questions[0].review, undefined)
+  const approval = pendingFromWaterfall({ eventId: 'e3', agentId: 's1', event: 'approval/request', request: { toolName: 'bash', callId: 'c2', displayReason: { en: 'writes outside', zh: '外部写入' } } })
+  assert.equal(approval.reason, 'writes outside')
+  assert.deepEqual(approval.reasons, { en: 'writes outside', zh: '外部写入' })
+})

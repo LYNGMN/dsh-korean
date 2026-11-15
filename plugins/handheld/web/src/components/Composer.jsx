@@ -7,9 +7,11 @@ import { storageGet, storageSet } from '../lib/util.js'
 import { DEFAULT_ENTER_KEY, enterAction, lineBreakAction } from '../lib/enter-keys.js'
 import { radioProps } from '../lib/radio.js'
 import { Icon } from './Icon.jsx'
+import { imeConfirmsWithEnter, speechLang, t } from '../lib/i18n.js'
 
 export const ENTER_KEY_STORAGE = 'enter-key'
 export const BUSY_ENTER_STORAGE = 'busy-enter'
+const MODES = ['queue', 'steer']
 const otherMode = (mode) => (mode === 'queue' ? 'steer' : 'queue')
 // A line break this soon after an Enter keydown belongs to that keydown.
 const KEY_LINE_BREAK_MS = 100
@@ -27,7 +29,7 @@ function useVoice(onText) {
       return
     }
     const r = new Recognition()
-    r.lang = 'ko-KR'
+    r.lang = speechLang()
     r.interimResults = true
     r.continuous = true
     r.onresult = (event) => {
@@ -37,8 +39,8 @@ function useVoice(onText) {
       onText(base + glue + heard.trim())
     }
     r.onerror = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') toast('마이크 사용이 허용되지 않았습니다', { tone: 'error' })
-      else if (event.error !== 'aborted' && event.error !== 'no-speech') toast('음성을 알아듣지 못했습니다', { tone: 'error' })
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') toast(t('voice.denied'), { tone: 'error' })
+      else if (event.error !== 'aborted' && event.error !== 'no-speech') toast(t('voice.failed'), { tone: 'error' })
     }
     r.onend = () => setListening(false)
     rec.current = r
@@ -94,7 +96,7 @@ export function Composer({ sessionId, running }) {
         storageSet(draftKey, '')
       }
     } catch (error) {
-      toast(`보내지 못했습니다: ${error.message}`, { tone: 'error' })
+      toast(t('sendFailed', { error: error.message }), { tone: 'error' })
     } finally {
       inFlight.current = false
       setSending(false)
@@ -105,7 +107,7 @@ export function Composer({ sessionId, running }) {
     const decided = enterAction({
       key: e.key, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey,
       keyCode: e.keyCode, isComposing: e.isComposing, composing: composing.current,
-      msSinceCompositionEnd: performance.now() - compositionEndAt.current, enterKey,
+      msSinceCompositionEnd: performance.now() - compositionEndAt.current, enterKey, imeConfirms: imeConfirmsWithEnter(),
     })
     if (decided.action === 'none') return
     lastEnterKey.current = { action: decided.action, at: performance.now() }
@@ -131,23 +133,23 @@ export function Composer({ sessionId, running }) {
   return (
     <form class="composer" onSubmit={(e) => { e.preventDefault(); void send(mode) }}>
       {running ? (
-        <div class="mode" role="radiogroup" aria-label="보내는 방식">
-          {[['queue', '대기열', '지금 일이 끝난 뒤 이어서'], ['steer', '끼어들기', '지금 하는 일에 바로 반영']].map(([value, label, hint]) => (
-            <button key={value} type="button" {...radioProps(['queue', 'steer'], mode, setMode, value)} class={`mode-btn${mode === value ? ' on' : ''}`} title={hint}>
-              {label}
+        <div class="mode" role="radiogroup" aria-label={t('mode.label')}>
+          {MODES.map((value) => (
+            <button key={value} type="button" {...radioProps(MODES, mode, setMode, value)} class={`mode-btn${mode === value ? ' on' : ''}`}>
+              <span class="mode-name">{t(`mode.${value}`)}</span>
+              <span class="mode-hint">{t(`mode.${value}Hint`)}</span>
             </button>
           ))}
-          <span class="mode-hint muted small">{mode === 'queue' ? '지금 일이 끝난 뒤 이어서 보냅니다' : '지금 하는 일에 바로 반영합니다'}</span>
         </div>
       ) : null}
       <div class="composer-row">
-        <label class="visually-hidden" for="composer-input">보낼 글</label>
+        <label class="visually-hidden" for="composer-input">{t('composer.label')}</label>
         <textarea
           id="composer-input"
           ref={area}
           rows={1}
           value={text}
-          placeholder="DSH에게 보낼 글"
+          placeholder={t('composer.placeholder')}
           enterKeyHint={enterKey === 'send' ? 'send' : 'enter'}
           autocomplete="off"
           onInput={(e) => setText(e.currentTarget.value)}
@@ -166,11 +168,11 @@ export function Composer({ sessionId, running }) {
           }}
         />
         {voiceSupported() ? (
-          <button type="button" class={`icon-btn round${voice.listening ? ' listening' : ''}`} aria-pressed={voice.listening} aria-label={voice.listening ? '음성 입력 멈추기' : '음성으로 입력'} onClick={() => voice.toggle(text)}>
+          <button type="button" class={`icon-btn round${voice.listening ? ' listening' : ''}`} aria-pressed={voice.listening} aria-label={voice.listening ? t('voice.stop') : t('voice.start')} onClick={() => voice.toggle(text)}>
             <Icon name={voice.listening ? 'stop' : 'mic'} />
           </button>
         ) : null}
-        <button type="submit" class="icon-btn round primary" aria-label="보내기" disabled={sending || text.trim().length === 0}>
+        <button type="submit" class="icon-btn round primary" aria-label={t('send')} disabled={sending || text.trim().length === 0}>
           {sending ? <span class="spinner light" aria-hidden="true" /> : <Icon name="send" />}
         </button>
       </div>

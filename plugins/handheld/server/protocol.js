@@ -57,9 +57,13 @@ export const STREAM_FLUSH_MS = 100
  * Subagent:   { id, title, mode: 'one-shot'|'continuable'|'unknown', state: 'running'|'done'|'stopped'|'idle', createdAt }
  *             `id` is opaque and works wherever a session id is read (watch, history); a subagent
  *             conversation is view-only, so prompt and cancel refuse it. REST: GET /sessions/:id/subagents
- * Pending:    { id, sessionId, kind: 'approval', tool, reason?, callId?, at }   callId pairs with the `tool` item
+ * Pending:    { id, sessionId, kind: 'approval', tool?, reason?, reasons?, callId?, at }   callId pairs with the `tool` item;
+ *             `reasons` is the reason per language (`{ en, ko, zh }`) when DSH sent one
  *           | { id, sessionId, kind: 'question', questions: Question[], at }
- * Question:   { id, question, header?, detail?, options?: string[], multiSelect: boolean }
+ * Question:   { id, question, header?, detail?, options?: string[], multiSelect: boolean, review? }
+ *             `review: { approve, revise }` marks a plan review: `detail` is the plan (markdown) and the answer
+ *             selects one of the two option values; `revise` may carry the person's feedback as `custom`
+ * Settings:   { notifyTurnEnd: boolean, lang: 'ko'|'en'|'ja'|'zh-CN'|'zh-TW' }   lang words the notifications
  */
 
 export const UPSTREAM = Object.freeze({ connected: 'connected', connecting: 'connecting', down: 'down' })

@@ -21,13 +21,33 @@ function seqRange(records, through) {
   return { from: Math.min(...seqs), through: Math.max(through ?? -1, ...seqs) }
 }
 
+const optionLabels = (q) => (q.options ?? []).map((o) => (typeof o === 'string' ? o : o?.label)).filter(Boolean)
+
+/** Per-language strings of a DSH display text, or undefined when it is not one. */
+function textsByLang(value) {
+  if (!value || typeof value !== 'object') return undefined
+  const entries = Object.entries(value).filter(([, text]) => typeof text === 'string' && text)
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+/**
+ * DSH asks for a plan review as a question with two options whose labels are also the
+ * answer values (`intent.kind: 'plan-review'`); the plan itself is the question's detail.
+ */
+function reviewOf(q) {
+  if (q.intent?.kind !== 'plan-review' || typeof q.intent.approve !== 'string') return {}
+  const revise = optionLabels(q).find((label) => label !== q.intent.approve)
+  return revise ? { review: { approve: q.intent.approve, revise } } : {}
+}
+
 /** Approval or question waterfall -> Pending (server/protocol.js), or null for others. */
 export function pendingFromWaterfall(frame, now = Date.now()) {
   const base = { id: frame.eventId, sessionId: frame.agentId, at: now }
   if (frame.event === 'approval/request') {
     const r = frame.request ?? {}
     const reason = r.displayReason?.ko ?? r.displayReason?.en ?? r.reason
-    return { ...base, kind: 'approval', tool: r.toolName ?? '도구', reason: typeof reason === 'string' ? reason : undefined, callId: r.callId }
+    const reasons = textsByLang(r.displayReason)
+    return { ...base, kind: 'approval', tool: r.toolName, reason: typeof reason === 'string' ? reason : undefined, ...(reasons ? { reasons } : {}), callId: r.callId }
   }
   if (frame.event === 'user-questions/request') {
     const questions = (frame.request?.questions ?? []).map((q) => ({
@@ -35,8 +55,9 @@ export function pendingFromWaterfall(frame, now = Date.now()) {
       question: q.question,
       header: q.header,
       detail: q.detail,
-      options: (q.options ?? []).map((o) => (typeof o === 'string' ? o : o?.label)).filter(Boolean),
+      options: optionLabels(q),
       multiSelect: q.multiSelect === true,
+      ...reviewOf(q),
     }))
     return { ...base, kind: 'question', questions }
   }

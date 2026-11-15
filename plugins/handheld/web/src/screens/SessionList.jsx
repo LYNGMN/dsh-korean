@@ -6,6 +6,8 @@ import { setPref } from '../lib/prefs.js'
 import { baseName, go, relativeTime, usePageTitle } from '../lib/util.js'
 import { Icon } from '../components/Icon.jsx'
 import { Sheet } from '../components/Sheet.jsx'
+import { t } from '../lib/i18n.js'
+import { pendingRowText } from '../lib/pending.js'
 
 function NewSession({ onClose }) {
   const [workspaces, setWorkspaces] = useState(null)
@@ -23,15 +25,15 @@ function NewSession({ onClose }) {
       onClose()
       go(`#/s/${encodeURIComponent(sessionId)}`)
     } catch (error) {
-      toast(`세션을 만들지 못했습니다: ${error.message}`, { tone: 'error' })
+      toast(t('list.createFailed', { error: error.message }), { tone: 'error' })
       setBusy(false)
     }
   }
   return (
-    <Sheet title="새 세션" onClose={onClose}>
-      <p class="muted small">작업할 폴더를 고르세요.</p>
-      {workspaces === null ? <p class="muted pad">불러오는 중…</p> : null}
-      {workspaces?.length === 0 ? <p class="muted pad">작업 폴더가 없습니다. Desktop에서 먼저 폴더를 여세요.</p> : null}
+    <Sheet title={t('list.new')} onClose={onClose}>
+      <p class="muted small">{t('list.pickFolder')}</p>
+      {workspaces === null ? <p class="muted pad">{t('loading')}</p> : null}
+      {workspaces?.length === 0 ? <p class="muted pad">{t('list.noFolders')}</p> : null}
       <ul class="list">
         {(workspaces ?? []).map((w) => (
           <li key={w.id}>
@@ -51,28 +53,28 @@ function NewSession({ onClose }) {
 export function SessionList() {
   const { sessions, loaded, pending, dark } = useStore((s) => ({ sessions: s.sessions, loaded: s.sessionsLoaded, pending: s.pending, dark: s.prefs.shownTheme === 'dark' }))
   const [creating, setCreating] = useState(false)
-  usePageTitle('세션')
+  usePageTitle(t('list.pageTitle'))
   const waiting = new Set(pending.map((p) => p.sessionId))
-  const titleOf = (id) => sessions.find((s) => s.id === id)?.title ?? '세션'
+  const titleOf = (id) => sessions.find((s) => s.id === id)?.title ?? t('session.fallback')
   return (
     <div class="screen">
       <header class="topbar topbar-home">
-        <div class="topbar-title"><h1 class="one-line" tabIndex={-1}>DSH 세션</h1></div>
-        <button type="button" class="icon-btn" aria-label={dark ? '밝은 화면으로 바꾸기' : '어두운 화면으로 바꾸기'} onClick={() => setPref('theme', dark ? 'light' : 'dark')}><Icon name={dark ? 'sun' : 'moon'} /></button>
-        <button type="button" class="icon-btn" aria-label="설정" onClick={() => go('#/settings')}><Icon name="settings" /></button>
-        <button type="button" class="icon-btn primary round" aria-label="새 세션" onClick={() => setCreating(true)}><Icon name="plus" /></button>
+        <div class="topbar-title"><h1 class="one-line" tabIndex={-1}>{t('list.heading')}</h1></div>
+        <button type="button" class="icon-btn" aria-label={dark ? t('list.toLight') : t('list.toDark')} onClick={() => setPref('theme', dark ? 'light' : 'dark')}><Icon name={dark ? 'sun' : 'moon'} /></button>
+        <button type="button" class="icon-btn" aria-label={t('settings.title')} onClick={() => go('#/settings')}><Icon name="settings" /></button>
+        <button type="button" class="icon-btn primary round" aria-label={t('list.new')} onClick={() => setCreating(true)}><Icon name="plus" /></button>
       </header>
       <main class="page">
         {pending.length > 0 ? (
           <section class="card card-attn" aria-labelledby="pending-title">
-            <h2 id="pending-title" class="card-title"><Icon name="bell" size={18} />답을 기다리는 요청 {pending.length}건</h2>
+            <h2 id="pending-title" class="card-title"><Icon name="bell" size={18} />{t('list.pendingCount', { count: pending.length })}</h2>
             <ul class="list">
               {pending.map((p) => (
                 <li key={p.id}>
                   <button type="button" class="row" data-qa-multiline onClick={() => update((s) => { s.openPending = p.id })}>
                     <Icon name={p.kind === 'approval' ? 'shield' : 'question'} size={20} />
                     <span class="row-main">
-                      <span class="row-title one-line">{p.kind === 'approval' ? `승인 · ${p.tool}` : `질문 · ${p.questions[0]?.question ?? ''}`}</span>
+                      <span class="row-title one-line">{pendingRowText(p)}</span>
                       <span class="row-meta one-line">{titleOf(p.sessionId)}</span>
                     </span>
                   </button>
@@ -82,8 +84,8 @@ export function SessionList() {
           </section>
         ) : null}
 
-        {!loaded ? <p class="muted center pad">세션을 불러오는 중…</p> : null}
-        {loaded && sessions.length === 0 ? <p class="muted center pad">세션이 없습니다. 오른쪽 위 + 로 새 세션을 만드세요.</p> : null}
+        {!loaded ? <p class="muted center pad">{t('list.loading')}</p> : null}
+        {loaded && sessions.length === 0 ? <p class="muted center pad">{t('list.empty')}</p> : null}
         <ul class="list sessions">
           {sessions.map((s) => (
             <li key={s.id}>
@@ -95,7 +97,7 @@ export function SessionList() {
                   </span>
                   <span class="row-line">
                     <span class="row-meta one-line">{baseName(s.cwd)}</span>
-                    {waiting.has(s.id) ? <span class="badge badge-attn">답 필요</span> : s.running ? <span class="badge badge-run"><span class="dot dot-run" aria-hidden="true" />실행 중</span> : null}
+                    {waiting.has(s.id) ? <span class="badge badge-attn">{t('badge.needsAnswer')}</span> : s.running ? <span class="badge badge-run"><span class="dot dot-run" aria-hidden="true" />{t('state.running')}</span> : null}
                   </span>
                 </span>
               </a>

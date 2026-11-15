@@ -1,8 +1,10 @@
 // Display options kept on this device. Each one is an attribute on <html> that
 // app.css reads, so changing an option never re-renders the conversation.
+import { api } from '../api.js'
 import { state, update } from '../store.js'
 import { resolveTheme } from './theme.js'
 import { storageGet, storageSet } from './util.js'
+import { DEFAULT_LANG, LANGS, setLang } from './i18n.js'
 
 export const PREFS = {
   theme: { storage: 'theme', fallback: 'auto', values: ['auto', 'light', 'dark'] },
@@ -12,6 +14,7 @@ export const PREFS = {
   text: { storage: 'text-size', fallback: 'normal', values: ['normal', 'large', 'xlarge'] },
   density: { storage: 'density', fallback: 'cozy', values: ['cozy', 'compact'] },
   reasoning: { storage: 'reasoning', fallback: 'show', values: ['show', 'hide'] },
+  lang: { storage: 'lang', fallback: DEFAULT_LANG, values: LANGS.map(([code]) => code) },
 }
 
 // Page background per theme, for the browser and status bar chrome (matches --bg in app.css).
@@ -38,6 +41,9 @@ function apply(prefs) {
   root.dataset.text = prefs.text
   root.dataset.density = prefs.density
   root.dataset.reasoning = prefs.reasoning
+  // Screens read their text through t(); main.jsx redraws them when this changes.
+  root.lang = prefs.lang
+  setLang(prefs.lang)
   for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
     const own = meta.media.includes('dark') ? 'dark' : 'light'
     meta.content = CHROME[prefs.theme === 'auto' ? own : shown]
@@ -57,6 +63,16 @@ export function setPref(name, value) {
   if (!pref.values.includes(value)) return
   storageSet(pref.storage, value === pref.fallback ? null : value)
   apply(current())
+  if (name === 'lang') syncNotificationLang()
 }
 
-state.prefs = { theme: 'auto', accent: 'deepseek', bubble: 'soft', font: 'bundled', text: 'normal', density: 'cozy', reasoning: 'show', shownTheme: 'light' }
+/** Notifications are worded by the gateway: tell it the language this phone shows. */
+export function syncNotificationLang() {
+  const chosen = read('lang')
+  api('/settings').then((settings) => {
+    if (settings.lang !== chosen) return api('/settings', { method: 'POST', body: { lang: chosen } })
+    return null
+  }).catch(() => {})
+}
+
+state.prefs = { theme: 'auto', accent: 'deepseek', bubble: 'soft', font: 'bundled', text: 'normal', density: 'cozy', reasoning: 'show', lang: DEFAULT_LANG, shownTheme: 'light' }

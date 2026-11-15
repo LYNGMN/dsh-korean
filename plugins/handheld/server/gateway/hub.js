@@ -220,7 +220,7 @@ export class Hub extends EventEmitter {
   }
 
   #title(sessionId) {
-    return this.rows?.find((r) => r.id === sessionId)?.title ?? '세션'
+    return this.rows?.find((r) => r.id === sessionId)?.title
   }
 
   #remember(key) {
@@ -236,9 +236,12 @@ export class Hub extends EventEmitter {
     if (!this.#remember(key)) return
     const title = this.#title(item.sessionId)
     if (item.kind === 'approval') {
-      this.emit('notify', { kind: 'approval', sessionId: item.sessionId, pendingId: item.id, title: `승인 요청 · ${title}`, body: item.reason ? `${item.tool}: ${item.reason}` : `${item.tool} 실행 승인이 필요합니다` })
+      this.emit('notify', { kind: 'approval', sessionId: item.sessionId, pendingId: item.id, session: title, tool: item.tool, reason: item.reason, reasons: item.reasons })
     } else {
-      this.emit('notify', { kind: 'question', sessionId: item.sessionId, pendingId: item.id, title: `질문 · ${title}`, body: item.questions?.[0]?.question ?? '답이 필요합니다' })
+      const first = item.questions?.[0]
+      const review = Boolean(first?.review)
+      const plan = review ? /^#{1,6}\s+(.+?)\s*$/m.exec(first.detail ?? '')?.[1] : undefined
+      this.emit('notify', { kind: 'question', sessionId: item.sessionId, pendingId: item.id, session: title, question: first?.question, review, plan })
     }
   }
 
@@ -246,7 +249,7 @@ export class Hub extends EventEmitter {
     const wasRunning = new Set(before.filter((r) => r.running).map((r) => r.id))
     for (const row of after) {
       if (!wasRunning.has(row.id) || row.running) continue
-      this.emit('notify', { kind: 'turnEnd', sessionId: row.id, title: `작업 끝 · ${row.title}`, body: '답변이 끝났습니다' })
+      this.emit('notify', { kind: 'turnEnd', sessionId: row.id, session: row.title })
     }
   }
 }

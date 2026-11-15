@@ -1,5 +1,6 @@
 // REST calls to /h/api. The browser sends the Access cookie and Origin itself.
 import { update } from './store.js'
+import { errorText, t } from './lib/i18n.js'
 
 export class ApiError extends Error {
   constructor(code, message, status) {
@@ -21,14 +22,14 @@ export async function api(path, { method = 'GET', body } = {}) {
       cache: 'no-store',
     })
   } catch {
-    throw new ApiError('network', '네트워크에 연결할 수 없습니다', 0)
+    throw new ApiError('network', t('err.network'), 0)
   }
   if (res.type === 'opaqueredirect' || res.status === 401) {
     update((s) => { s.authExpired = true })
-    throw new ApiError('unauthenticated', '다시 로그인해야 합니다', 401)
+    throw new ApiError('unauthenticated', t('err.unauthenticated'), 401)
   }
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new ApiError(data.code ?? 'failed', data.message ?? '요청이 실패했습니다', res.status)
+  if (!res.ok) throw new ApiError(data.code ?? 'failed', errorText(data.code, res.status, data.message), res.status)
   return data
 }
 

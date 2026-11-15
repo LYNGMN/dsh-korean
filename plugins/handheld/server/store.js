@@ -5,8 +5,9 @@
 import path from 'node:path'
 import { readJson, writePrivate } from './home.js'
 import { generateVapidKeys } from './push/web-push.js'
+import { DEFAULT_LANG, LANGS } from './push/text.js'
 
-const DEFAULT_SETTINGS = Object.freeze({ notifyTurnEnd: true })
+const DEFAULT_SETTINGS = Object.freeze({ notifyTurnEnd: true, lang: DEFAULT_LANG })
 const MAX_SUBSCRIPTIONS = 20
 const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /(^|\.)push\.apple\.com$/, /^updates\.push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/]
 
@@ -36,6 +37,7 @@ export class Store {
   updateSettings(patch) {
     const next = this.settings()
     if (typeof patch.notifyTurnEnd === 'boolean') next.notifyTurnEnd = patch.notifyTurnEnd
+    if (LANGS.includes(patch.lang)) next.lang = patch.lang
     writePrivate(this.#file('settings.json'), JSON.stringify(next, null, 1))
     return next
   }

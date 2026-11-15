@@ -3,8 +3,9 @@ import { Component } from 'preact'
 import { Markdown } from '../lib/markdown.jsx'
 import { update } from '../store.js'
 import { Icon } from './Icon.jsx'
+import { t } from '../lib/i18n.js'
 
-const OUTCOME = { completed: '끝남', cancelled: '중단됨', interrupted: '중단됨', error: '오류로 멈춤', failed: '오류로 멈춤' }
+const OUTCOME = { completed: 'state.done', cancelled: 'state.stopped', interrupted: 'state.stopped', error: 'outcome.error', failed: 'outcome.error' }
 
 function openDiff(title, files) {
   update((s) => { s.openDiff = { title, files } })
@@ -29,21 +30,21 @@ class ToolRow extends Component {
       <div class={`tool tool-${status}`}>
         <button type="button" class="tool-head" aria-expanded={open} aria-controls={id} onClick={() => this.setState({ open: !open })}>
           <span class="tool-icon" aria-hidden="true">{status === 'running' ? <span class="spinner" /> : <Icon name={status === 'error' ? 'alert' : status === 'stopped' ? 'stop' : 'check'} size={16} />}</span>
-          <span class="tool-title one-line">{call?.title ?? '도구 결과'}</span>
-          <span class="visually-hidden">{status === 'running' ? '실행 중' : status === 'error' ? '오류' : status === 'stopped' ? '결과 없음' : '끝남'}</span>
+          <span class="tool-title one-line">{call?.title ?? t('toolcall.result')}</span>
+          <span class="visually-hidden">{t(status === 'running' ? 'state.running' : status === 'error' ? 'state.error' : status === 'stopped' ? 'state.noResult' : 'state.done')}</span>
           <Icon name="chevron" size={16} class={`tool-chevron${open ? ' up' : ''}`} />
         </button>
         {diffs.length > 0 ? (
-          <button type="button" class="link-btn" onClick={() => openDiff(call?.title ?? '변경', diffs)}>
-            <Icon name="diff" size={16} />변경 보기 · 파일 {diffs.length}개
+          <button type="button" class="link-btn" onClick={() => openDiff(call?.title ?? t('diff.fallback'), diffs)}>
+            <Icon name="diff" size={16} />{t('diff.view', { count: diffs.length })}
           </button>
         ) : null}
         {open ? (
           <div class="tool-body" id={id}>
-            {call?.input ? <pre class="pre" role="group" tabIndex={0} aria-label="입력">{call.input}</pre> : null}
-            {result?.output ? <pre class={`pre${result.isError ? ' pre-error' : ''}`} role="group" tabIndex={0} aria-label="결과">{result.output}</pre> : null}
-            {result?.truncated ? <p class="muted small">결과가 길어 앞부분만 보입니다.</p> : null}
-            {!call?.input && !result?.output ? <p class="muted small">표시할 내용이 없습니다.</p> : null}
+            {call?.input ? <pre class="pre" role="group" tabIndex={0} aria-label={t('toolcall.input')}>{call.input}</pre> : null}
+            {result?.output ? <pre class={`pre${result.isError ? ' pre-error' : ''}`} role="group" tabIndex={0} aria-label={t('toolcall.output')}>{result.output}</pre> : null}
+            {result?.truncated ? <p class="muted small">{t('toolcall.truncated')}</p> : null}
+            {!call?.input && !result?.output ? <p class="muted small">{t('toolcall.nothing')}</p> : null}
           </div>
         ) : null}
       </div>
@@ -56,7 +57,7 @@ function Assistant({ item }) {
     <div class="msg msg-assistant">
       {item.reasoning ? (
         <details class="reasoning">
-          <summary>생각 과정</summary>
+          <summary>{t('reasoning.title')}</summary>
           <p class="reasoning-text">{item.reasoning}</p>
         </details>
       ) : null}
@@ -73,7 +74,7 @@ export class ItemView extends Component {
   render({ row }) {
     switch (row.kind) {
       case 'user':
-        return <div class="msg msg-user" data-seq={row.item.seq}><p class="user-text">{row.item.text}{row.item.images ? <span class="muted small"> · 이미지 {row.item.images}장</span> : null}</p></div>
+        return <div class="msg msg-user" data-seq={row.item.seq}><p class="user-text">{row.item.text}{row.item.images ? <span class="muted small">{t('msg.images', { count: row.item.images })}</span> : null}</p></div>
       case 'assistant':
         return <div data-seq={row.item.seq}><Assistant item={row.item} /></div>
       case 'tool':
@@ -85,7 +86,7 @@ export class ItemView extends Component {
         return (
           <p class={`note note-${state}`} data-seq={row.item.seq}>
             <Icon name={state === 'rejected' ? 'close' : state === 'allowed' ? 'check' : 'shield'} size={16} />
-            {state === 'asked' ? `승인 요청: ${tool ?? '도구'}` : state === 'rejected' ? '거부됨' : state === 'allowed' ? '허용됨' : '승인 답 받음'}
+            {state === 'asked' ? t('note.asked', { tool: tool ?? t('tool.fallback') }) : t(state === 'rejected' ? 'note.rejected' : state === 'allowed' ? 'note.allowed' : 'note.answered')}
           </p>
         )
       }
@@ -93,12 +94,12 @@ export class ItemView extends Component {
         return row.diffs.length > 0 ? (
           <div class="note" data-seq={row.item.seq}>
             <Icon name="diff" size={16} />
-            <span>이번 턴에서 파일 {row.diffs.length}개가 바뀌었습니다</span>
-            <button type="button" class="link-btn" onClick={() => openDiff('이번 턴 변경', row.diffs)}>모두 보기</button>
+            <span>{t('turn.changed', { count: row.diffs.length })}</span>
+            <button type="button" class="link-btn" onClick={() => openDiff(t('turn.diffTitle'), row.diffs)}>{t('turn.viewAll')}</button>
           </div>
         ) : null
       case 'turnEnd':
-        return <p class="turn-end" data-seq={row.item.seq}><span>{OUTCOME[row.item.outcome] ?? '턴 끝'}</span></p>
+        return <p class="turn-end" data-seq={row.item.seq}><span>{t(OUTCOME[row.item.outcome] ?? 'turn.end')}</span></p>
       default:
         return null
     }

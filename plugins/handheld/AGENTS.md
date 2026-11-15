@@ -13,7 +13,7 @@ DeepSeek Harness(DSH)를 휴대폰에서 다루는 개인용 모바일 작업 �
 - 승인·질문 답은 사람이 휴대폰에서 직접 누를 때만 보냅니다. 자동 승인 코드를 넣지 않습니다.
 - 토큰·쿠키·VAPID 개인키·터널 토큰은 로그와 화면에 내보내지 않습니다. 저장 파일은 0600입니다.
 - 서버 의존성은 `ws` 하나입니다. JWT 검증과 Web Push 암호화는 `node:crypto`로 합니다. 휴대폰 앱에 묶어 넣는 글꼴은 개발 의존성 `pretendard`(글, OFL-1.1)와 `d2coding`(코드, OFL-1.1) 둘이고 버전을 고정합니다(2026-11-15 사용자 결정: 어느 환경에서나 같은 글꼴). 글꼴 파일은 `web/build.mjs`가 `web/dist/assets/fonts/`로 복사하고, 다른 빌드물처럼 `web/dist/`와 함께 커밋합니다. 새 의존성은 라이선스·유지 상태를 확인한 뒤 이 줄을 고치면서 들입니다.
-- 화면 글자는 한국어 기본, `word-break: keep-all`, 입력창 16px 이상, 터치 대상 44px 이상입니다.
+- 화면 글자는 한국어 기본이고 설정에서 영어·일본어·중국어 간체·번체로 바꿀 수 있습니다(2026-11-15 사용자 요청). 화면 글자는 `web/src/locale/<언어>.js` 문구집에 두고 화면 코드에서는 `t('키')`로 읽습니다. 글자를 더하거나 고치면 다섯 문구집을 같이 고칩니다. 푸시 알림 글은 `server/push/text.js`에 둡니다. 한국어에는 `word-break: keep-all`, 입력창 16px 이상, 터치 대상 44px 이상입니다. — 지키는 방법: `test/web-i18n.test.js`, `test/push-text.test.js`
 - 플러그인 카드에는 아이콘과 한국어 설명을 꼭 넣습니다. 아이콘은 Lucide 아이콘을 36칸 SVG로 옮겨 DSH 파란색 그라데이션(`#3D94EE`→`#3F77D8`)으로 칠하고, 외부 서비스를 잇는 플러그인은 그 서비스의 공식 로고를 씁니다. 출처는 SVG 주석에 남기고, 다른 플러그인 아이콘과 보이는 크기·중심을 `measure-icon-optics.mjs`로 맞춥니다. 제목·설명은 `locale/ko.json`(`meta.title`, `meta.description`, 해요체)과 `locale/en.json`에 두고 `package.json` `exports`에 `./icon`, `./locale/*.json`을 엽니다. — 2026-11-14 사용자 — 지키는 방법: `test/plugin-card.test.*`
 
 ## 정해진 결정 (2026-11-14 사용자)
@@ -62,3 +62,5 @@ DeepSeek Harness(DSH)를 휴대폰에서 다루는 개인용 모바일 작업 �
 - 휴대폰 앱은 한 번에 한 세션만 구독합니다. 구독을 끊은 직후에도 이미 떠난 `stream` 프레임이 도착할 수 있고 그 끝(`streamEnd`)은 오지 않으므로, 구독 중이 아닌 세션의 `stream` 프레임은 버리고 구독을 끊을 때 흐르던 답변을 지웁니다. — 처음 2026-11-15 — 지키는 방법: `web/src/live.js`
 - `.visually-hidden`(절대 위치)은 가까운 위치 기준 조상이 없으면 스크롤 상자 안에 있어도 페이지 높이를 늘립니다. 스크롤 상자(`.messages`, `.page`, `.sheet-content`)에는 `position: relative`를 둡니다. — 처음 2026-11-15 — 지키는 방법: `web/src/app.css`
 - Preact는 `on이름`이 DOM 속성(`oncompositionend` 등)에 없으면 대소문자를 그대로 이벤트 이름으로 씁니다. `onCompositionEnd`는 없는 `CompositionEnd` 이벤트를 듣게 되어 조합 처리가 한 번도 돌지 않았습니다. 조합·`beforeinput` 같은 이벤트는 소문자(`oncompositionend`, `onbeforeinput`)로 씁니다. Safari는 한글을 확정하는 Enter를 `compositionend` 뒤에 keyCode 229로 보냅니다. — 처음 2026-11-15 — 지키는 방법: `web/src/components/Composer.jsx`, `test/web-enter-keys.test.js`
+- DSH는 계획 검토를 따로 된 요청이 아니라 질문(`user-questions/request`)으로 보냅니다. 선택지 글자 `Approve`·`Keep planning`이 곧 답으로 돌려보낼 값이고, 계획 본문은 `detail`, 구분 표시는 `intent.kind: 'plan-review'`입니다. 선택지 글자를 번역해서 답으로 보내면 DSH가 승인으로 읽지 못하므로, 화면에는 우리 문구를 보이고 답에는 DSH가 준 값을 그대로 씁니다. 승인은 `custom` 없이 `selected: [approve]` 하나여야 합니다. — 처음 2026-11-15 — 지키는 방법: `server/dsh/api.js`(`reviewOf`), `test/dsh-normalize.test.js`
+- 일본어·중국어 입력기는 엔터 키로 변환을 확정합니다. 한글처럼 "조합 중 엔터 한 번이면 보내기"를 그대로 쓰면 확정하려던 글이 나가 버리므로, 그 언어에서는 조합 중 엔터를 보내기로 읽지 않습니다. — 처음 2026-11-15 — 지키는 방법: `web/src/lib/enter-keys.js`(`imeConfirms`), `test/web-i18n.test.js`

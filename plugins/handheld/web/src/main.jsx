@@ -4,7 +4,7 @@ import './app.css'
 import { api } from './api.js'
 import { startLive } from './live.js'
 import { state, update, useStore } from './store.js'
-import { startPrefs } from './lib/prefs.js'
+import { startPrefs, syncNotificationLang } from './lib/prefs.js'
 import { focusHeading, storageGet, useRoute } from './lib/util.js'
 import { ConnectionBanner, Toasts } from './components/Chrome.jsx'
 import { DiffSheet } from './components/DiffSheet.jsx'
@@ -28,6 +28,7 @@ function Overlays() {
 
 function App() {
   const route = useRoute()
+  const lang = useStore((s) => s.prefs.lang)
   const first = useRef(true)
   // A new screen replaces the old one in place: start reading from its heading.
   useEffect(() => {
@@ -35,7 +36,8 @@ function App() {
     else focusHeading()
   }, [route.name, route.sessionId])
   return (
-    <div class="app">
+    // A new language redraws every screen from its text table.
+    <div class="app" key={lang}>
       <ConnectionBanner />
       {route.name === 'chat' ? <Chat key={route.sessionId} sessionId={route.sessionId} /> : route.name === 'settings' ? <Settings /> : <SessionList />}
       <Overlays />
@@ -64,6 +66,7 @@ startPrefs()
 render(<App />, document.getElementById('app'))
 startLive()
 api('/me').then((me) => update((s) => { s.me = me })).catch(() => {})
+syncNotificationLang()
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/h/sw.js', { scope: '/h/' }).catch(() => {})
