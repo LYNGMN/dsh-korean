@@ -1,5 +1,6 @@
 // Small helpers: relative time, file names, per-session drafts, routing.
 import { useEffect, useState } from 'preact/hooks'
+import { lang, t } from './i18n.js'
 
 const PREFIX = 'dsh-handheld:'
 
@@ -24,12 +25,11 @@ export function storageSet(key, value) {
 export function relativeTime(ms, now = Date.now()) {
   if (!ms) return ''
   const s = Math.round((now - ms) / 1000)
-  if (s < 60) return '방금'
-  if (s < 3600) return `${String(Math.floor(s / 60))}분 전`
-  if (s < 86400) return `${String(Math.floor(s / 3600))}시간 전`
-  if (s < 86400 * 7) return `${String(Math.floor(s / 86400))}일 전`
-  const d = new Date(ms)
-  return `${String(d.getMonth() + 1)}월 ${String(d.getDate())}일`
+  if (s < 60) return t('time.now')
+  if (s < 3600) return t('time.minutes', { n: Math.floor(s / 60) })
+  if (s < 86400) return t('time.hours', { n: Math.floor(s / 3600) })
+  if (s < 86400 * 7) return t('time.days', { n: Math.floor(s / 86400) })
+  return new Intl.DateTimeFormat(lang(), { month: 'short', day: 'numeric' }).format(new Date(ms))
 }
 
 export function baseName(p) {
@@ -67,12 +67,11 @@ export function go(hash) {
   if (location.hash !== hash) location.hash = hash
 }
 
-const APP_TITLE = 'DSH 휴대폰'
 
 /** Names the current screen in the tab and task switcher. */
 export function usePageTitle(title) {
   useEffect(() => {
-    document.title = title ? `${title} · ${APP_TITLE}` : APP_TITLE
+    document.title = title ? `${title} · ${t('app.title')}` : t('app.title')
   }, [title])
 }
 

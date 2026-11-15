@@ -142,6 +142,9 @@ body {
   overflow: hidden;
 }
 
+/* Japanese and Chinese have no spaces to break at: keep-all would push long lines off the screen. */
+:root:lang(ja) body, :root:lang(zh) body, :root:lang(ja) .composer textarea, :root:lang(zh) .composer textarea { word-break: normal; line-break: strict; }
+
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
 button:disabled { cursor: default; opacity: 0.45; }
@@ -531,10 +534,12 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 }
 .composer textarea:focus { border-color: var(--brand); }
 .composer textarea::placeholder { color: var(--muted); opacity: 1; }
-.mode { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-.mode-btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--control); border-radius: 999px; background: transparent; font-size: 15px; font-weight: 600; white-space: nowrap; }
-.mode-btn.on { background: var(--brand-fill); border-color: var(--brand-fill); color: var(--on-brand); }
-.mode-hint { flex: 1 1 140px; min-width: 0; }
+/* how to send while work runs: two equal halves, each naming what it does */
+.mode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-bottom: 8px; padding: 4px; border-radius: 14px; background: var(--surface-2); }
+.mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 48px; padding: 5px 6px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); white-space: nowrap; transition: background 0.12s var(--ease), color 0.12s var(--ease); }
+.mode-btn.on { background: var(--brand-fill); color: var(--on-brand); }
+.mode-name { font-size: 15px; font-weight: 600; line-height: 20px; }
+.mode-hint { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; line-height: 16px; }
 
 /* sheets */
 .sheet {
@@ -569,6 +574,12 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-ink); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
 .form-error { min-height: 1.5em; margin-top: 10px; color: var(--danger-ink); font-size: 14.5px; }
 .form-error:empty { min-height: 0; margin: 0; }
+/* plan review: the plan reads like a reply, the decision stays in reach under it */
+.plan { margin-top: 10px; padding: 4px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+.review-actions { position: sticky; bottom: 0; margin: 12px -20px calc(-1 * max(40px, env(safe-area-inset-bottom) + 20px)); padding: 10px 20px max(40px, calc(env(safe-area-inset-bottom) + 20px)); border-top: 1px solid var(--border); background: var(--surface); }
+.review-actions .btn-grid { margin-top: 10px; }
+.select { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 40px 0 14px; border: 1px solid var(--control); border-radius: 14px; background-color: var(--bg); background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 21px) 21px, calc(100% - 15px) 21px; background-size: 6px 6px; background-repeat: no-repeat; font-size: 16px; appearance: none; -webkit-appearance: none; }
+.select:focus-visible { border-color: var(--brand); }
 .form-hint { margin-top: 10px; }
 .form-hint:empty { margin: 0; }
 .question { border: 0; padding: 0; margin: 16px 0 0; min-width: 0; }

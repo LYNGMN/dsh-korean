@@ -1,17 +1,18 @@
 // App-wide strips: connection banner and toasts.
 import { useStore } from '../store.js'
+import { t } from '../lib/i18n.js'
 
 export function ConnectionBanner() {
   const { socket, upstream, authExpired } = useStore((s) => ({ socket: s.socket, upstream: s.upstream, authExpired: s.authExpired }))
   let message = null
   let action = null
   if (authExpired) {
-    message = '로그인 시간이 끝났습니다.'
-    action = <button type="button" class="btn btn-small" onClick={() => location.reload()}>다시 로그인</button>
+    message = t('banner.expired')
+    action = <button type="button" class="btn btn-small" onClick={() => location.reload()}>{t('banner.relogin')}</button>
   } else if (socket !== 'open') {
-    message = '게이트웨이에 연결하는 중입니다…'
+    message = t('banner.gateway')
   } else if (upstream !== 'connected') {
-    message = 'DSH에 연결하는 중입니다. Desktop이 켜져 있는지 확인해 주세요.'
+    message = t('banner.dsh')
   }
   return (
     <div class="banner-slot" role="status" aria-live="polite">

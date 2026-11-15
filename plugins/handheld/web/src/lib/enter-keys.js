@@ -10,6 +10,8 @@ const COMMIT_WINDOW_MS = 100
 /** @returns {{ action: 'none' | 'newline' | 'send', other?: boolean, afterCompose?: boolean }} */
 export function enterAction(e) {
   if (e.key !== 'Enter') return { action: 'none' }
+  // Japanese and Chinese input methods confirm a conversion with Enter: that Enter is not ours.
+  if (e.imeConfirms && (e.isComposing || e.composing || e.keyCode === 229)) return { action: 'none' }
   if (e.shiftKey || e.altKey) return { action: 'newline' }
   if (e.metaKey && e.ctrlKey) return { action: 'none' }
   const modified = e.metaKey || e.ctrlKey

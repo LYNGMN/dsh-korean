@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { focusHeading } from '../lib/util.js'
 import { Icon } from './Icon.jsx'
+import { t } from '../lib/i18n.js'
 
 export function Sheet({ title, onClose, children, full = false, labelId = 'sheet-title' }) {
   const ref = useRef(null)
@@ -30,7 +31,7 @@ export function Sheet({ title, onClose, children, full = false, labelId = 'sheet
       <div class="sheet-body">
         <div class="sheet-head">
           <h2 id={labelId} class="sheet-title">{title}</h2>
-          <button type="button" class="icon-btn" aria-label="닫기" onClick={onClose}><Icon name="close" /></button>
+          <button type="button" class="icon-btn" aria-label={t('close')} onClick={onClose}><Icon name="close" /></button>
         </div>
         <div class="sheet-content">{children}</div>
       </div>

@@ -72,6 +72,18 @@ async function respond(dsh, request) {
       meta: decision === 'allowed-once' ? { diffs: [{ path: '/home/user/outside.txt', oldText: null, newText: 'hi\n' }] } : {},
     })
   }
+  if (text.includes('계획')) {
+    // The same question DSH's plan mode asks when the agent calls exit_plan_mode.
+    const frame = dsh.waterfall({ event: 'user-questions/request', agentId: sessionId, request: { questions: [{
+      id: 'plan-review',
+      header: 'Plan review',
+      question: 'Approve this plan and leave plan mode?',
+      detail: '# 로그인 화면 개선 계획\n\n## 목표\n\n입력 오류를 **보내기 전에** 알려 주고, 실패한 이유를 한 줄로 보여 줍니다.\n\n## 순서\n\n1. 이메일 형식 검사를 입력란 아래에 붙입니다.\n2. 서버 오류 문구를 `LoginError` 한곳으로 모읍니다.\n3. 테스트 3개를 추가합니다.\n\n```js\nexport const isEmail = (v) => /.+@.+/.test(v)\n```\n\n## 끝의 정의\n\n- 기존 테스트가 모두 통과합니다.\n- 잘못된 이메일로는 요청이 나가지 않습니다.',
+      options: [{ label: 'Approve', description: 'Leave plan mode; the plan is carried out from the next step.' }, { label: 'Keep planning', description: 'Stay in plan mode; feedback goes back to the model.' }],
+      intent: { kind: 'plan-review', approve: 'Approve', callId: `plan-${String(turn)}` },
+    }] } })
+    while (!dsh.state.answers.some((a) => a.eventId === frame.eventId)) await sleep(200)
+  }
   dsh.pushStream(sessionId, { type: 'end', attemptId, outcome: { kind: 'committed' } })
   dsh.pushEvent(sessionId, 'assistant/message', { turn, message: { content: [{ type: 'text', text: answer }] } })
   dsh.pushEvent(sessionId, 'turn/end', { turn, reason: { kind: 'completed' } })

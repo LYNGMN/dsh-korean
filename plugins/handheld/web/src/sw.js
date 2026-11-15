@@ -43,6 +43,9 @@ self.addEventListener('fetch', (event) => {
   }
 })
 
+// Used when a notification carries no wording of its own (sent by an older gateway).
+const FALLBACK_TEXTS = { reject: '거부', allow: '허용', allowed: '허용했습니다', rejected: '거부했습니다', gone: '이미 답한 요청입니다', failed: '답하지 못했습니다. 앱에서 확인해 주세요.' }
+
 self.addEventListener('push', (event) => {
   let data = {}
   try { data = event.data?.json() ?? {} } catch { data = {} }
@@ -54,13 +57,13 @@ self.addEventListener('push', (event) => {
     requireInteraction: data.kind === 'approval' || data.kind === 'question',
     icon: '/h/icon-192.png',
     badge: '/h/icon-192.png',
-    lang: 'ko',
-    data: { url: data.url ?? '/h/', pendingId: data.pendingId ?? null, kind: data.kind ?? null },
-    actions: approval ? [{ action: 'reject', title: '거부' }, { action: 'allow', title: '허용' }] : [],
+    lang: data.lang ?? 'ko',
+    data: { url: data.url ?? '/h/', pendingId: data.pendingId ?? null, kind: data.kind ?? null, lang: data.lang ?? 'ko', texts: data.texts ?? FALLBACK_TEXTS },
+    actions: approval ? [{ action: 'reject', title: data.texts?.reject ?? FALLBACK_TEXTS.reject }, { action: 'allow', title: data.texts?.allow ?? FALLBACK_TEXTS.allow }] : [],
   }))
 })
 
-async function answerFromNotification(pendingId, decision) {
+async function answerFromNotification(pendingId, decision, texts, lang) {
   const res = await fetch(`/h/api/pending/${encodeURIComponent(pendingId)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -68,8 +71,8 @@ async function answerFromNotification(pendingId, decision) {
     credentials: 'same-origin',
     redirect: 'manual',
   })
-  const message = res.ok ? (decision === 'allow' ? '허용했습니다' : '거부했습니다') : res.status === 409 ? '이미 답한 요청입니다' : '답하지 못했습니다. 앱에서 확인해 주세요.'
-  await self.registration.showNotification('DSH', { body: message, tag: `answered:${pendingId}`, icon: '/h/icon-192.png', lang: 'ko' })
+  const message = res.ok ? (decision === 'allow' ? texts.allowed : texts.rejected) : res.status === 409 ? texts.gone : texts.failed
+  await self.registration.showNotification('DSH', { body: message, tag: `answered:${pendingId}`, icon: '/h/icon-192.png', lang })
 }
 
 async function openApp(url, pendingId) {
@@ -84,10 +87,10 @@ async function openApp(url, pendingId) {
 }
 
 self.addEventListener('notificationclick', (event) => {
-  const { url, pendingId } = event.notification.data ?? {}
+  const { url, pendingId, texts = FALLBACK_TEXTS, lang = 'ko' } = event.notification.data ?? {}
   event.notification.close()
   if ((event.action === 'allow' || event.action === 'reject') && pendingId) {
-    event.waitUntil(answerFromNotification(pendingId, event.action))
+    event.waitUntil(answerFromNotification(pendingId, event.action, texts, lang))
     return
   }
   event.waitUntil(openApp(url ?? '/h/', pendingId))
@@ -104,7 +107,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     await fetch('/h/api/push/subscribe', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ subscription: subscription.toJSON(), label: '자동 갱신' }),
+      body: JSON.stringify({ subscription: subscription.toJSON(), label: 'auto-renewed' }),
       credentials: 'same-origin',
     })
   })())

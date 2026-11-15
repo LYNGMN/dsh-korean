@@ -1,5 +1,6 @@
 // Web Push on this device: what the browser supports, subscribe, unsubscribe.
 import { api } from '../api.js'
+import { t } from './i18n.js'
 
 function keyBytes(base64url) {
   const padded = base64url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (base64url.length % 4)) % 4)
@@ -24,12 +25,12 @@ function deviceLabel() {
   if (/iPhone/.test(ua)) return 'iPhone'
   if (/iPad/.test(ua) || isIOS()) return 'iPad'
   if (/Android/.test(ua)) return 'Android'
-  return '브라우저'
+  return t('push.browser')
 }
 
 export async function enablePush() {
   const permission = await Notification.requestPermission()
-  if (permission !== 'granted') throw new Error(permission === 'denied' ? '알림이 차단되어 있습니다. 기기 설정에서 허용해 주세요' : '알림 허용을 받지 못했습니다')
+  if (permission !== 'granted') throw new Error(t(permission === 'denied' ? 'push.blocked' : 'push.notGranted'))
   const { publicKey } = await api('/push/key')
   const registration = await navigator.serviceWorker.ready
   const existing = await registration.pushManager.getSubscription()

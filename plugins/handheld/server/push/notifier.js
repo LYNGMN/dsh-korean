@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto'
 import { BASE_PATH } from '../protocol.js'
 import { sendPush } from './web-push.js'
+import { actionTexts, noteText, testText } from './text.js'
 
 function topicFor(tag) {
   return createHash('sha256').update(tag).digest('base64url').slice(0, 32)
@@ -29,14 +30,18 @@ export function createNotifier({ store, subject, fetch: fetchImpl = fetch, logge
   }
 
   return {
-    /** @param {{kind: 'approval'|'question'|'turnEnd', sessionId: string, pendingId?: string, title: string, body: string}} note */
+    /** @param {{kind: 'approval'|'question'|'turnEnd', sessionId: string, pendingId?: string, session?: string}} note - plus the kind's own fields (server/push/text.js) */
     notify(note) {
       if (note.kind === 'turnEnd' && !store.settings().notifyTurnEnd) return Promise.resolve([])
+      const { lang } = store.settings()
+      const { title, body } = noteText(note, lang)
       const tag = note.pendingId ? `${note.kind}:${note.pendingId}` : `${note.kind}:${note.sessionId}`
       const message = {
         kind: note.kind,
-        title: note.title.slice(0, 80),
-        body: note.body.slice(0, 180),
+        title: title.slice(0, 80),
+        body: body.slice(0, 180),
+        lang,
+        ...(note.kind === 'approval' ? { texts: actionTexts(lang) } : {}),
         tag,
         sessionId: note.sessionId,
         pendingId: note.pendingId ?? null,
@@ -45,7 +50,7 @@ export function createNotifier({ store, subject, fetch: fetchImpl = fetch, logge
       return deliver(message, { urgency: note.kind === 'turnEnd' ? 'normal' : 'high' })
     },
     test() {
-      return deliver({ kind: 'test', title: 'dsh-handheld', body: '알림이 잘 옵니다', tag: 'test', sessionId: null, pendingId: null, url: `${BASE_PATH}/` }, { urgency: 'normal' })
+      return deliver({ kind: 'test', title: 'dsh-handheld', body: testText(store.settings().lang), lang: store.settings().lang, tag: 'test', sessionId: null, pendingId: null, url: `${BASE_PATH}/` }, { urgency: 'normal' })
     },
   }
 }

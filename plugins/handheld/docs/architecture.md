@@ -47,6 +47,10 @@ flowchart LR
 
 ## 3. 객체·데이터 관계
 
+언어: 화면 글자는 `web/src/locale/`의 문구집 다섯 개(한국어가 기준)에 있고 `web/src/lib/i18n.js`의 `t()`가 고른 언어로 읽습니다. 고른 언어는 휴대폰에 저장하고 게이트웨이 설정(`lang`)에도 보내서, 푸시 알림 글(`server/push/text.js`)이 같은 언어로 나갑니다. 게이트웨이 오류는 코드(`code`)로 구분해 휴대폰이 자기 언어로 보여 줍니다.
+
+계획 검토: DSH가 질문으로 보내는 계획 검토는 `server/dsh/api.js`가 `review: { approve, revise }`를 붙여 넘기고, 휴대폰은 그것을 계획 본문과 "승인·수정 요청" 단추로 그립니다(`web/src/components/PendingSheet.jsx`).
+
 하위 에이전트: 부모 세션의 하위 에이전트 목록은 `DshApi.subagents()`가 DSH의 세션 투영(`subagentCatalog`)과 세션 목록 줄에서 만듭니다. 휴대폰에는 `sub~부모~자식~방식` 꼴의 불투명한 이름으로 나가고, 이 이름을 DSH 주소로 푸는 곳은 `server/dsh/`뿐입니다. 하위 에이전트 대화는 세션과 같은 흐름(`SessionFeed`)으로 따라가되 보기 전용이라 허브가 글 보내기와 중단을 거절합니다.
 
 ```mermaid
