@@ -9,11 +9,13 @@ import { WebSocketServer } from 'ws'
 const TOKEN = 'fake-launch-token'
 const COOKIE = 'dsh-auth-fake'
 
-export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt } = {}) {
+export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt, commands = [] } = {}) {
   const state = {
     sessions: new Map(sessions.map((s) => [s.sessionId, { running: false, title: null, events: [], ...s }])),
     answers: [],
     prompts: [],
+    commands,
+    commandLines: [],
     cancels: [],
     pendingWaterfalls: new Map(),
     sockets: new Set(),
@@ -115,6 +117,16 @@ export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt }
         state.prompts.push(args.request)
         if (onPrompt) setTimeout(() => onPrompt(args.request), 0)
         return { accepted: true }
+      case 'commands/list':
+        sessionOf(args.agentId)
+        return state.commands
+      case 'commands/execute': {
+        sessionOf(args.agentId)
+        const name = /^\/(\S+)/.exec(args.line)?.[1]
+        if (!state.commands.some((c) => c.name === name)) return undefined
+        state.commandLines.push({ sessionId: args.agentId, line: args.line })
+        return { commandId: `command-${String(state.commandLines.length)}`, result: name === 'fail' ? { kind: 'error', text: 'nope' } : { kind: 'success', text: `ran ${name}` } }
+      }
       case 'session/cancel':
         state.cancels.push(args.request.sessionId)
         return {}

@@ -195,6 +195,30 @@ export class DshApi {
     return this.client.answer(pendingId, decision === 'allow' ? 'allowed-once' : 'rejected')
   }
 
+  /** Slash commands this session accepts -> Command[] (server/protocol.js). */
+  async commands(sessionId) {
+    const list = await this.client.rpc('commands/list', { agentId: sessionId })
+    return (Array.isArray(list) ? list : [])
+      .filter((c) => typeof c?.name === 'string' && c.name)
+      .map((c) => ({
+        name: c.name,
+        description: typeof c.description === 'string' ? c.description : '',
+        ...(typeof c.input?.hint === 'string' ? { hint: c.input.hint } : {}),
+      }))
+  }
+
+  /**
+   * Runs one complete command line ("/plan fix the login") without sending it to the model.
+   * `ran: false` means DSH knows no such command; the caller may send the line as a message.
+   * @returns {Promise<{ran: boolean, ok?: boolean, text?: string}>}
+   */
+  async runCommand(sessionId, line) {
+    const execution = await this.client.rpc('commands/execute', { agentId: sessionId, line, submittedAttachments: [] })
+    if (!execution?.result) return { ran: false }
+    const { kind, text } = execution.result
+    return { ran: true, ok: kind !== 'error', ...(typeof text === 'string' && text ? { text } : {}) }
+  }
+
   /** @param {Array<{id: string, selected: string[], custom?: string}>} answers */
   answerQuestion(pendingId, answers) {
     return this.client.answer(pendingId, { answers })

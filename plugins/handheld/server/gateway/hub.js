@@ -134,6 +134,20 @@ export class Hub extends EventEmitter {
     return this.api.prompt(sessionId, text, { mode: mode === 'steer' ? 'steer' : 'queue' })
   }
 
+  /** Commands of a session; a subagent conversation is view-only and has none. */
+  commands(sessionId) {
+    if (isSubagent(sessionId)) return Promise.resolve([])
+    return this.api.commands(sessionId)
+  }
+
+  /** Runs a slash command line. Only called from a request a person made. */
+  runCommand(sessionId, line) {
+    if (typeof line !== 'string' || !/^\/\S/.test(line.trim())) throw new HubError('command/bad-line', '명령어는 /로 시작해야 합니다')
+    if (line.length > 100_000) throw new HubError('prompt/too-long', '글이 너무 깁니다')
+    if (isSubagent(sessionId)) throw new HubError('command/view-only', '하위 에이전트 대화는 보기만 할 수 있습니다')
+    return this.api.runCommand(sessionId, line.trim())
+  }
+
   cancel(sessionId) {
     if (isSubagent(sessionId)) throw new HubError('cancel/view-only', '하위 에이전트는 부모 세션에서 중단해 주세요')
     return this.api.cancel(sessionId)
