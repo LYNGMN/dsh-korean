@@ -8,16 +8,21 @@ import { Icon } from './Icon.jsx'
 import { Markdown } from '../lib/markdown.jsx'
 import { pickText, t } from '../lib/i18n.js'
 import { reviewOf } from '../lib/pending.js'
+import { motionReduced } from '../lib/prefs.js'
+
+// How long the approval seal stays before the sheet closes.
+const SEAL_MS = 620
 
 function sessionTitle(sessionId) {
   return state.sessions.find((s) => s.id === sessionId)?.title ?? t('session.fallback')
 }
 
-async function answer(item, body, onClose, setBusy, setError, done) {
+async function answer(item, body, onClose, setBusy, setError, done, beforeClose) {
   setBusy(true)
   setError(null)
   try {
     await api(`/pending/${encodeURIComponent(item.id)}`, { method: 'POST', body })
+    await beforeClose?.()
     update((s) => { s.pending = s.pending.filter((p) => p.id !== item.id) })
     toast(t(done ?? (body.decision === 'reject' ? 'answer.rejected' : body.decision === 'allow' ? 'answer.allowed' : 'answer.sent')))
     onClose()
@@ -140,6 +145,7 @@ function PlanReview({ item, question, onClose }) {
   const [error, setError] = useState(null)
   const [revising, setRevising] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [sealed, setSealed] = useState(false)
   const feedbackBox = useRef(null)
   useEffect(() => { if (revising) feedbackBox.current?.focus() }, [revising])
   const send = (selected, custom, done) => {
@@ -147,9 +153,25 @@ function PlanReview({ item, question, onClose }) {
     if (custom) entry.custom = custom
     void answer(item, { answers: [entry] }, onClose, setBusy, setError, done)
   }
+  // The seal is stamped only after DSH took the answer; the sheet stays for it even though
+  // the gateway has already dropped the request from the pending list.
+  const approve = async () => {
+    update((s) => { s.heldPending = item })
+    await answer(item, { answers: [{ id: question.id, selected: [question.review.approve] }] }, onClose, setBusy, setError, 'answer.approved', () => {
+      setSealed(true)
+      return new Promise((resolve) => setTimeout(resolve, motionReduced() ? 0 : SEAL_MS))
+    })
+    update((s) => { s.heldPending = null })
+  }
   return (
     <>
-      <p class="muted one-line">{sessionTitle(item.sessionId)}</p>
+      <div class="review-head">
+        <p class="muted one-line">{sessionTitle(item.sessionId)}</p>
+        <div class="signoff" role="group" aria-label={t('review.signoff')}>
+          <div><span class="signoff-name">{t('review.from')}</span><span class="signoff-mark">DSH</span></div>
+          <div><span class="signoff-name">{t('review.sign')}</span><span class="signoff-mark">{sealed ? <span class="seal">{t('review.seal')}</span> : t('review.waiting')}</span></div>
+        </div>
+      </div>
       <section class="plan" aria-label={t('review.plan')}>
         <Markdown text={question.detail ?? ''} />
       </section>
@@ -171,7 +193,7 @@ function PlanReview({ item, question, onClose }) {
           <p class="muted small">{t('review.note')}</p>
           <div class="btn-grid">
             <button type="button" class="btn btn-outline" disabled={busy} onClick={() => setRevising(true)}>{t('review.revise')}</button>
-            <button type="button" class="btn btn-primary" disabled={busy} onClick={() => send(question.review.approve, '', 'answer.approved')}>{t('review.approve')}</button>
+            <button type="button" class="btn btn-primary" disabled={busy} onClick={approve}>{t('review.approve')}</button>
           </div>
         </>
       )}

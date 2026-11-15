@@ -7,7 +7,7 @@ import { baseName, go, relativeTime, usePageTitle } from '../lib/util.js'
 import { Icon } from '../components/Icon.jsx'
 import { Sheet } from '../components/Sheet.jsx'
 import { t } from '../lib/i18n.js'
-import { pendingRowText } from '../lib/pending.js'
+import { pendingIcon, pendingRowText } from '../lib/pending.js'
 
 function NewSession({ onClose }) {
   const [workspaces, setWorkspaces] = useState(null)
@@ -72,7 +72,7 @@ export function SessionList() {
               {pending.map((p) => (
                 <li key={p.id}>
                   <button type="button" class="row" data-qa-multiline onClick={() => update((s) => { s.openPending = p.id })}>
-                    <Icon name={p.kind === 'approval' ? 'shield' : 'question'} size={20} />
+                    <Icon name={pendingIcon(p)} size={20} />
                     <span class="row-main">
                       <span class="row-title one-line">{pendingRowText(p)}</span>
                       <span class="row-meta one-line">{titleOf(p.sessionId)}</span>

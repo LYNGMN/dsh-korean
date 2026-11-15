@@ -92,3 +92,23 @@ test('an Enter that confirms a Japanese or Chinese conversion does not send', ()
   assert.equal(enterAction({ ...key, keyCode: 13, imeConfirms: true }).action, 'send')
   assert.equal(enterAction({ ...key, isComposing: true }).afterCompose, true)
 })
+
+test('every icon a screen asks for is in the icon set', async () => {
+  const source = fs.readFileSync(path.join(SRC, 'components/Icon.jsx'), 'utf8')
+  const defined = new Set([...source.slice(0, source.indexOf('const OPTICAL')).matchAll(/^ {2}(\w+): /gm)].map((m) => m[1]))
+  const used = new Set()
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else if (/\.jsx?$/.test(entry.name)) {
+        const text = fs.readFileSync(file, 'utf8')
+        for (const m of text.matchAll(/<Icon name="(\w+)"/g)) used.add(m[1])
+        for (const line of text.split('\n').filter((l) => /<Icon name=\{|pendingIcon|_CHOICES = /.test(l) || /return item\.kind === 'approval'/.test(l))) for (const m of line.matchAll(/'(\w+)'/g)) if (defined.has(m[1]) || /^(shield|review|question|sun|moon|auto|stop|mic|alert|check|close)$/.test(m[1])) used.add(m[1])
+      }
+    }
+  }
+  walk(SRC)
+  assert.ok(used.size >= 20)
+  assert.deepEqual([...used].filter((name) => !defined.has(name)), [])
+})

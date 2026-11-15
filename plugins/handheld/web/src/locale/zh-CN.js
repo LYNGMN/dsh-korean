@@ -133,6 +133,11 @@ export default {
   'review.feedback': '修改意见',
   'review.feedbackHint': '可以留空。填写的内容会转达给 DSH。',
   'review.sendRevise': '发送修改请求',
+  'review.signoff': '审批栏',
+  'review.from': '提交',
+  'review.sign': '批准',
+  'review.waiting': '待批',
+  'review.seal': '批准',
 
   'mode.label': '任务进行中的发送方式',
   'mode.queue': '排队',
@@ -201,6 +206,11 @@ export default {
   'reasoning.label': '思考过程',
   'reasoning.show': '显示',
   'reasoning.hide': '隐藏',
+  'motion.label': '动效',
+  'motion.normal': '标准',
+  'motion.reduced': '减弱',
+  'motion.normalNote': '所选项会滑动，批准时会盖章。',
+  'motion.reducedNote': '画面直接切换，不带动效。',
 
   'settings.input': '输入',
   'input.voiceOn': '可以用输入框的麦克风按钮进行语音输入。',

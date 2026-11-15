@@ -14,6 +14,7 @@ export const PREFS = {
   text: { storage: 'text-size', fallback: 'normal', values: ['normal', 'large', 'xlarge'] },
   density: { storage: 'density', fallback: 'cozy', values: ['cozy', 'compact'] },
   reasoning: { storage: 'reasoning', fallback: 'show', values: ['show', 'hide'] },
+  motion: { storage: 'motion', fallback: 'normal', values: ['normal', 'reduced'] },
   lang: { storage: 'lang', fallback: DEFAULT_LANG, values: LANGS.map(([code]) => code) },
 }
 
@@ -41,6 +42,7 @@ function apply(prefs) {
   root.dataset.text = prefs.text
   root.dataset.density = prefs.density
   root.dataset.reasoning = prefs.reasoning
+  root.dataset.motion = prefs.motion
   // Screens read their text through t(); main.jsx redraws them when this changes.
   root.lang = prefs.lang
   setLang(prefs.lang)
@@ -52,6 +54,11 @@ function apply(prefs) {
 }
 
 const current = () => Object.fromEntries(Object.keys(PREFS).map((name) => [name, read(name)]))
+
+/** True when the person or the device asked for less motion. */
+export function motionReduced() {
+  return read('motion') === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 export function startPrefs() {
   apply(current())
@@ -75,4 +82,4 @@ export function syncNotificationLang() {
   }).catch(() => {})
 }
 
-state.prefs = { theme: 'auto', accent: 'deepseek', bubble: 'soft', font: 'bundled', text: 'normal', density: 'cozy', reasoning: 'show', lang: DEFAULT_LANG, shownTheme: 'light' }
+state.prefs = { theme: 'auto', accent: 'deepseek', bubble: 'soft', font: 'bundled', text: 'normal', density: 'cozy', reasoning: 'show', motion: 'normal', lang: DEFAULT_LANG, shownTheme: 'light' }

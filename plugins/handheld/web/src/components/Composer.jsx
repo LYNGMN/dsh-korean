@@ -133,7 +133,8 @@ export function Composer({ sessionId, running }) {
   return (
     <form class="composer" onSubmit={(e) => { e.preventDefault(); void send(mode) }}>
       {running ? (
-        <div class="mode" role="radiogroup" aria-label={t('mode.label')}>
+        <div class="mode" style={{ '--i': MODES.indexOf(mode) }} role="radiogroup" aria-label={t('mode.label')}>
+          <span class="seg-thumb" aria-hidden="true" />
           {MODES.map((value) => (
             <button key={value} type="button" {...radioProps(MODES, mode, setMode, value)} class={`mode-btn${mode === value ? ' on' : ''}`}>
               <span class="mode-name">{t(`mode.${value}`)}</span>

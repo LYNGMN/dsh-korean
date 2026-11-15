@@ -133,6 +133,11 @@ export default {
   'review.feedback': 'What to change',
   'review.feedbackHint': 'Optional. What you write is passed to DSH.',
   'review.sendRevise': 'Send change request',
+  'review.signoff': 'Sign-off',
+  'review.from': 'From',
+  'review.sign': 'Approval',
+  'review.waiting': 'Pending',
+  'review.seal': 'OK',
 
   'mode.label': 'How to send while working',
   'mode.queue': 'Queue',
@@ -201,6 +206,11 @@ export default {
   'reasoning.label': 'Reasoning',
   'reasoning.show': 'Show',
   'reasoning.hide': 'Hide',
+  'motion.label': 'Motion',
+  'motion.normal': 'Normal',
+  'motion.reduced': 'Reduced',
+  'motion.normalNote': 'The selected segment slides and approval stamps a seal.',
+  'motion.reducedNote': 'Screens change at once, without motion.',
 
   'settings.input': 'Input',
   'input.voiceOn': 'Use the microphone button in the message box to dictate.',

@@ -14,10 +14,12 @@ import { SessionList } from './screens/SessionList.jsx'
 import { Settings } from './screens/Settings.jsx'
 
 state.openPending = null
+// A request kept on screen for a moment after it was answered (the approval seal).
+state.heldPending = null
 state.openDiff = null
 
 function Overlays() {
-  const { pendingItem, diff } = useStore((s) => ({ pendingItem: s.pending.find((p) => p.id === s.openPending) ?? null, diff: s.openDiff }))
+  const { pendingItem, diff } = useStore((s) => ({ pendingItem: s.pending.find((p) => p.id === s.openPending) ?? (s.heldPending?.id === s.openPending ? s.heldPending : null), diff: s.openDiff }))
   return (
     <>
       {pendingItem ? <PendingSheet key={pendingItem.id} item={pendingItem} onClose={() => update((s) => { s.openPending = null })} /> : null}

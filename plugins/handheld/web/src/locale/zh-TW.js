@@ -133,6 +133,11 @@ export default {
   'review.feedback': '修改意見',
   'review.feedbackHint': '可以留白。填寫的內容會轉達給 DSH。',
   'review.sendRevise': '傳送修改要求',
+  'review.signoff': '核准欄',
+  'review.from': '提出',
+  'review.sign': '核准',
+  'review.waiting': '待核',
+  'review.seal': '核准',
 
   'mode.label': '工作進行中的傳送方式',
   'mode.queue': '佇列',
@@ -201,6 +206,11 @@ export default {
   'reasoning.label': '思考過程',
   'reasoning.show': '顯示',
   'reasoning.hide': '隱藏',
+  'motion.label': '動態效果',
+  'motion.normal': '標準',
+  'motion.reduced': '減少',
+  'motion.normalNote': '所選項目會滑動，核准時會蓋章。',
+  'motion.reducedNote': '畫面直接切換，不帶動態效果。',
 
   'settings.input': '輸入',
   'input.voiceOn': '可以用輸入框的麥克風按鈕進行語音輸入。',
