@@ -1,0 +1,16 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "git-branch" (ISC License, https://lucide.dev/icons/git-branch). -->
+  <!-- 광학 보정: 왼쪽 줄기가 길어 눈에 보이는 중심이 왼쪽으로 0.29칸 쏠려 오른쪽으로 0.25칸 옮겼다. -->
+  <g transform="translate(18.25 18) scale(1) translate(-12 -12)" stroke="url(#dsh-git-stage-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" x2="6" y1="3" y2="15" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-git-stage-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

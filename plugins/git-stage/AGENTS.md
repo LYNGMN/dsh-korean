@@ -1,0 +1,54 @@
+# dsh-git-stage 작업 지침
+
+DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭에 **작업 단계** 보기를, 채팅 머리 오른쪽에 **단계 칩**을 더하는 플러그인입니다(DeepSeek 공식 플러그인이 아님). 서버 쪽(`lib/index.js`)이 세션 작업 폴더의 Git 상태를 읽어 라우트 `/api/dsh-git-stage`로 내주고, 화면 쪽 번들(`lib/client.js`)이 그것과 할 일 목록으로 여섯 단계를 그립니다.
+
+구조는 [docs/architecture.md](docs/architecture.md)를 따릅니다.
+
+## 지킬 것
+
+- `/Applications/DeepSeek Harness.app` 안의 파일은 읽기만 합니다. DSH 코드·CSS를 복사하지 않습니다.
+- Git은 **읽기만** 합니다. `fetch`·`pull`·`push`·`commit`·`merge`·`tag` 만들기처럼 상태를 바꾸거나 네트워크를 타는 `git` 명령을 넣지 않습니다. `gh`는 `pr view`만 부릅니다. 화면에 푸시·머지·태그 단추를 넣지 않습니다.
+- 명령은 셸 없이 `execFile`의 argv로 돌리고, 환경에 `GIT_OPTIONAL_LOCKS=0`·`GIT_TERMINAL_PROMPT=0`·`GH_PROMPT_DISABLED=1`을 둡니다. 5초 제한입니다.
+- 작업 폴더는 서버가 세션 id로 `sessionQuery`에서 찾습니다. 화면이 보낸 경로(`?cwd=`)는 믿지 않습니다.
+- `gh` 출력 원문·토큰은 로그와 화면에 내보내지 않습니다. 화면에는 로그인 만료·없음·시간 초과 같은 분류만 보입니다. PR 주소는 `https:`일 때만 씁니다.
+- 단계 규칙은 `src/stages.js`(순수 함수) 하나가 정합니다. 휴대폰 앱(`plugins/handheld/web/src/lib/stages.js`)과 Git 읽기(`plugins/handheld/server/gateway/git-read.js`)는 이 플러그인 파일의 **복사본**입니다(키트는 플러그인 사이 공용 패키지를 두지 않음). 고치면 두 사본을 같이 고치고, 키트 루트 `test/git-stage-copies.test.mjs`가 같은지 봅니다.
+- `@deepseek-ai/dsh-client-ui-primitives` 같은 Harness Client 패키지를 `require`하지 않습니다. 공용 모듈로 받는 것은 `react`·`react-dom`뿐입니다.
+- `lib/client.js`는 빌드 결과물입니다. `src/` 파일을 고친 뒤 `node scripts/build.mjs`로 다시 만듭니다.
+- npm 의존성을 들이지 않습니다.
+- 화면 글자는 한국어 해요체, `word-break: keep-all`입니다. 단계 칸은 같은 폭 격자(넓으면 6칸, 좁으면 3칸 두 줄)입니다.
+- 화면을 바꾸면 `test/preview.html`을 `ui-visual-qa`로 320·375·1280, 밝음·어두움에서 잽니다(`--theme-attr data-theme --open ".dgs-chip"`).
+- 플러그인 카드 아이콘·한국어 설명과 이름 규칙은 키트 루트 `AGENTS.md`를 따릅니다.
+
+## 자주 쓰는 명령
+
+| 하는 일 | 명령 |
+|---|---|
+| 화면용 번들 만들기 | `node scripts/build.mjs` |
+| 테스트 | `node --test test/*.test.mjs` |
+
+## 작업·배포 흐름
+
+1. 검토: 코드는 다른 세션이나 도구가 리뷰합니다. 탭 모습은 사람이 실제 DSH Desktop에서 봅니다.
+2. 넓은 검사: `node scripts/build.mjs`와 `node --test test/*.test.mjs`를 커밋 전에 한 번 돌립니다. 빌드 뒤 `lib/client.js`가 바뀌었으면 같이 커밋합니다.
+3. 배포 실행기: 서버 배포는 없습니다. 완성본은 Git 태그(`v<버전>`)이고, DSH 플러그인 추가 화면에 로컬 폴더 경로를 넣어 설치합니다.
+4. 병합·배포하는 사람: 사용자가 승인한 뒤에만 Push·병합·태그를 합니다.
+5. 사용자 승인이 필요한 일: GitHub 저장소 만들기, Push, 태그, DSH 프로필(`~/.dsh/profiles/desktop`) 설치·제거, Desktop 재시작.
+6. 운영 확인: Git 저장소 폴더의 세션을 엽니다.
+   - `…` 메뉴에 "작업 단계"가 있고, 탭이 실제로 Git 상태를 읽는지(서버 라우트 `/api/dsh-git-stage`가 닿는지)
+   - 브랜치를 만들고·커밋하고·푸시할 때 단계가 넘어가는지(탭이 보이는 동안 10초마다, 세션이 멈출 때 다시 읽음)
+   - Git 저장소가 아닌 폴더에서 "Git 저장소가 아니에요"만 보이는지
+   - 밝음·어두움 모두, 개발자 도구 콘솔과 Desktop 로그에 `[dsh-git-stage]` 오류가 없는지
+7. 기록: 바뀐 내용은 `CHANGELOG.md`에 적습니다.
+8. 되돌리기: DSH 플러그인 화면에서 끄거나 제거합니다.
+
+## 새 DSH 버전이 나오면
+
+1. `node --test test/*.test.mjs`를 돌립니다.
+2. 앱 안에서 `conversation.view`·`conversation.session.header.utilities` 자리, 투영 `todos`, 세션 `running`, `ctx.connection.fetch.register`, `ctx.sessionQuery.observeSession`(`projections.values.workingDirectory`·`header.cwd`) 모양이 그대로인지 봅니다.
+3. 실제 Desktop에서 운영 확인 6번을 다시 합니다.
+
+## 작업하며 배운 것
+
+이 프로젝트에만 맞는 교훈입니다. 모든 프로젝트에 맞는 교훈은 `~/Dev/docs/agent-rules-architecture.md`의 공통 지식베이스에 둡니다.
+
+- 브랜치를 원본에 머지하고 지우지 않았으면 원본보다 앞선 커밋이 0개가 됩니다. 이것만으로 "합치기 끝남"이라 하면 새로 만든 빈 브랜치도 끝남이 되므로, 그 브랜치에 커밋했던 기록(reflog)이 있을 때만 머지로 봅니다. — 처음 2026-11-15 — 지키는 방법: `src/stages.js`, `test/stages.test.mjs`
