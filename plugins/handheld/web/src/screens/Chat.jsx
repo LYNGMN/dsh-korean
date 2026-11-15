@@ -11,7 +11,7 @@ import { Icon } from '../components/Icon.jsx'
 import { buildRows, ItemView } from '../components/ItemView.jsx'
 import { Sheet } from '../components/Sheet.jsx'
 import { t } from '../lib/i18n.js'
-import { pendingStripText } from '../lib/pending.js'
+import { pendingIcon, pendingStripText } from '../lib/pending.js'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -214,7 +214,7 @@ export function Chat({ sessionId }) {
         <div class="pending-strip">
           {pending.map((p) => (
             <button type="button" class="pending-btn" key={p.id} onClick={() => update((s) => { s.openPending = p.id })}>
-              <Icon name={p.kind === 'approval' ? 'shield' : 'question'} size={18} />
+              <Icon name={pendingIcon(p)} size={18} />
               <span class="one-line">{pendingStripText(p)}</span>
               <span class="pending-go">{t('view')}</span>
             </button>

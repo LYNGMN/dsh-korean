@@ -12,6 +12,11 @@ export function planTitle(markdown) {
   return /^#{1,6}\s+(.+?)\s*$/m.exec(markdown ?? '')?.[1] ?? ''
 }
 
+/** Icon for a waiting request: approval, plan review or question. */
+export function pendingIcon(item) {
+  return item.kind === 'approval' ? 'shield' : reviewOf(item) ? 'review' : 'question'
+}
+
 export function pendingRowText(item) {
   if (item.kind === 'approval') return t('pending.approvalRow', { tool: item.tool ?? t('tool.fallback') })
   const review = reviewOf(item)

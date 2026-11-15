@@ -133,6 +133,11 @@ export default {
   'review.feedback': '고칠 점',
   'review.feedbackHint': '비워 두어도 됩니다. 적은 내용은 DSH에게 전달됩니다.',
   'review.sendRevise': '수정 요청 보내기',
+  'review.signoff': '결재란',
+  'review.from': '올림',
+  'review.sign': '승인',
+  'review.waiting': '대기',
+  'review.seal': '승인',
 
   'mode.label': '작업 중에 보내는 방식',
   'mode.queue': '대기열',
@@ -201,6 +206,11 @@ export default {
   'reasoning.label': '생각 과정',
   'reasoning.show': '보이기',
   'reasoning.hide': '숨기기',
+  'motion.label': '움직임',
+  'motion.normal': '보통',
+  'motion.reduced': '줄이기',
+  'motion.normalNote': '고른 칸이 미끄러지고 승인 도장이 찍힙니다.',
+  'motion.reducedNote': '화면이 움직임 없이 바로 바뀝니다.',
 
   'settings.input': '입력',
   'input.voiceOn': '입력창의 마이크 버튼으로 음성 입력을 쓸 수 있습니다.',

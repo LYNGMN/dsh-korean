@@ -27,7 +27,7 @@ DSH 화면을 비추거나 고쳐 쓰지 않고, DSH가 공식으로 여는 API 
 ## Capabilities and Constraints
 
 - 화면 글자는 한국어 기본이고 설정에서 영어·일본어·중국어 간체·번체로 바꿀 수 있습니다. 한국어에는 `word-break: keep-all`, 입력창 16px 이상, 터치 대상 44px 이상입니다.
-- PWA 의존성은 Preact와 esbuild, 그리고 앱에 묶어 넣는 글꼴 두 개(Pretendard, D2Coding)입니다. 아이콘 패키지는 들이지 않습니다.
+- PWA 의존성은 Preact와 esbuild, 그리고 앱에 묶어 넣는 글꼴 두 개(Pretendard, D2Coding)입니다. 아이콘은 Lucide 그림을 옮겨 쓰고 패키지는 들이지 않습니다.
 - 자동 승인 코드를 넣지 않습니다.
 - 화면을 다듬어도 한 화면에 보이는 정보를 줄이지 않고, 누른 뒤 반응이 효과 때문에 느려지지 않아야 합니다. (2026-11-15 사용자 답)
 

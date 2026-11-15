@@ -133,6 +133,11 @@ export default {
   'review.feedback': '修正点',
   'review.feedbackHint': '空欄のままでも構いません。入力した内容はDSHに伝えられます。',
   'review.sendRevise': '修正依頼を送信',
+  'review.signoff': '決裁欄',
+  'review.from': '起案',
+  'review.sign': '承認',
+  'review.waiting': '未決',
+  'review.seal': '承認',
 
   'mode.label': '作業中の送信方法',
   'mode.queue': 'キュー',
@@ -201,6 +206,11 @@ export default {
   'reasoning.label': '思考過程',
   'reasoning.show': '表示',
   'reasoning.hide': '非表示',
+  'motion.label': '動き',
+  'motion.normal': '標準',
+  'motion.reduced': '控えめ',
+  'motion.normalNote': '選択した項目がスライドし、承認時に印が押されます。',
+  'motion.reducedNote': '動きなしで画面がすぐに切り替わります。',
 
   'settings.input': '入力',
   'input.voiceOn': '入力欄のマイクボタンで音声入力を使えます。',

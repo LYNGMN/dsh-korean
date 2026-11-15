@@ -24,6 +24,7 @@ const FONT_CHOICES = [['bundled', 'Pretendard'], ['system', 'font.system']]
 const TEXT_CHOICES = [['normal', 'text.normal'], ['large', 'text.large'], ['xlarge', 'text.xlarge']]
 const DENSITY_CHOICES = [['cozy', 'density.cozy'], ['compact', 'density.compact']]
 const REASONING_CHOICES = [['show', 'reasoning.show'], ['hide', 'reasoning.hide']]
+const MOTION_CHOICES = [['normal', 'motion.normal'], ['reduced', 'motion.reduced']]
 const notesOf = (group, values) => Object.fromEntries(values.map((value) => [value, `${group}.${value}Note`]))
 
 /** One choice out of two or three, as a segmented radio group. */
@@ -32,7 +33,8 @@ function Choice({ id, label, value, choices, onChange, notes }) {
   return (
     <div class="setting-choice">
       <span class="setting-choice-label" id={id}>{label}</span>
-      <div class="segmented" style={{ '--segments': choices.length }} role="radiogroup" aria-labelledby={id}>
+      <div class="segmented" style={{ '--segments': choices.length, '--i': Math.max(0, values.indexOf(value)) }} role="radiogroup" aria-labelledby={id}>
+        <span class="seg-thumb" aria-hidden="true" />
         {choices.map(([key, text, icon]) => (
           <button key={key} type="button" {...radioProps(values, value, onChange, key)} class={`segment${value === key ? ' on' : ''}`}>
             {icon ? <Icon name={icon} size={18} /> : null}{hasText(text) ? t(text) : text}
@@ -127,9 +129,12 @@ export function Settings() {
           <h2 id="display-title" class="card-title">{t('settings.display')}</h2>
           <div class="setting-choice">
             <label class="setting-choice-label" for="lang-select">{t('lang.label')}</label>
-            <select id="lang-select" class="select" value={prefs.lang} onChange={(e) => setPref('lang', e.currentTarget.value)}>
-              {LANGS.map(([code, name]) => <option key={code} value={code} lang={code}>{name}</option>)}
-            </select>
+            <div class="select-wrap">
+              <select id="lang-select" class="select" value={prefs.lang} onChange={(e) => setPref('lang', e.currentTarget.value)}>
+                {LANGS.map(([code, name]) => <option key={code} value={code} lang={code}>{name}</option>)}
+              </select>
+              <Icon name="chevron" size={18} />
+            </div>
             <p class="desc">{t('lang.note')}</p>
           </div>
           <Choice id="theme-label" label={t('theme.label')} value={prefs.theme} choices={THEME_CHOICES} onChange={(v) => setPref('theme', v)} notes={notesOf('theme', ['auto', 'light', 'dark'])} />
@@ -139,6 +144,7 @@ export function Settings() {
           <Choice id="text-label" label={t('text.label')} value={prefs.text} choices={TEXT_CHOICES} onChange={(v) => setPref('text', v)} />
           <Choice id="density-label" label={t('density.label')} value={prefs.density} choices={DENSITY_CHOICES} onChange={(v) => setPref('density', v)} />
           <Choice id="reasoning-label" label={t('reasoning.label')} value={prefs.reasoning} choices={REASONING_CHOICES} onChange={(v) => setPref('reasoning', v)} />
+          <Choice id="motion-label" label={t('motion.label')} value={prefs.motion} choices={MOTION_CHOICES} onChange={(v) => setPref('motion', v)} notes={notesOf('motion', ['normal', 'reduced'])} />
         </section>
 
         <section class="card" aria-labelledby="input-title">
