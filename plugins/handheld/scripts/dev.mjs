@@ -105,7 +105,8 @@ if (real) {
       { name: 'status', description: '모델과 작업 폴더 상태를 보여 줍니다' },
     ],
     sessions: [
-      { sessionId: DEMO, cwd: '/home/user/app' },
+      // 작업 단계 띠가 실제 Git 상태를 보이도록 이 키트 저장소를 작업 폴더로 준다.
+      { sessionId: DEMO, cwd: '/home/user/app', projections: { workingDirectory: path.join(ROOT, '..', '..'), todos: [{ content: '단계 규칙 만들기', status: 'completed' }, { content: 'npm test로 검증하기', status: 'completed' }, { content: '휴대폰 화면 확인하기', status: 'in_progress' }] } },
       { sessionId: SECOND, cwd: '/home/user/deploy' },
       { sessionId: HELPER, cwd: '/home/user/app', parentSessionId: DEMO, label: '문구 쓰인 곳 찾기', mode: 'one-shot' },
     ],

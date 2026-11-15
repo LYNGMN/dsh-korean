@@ -13,6 +13,7 @@ DeepSeek Harness(DSH)를 휴대폰에서 다루는 개인용 모바일 작업 �
 - 승인·질문 답은 사람이 휴대폰에서 직접 누를 때만 보냅니다. 자동 승인 코드를 넣지 않습니다.
 - 토큰·쿠키·VAPID 개인키·터널 토큰은 로그와 화면에 내보내지 않습니다. 저장 파일은 0600입니다.
 - 서버 의존성은 `ws` 하나입니다. JWT 검증과 Web Push 암호화는 `node:crypto`로 합니다. 휴대폰 앱에 묶어 넣는 글꼴은 개발 의존성 `pretendard`(글, OFL-1.1)와 `d2coding`(코드, OFL-1.1) 둘이고 버전을 고정합니다(2026-11-15 사용자 결정: 어느 환경에서나 같은 글꼴). 글꼴 파일은 `web/build.mjs`가 `web/dist/assets/fonts/`로 복사하고, 다른 빌드물처럼 `web/dist/`와 함께 커밋합니다. 새 의존성은 라이선스·유지 상태를 확인한 뒤 이 줄을 고치면서 들입니다.
+- `server/gateway/git-read.js`와 `web/src/lib/stages.js`는 작업 단계 플러그인(`plugins/git-stage`)의 `lib/git-read.js`·`src/stages.js` 복사본입니다(키트는 플러그인 사이 공용 패키지를 두지 않음). 여기서 고치지 말고 원본을 고친 뒤 복사합니다. 키트 루트 `test/git-stage-copies.test.mjs`가 같은지 봅니다. Git은 읽기만 합니다(`fetch`·`push` 등 금지).
 - 화면 글자는 한국어 기본이고 설정에서 영어·일본어·중국어 간체·번체로 바꿀 수 있습니다(2026-11-15 사용자 요청). 화면 글자는 `web/src/locale/<언어>.js` 문구집에 두고 화면 코드에서는 `t('키')`로 읽습니다. 글자를 더하거나 고치면 다섯 문구집을 같이 고칩니다. 푸시 알림 글은 `server/push/text.js`에 둡니다. 한국어에는 `word-break: keep-all`, 입력창 16px 이상, 터치 대상 44px 이상입니다. — 지키는 방법: `test/web-i18n.test.js`, `test/push-text.test.js`
 - 플러그인 카드에는 아이콘과 한국어 설명을 꼭 넣습니다. 아이콘은 Lucide 아이콘을 36칸 SVG로 옮겨 DSH 파란색 그라데이션(`#3D94EE`→`#3F77D8`)으로 칠하고, 외부 서비스를 잇는 플러그인은 그 서비스의 공식 로고를 씁니다. 출처는 SVG 주석에 남기고, 다른 플러그인 아이콘과 보이는 크기·중심을 `measure-icon-optics.mjs`로 맞춥니다. 제목·설명은 `locale/ko.json`(`meta.title`, `meta.description`, 해요체)과 `locale/en.json`에 두고 `package.json` `exports`에 `./icon`, `./locale/*.json`을 엽니다. — 2026-11-14 사용자 — 지키는 방법: `test/plugin-card.test.*`
 

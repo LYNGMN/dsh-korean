@@ -3,6 +3,7 @@
 // the moments worth a push notification. Speaks only gateway shapes.
 import { EventEmitter } from 'node:events'
 import { SessionFeed } from './feed.js'
+import { createGitReader } from './git-read.js'
 
 const SESSION_REFRESH_MS = 300
 const MAX_IDLE_FEEDS = 30
@@ -27,10 +28,12 @@ export class Hub extends EventEmitter {
    * @param {number} [options.cacheBytes]
    * @param {number} [options.idleFollowMs]
    * @param {{info?: Function, warn?: Function}} [options.logger]
+   * @param {{read: (cwd: string|null) => Promise<object>}} [options.gitReader]
    */
-  constructor({ api, cacheBytes, idleFollowMs, logger = console }) {
+  constructor({ api, cacheBytes, idleFollowMs, logger = console, gitReader = createGitReader() }) {
     super()
     this.api = api
+    this.gitReader = gitReader
     this.cacheBytes = cacheBytes
     this.idleFollowMs = idleFollowMs
     this.logger = logger
@@ -121,6 +124,16 @@ export class Hub extends EventEmitter {
 
   subagents(sessionId) {
     return this.api.subagents(sessionId)
+  }
+
+  /**
+   * Git facts of the session's working folder plus its todo list, for the work-stage strip.
+   * Reads only; the folder comes from DSH, never from the phone.
+   */
+  async stages(sessionId) {
+    const state = await this.api.workState(sessionId)
+    const cwd = state.cwd ?? (await this.sessions()).find((r) => r.id === state.sessionId)?.cwd ?? null
+    return { facts: await this.gitReader.read(cwd), todos: state.todos }
   }
 
   history(sessionId, beforeSeq) {

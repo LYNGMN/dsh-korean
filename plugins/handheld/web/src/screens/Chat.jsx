@@ -12,6 +12,8 @@ import { buildRows, ItemView } from '../components/ItemView.jsx'
 import { Sheet } from '../components/Sheet.jsx'
 import { t } from '../lib/i18n.js'
 import { pendingIcon, pendingStripText } from '../lib/pending.js'
+import { stagesOf } from '../lib/stages.js'
+import { stageFacts, stageNext, stagePlain, stageStep, stageSummary, statusText } from '../lib/stage-view.js'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -85,6 +87,71 @@ function SubagentSheet({ items, onClose }) {
   )
 }
 
+const STAGE_POLL_RUNNING_MS = 8000
+const STAGE_POLL_IDLE_MS = 30_000
+
+/** Git work stage of the session's folder; asked again while it works and once more when it stops. */
+function useStages(sessionId, running) {
+  const [state, setState] = useState({ facts: null, todos: null, error: null })
+  useEffect(() => {
+    let alive = true
+    setState({ facts: null, todos: null, error: null })
+    const load = () => api(`${sessionPath(sessionId)}/stages`).then((r) => {
+      if (alive) setState({ facts: r.facts, todos: r.todos, error: null })
+    }).catch((error) => {
+      if (alive) setState((s) => ({ ...s, error: error.message }))
+    })
+    void load()
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') void load() }, running ? STAGE_POLL_RUNNING_MS : STAGE_POLL_IDLE_MS)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [sessionId, running])
+  return { snapshot: stagesOf(state.facts, { todos: state.todos }), facts: state.facts, error: state.error }
+}
+
+function StageDots({ snapshot }) {
+  return (
+    <span class="stage-dots" aria-hidden="true">
+      {snapshot.stages.map((stage) => <span key={stage.key} class="stage-dot" data-status={stage.status} />)}
+    </span>
+  )
+}
+
+function StageSheet({ snapshot, facts, onClose }) {
+  return (
+    <Sheet title={t('stage.title')} onClose={onClose} labelId="stage-sheet-title">
+      {facts?.repo ? <p class="muted small mono-line">{`${facts.folder} · ${facts.branch ?? t('stage.noBranch')}`}</p> : null}
+      {snapshot.doing ? <p class="stage-doing"><span class="stage-label">{t('stage.doing')}</span><span>{snapshot.doing}</span></p> : null}
+      <ol class="stage-list">
+        {snapshot.stages.map((stage, i) => {
+          const next = stageNext(stage)
+          return (
+            <li key={stage.key} class="stage-item" data-status={stage.status} aria-current={stage.status === 'current' ? 'step' : undefined}>
+              <details open={stage.status === 'current'}>
+                <summary class="stage-summary">
+                  <span class="stage-mark" data-status={stage.status} aria-hidden="true">{stage.status === 'done' ? '✓' : String(i + 1)}</span>
+                  <span class="stage-name one-line">{stageStep(stage.key)}</span>
+                  {stage.approval ? <span class="badge badge-attn">{t('stage.approval')}</span> : null}
+                  {stage.blocked ? <span class="badge badge-danger">{t('stage.blocked')}</span> : null}
+                  <span class="badge badge-quiet">{statusText(stage.status)}</span>
+                </summary>
+                <div class="stage-detail">
+                  <p class="muted small">{stagePlain(stage.key)}</p>
+                  <ul class="stage-facts">{stageFacts(stage).map((line) => <li key={line}>{line}</li>)}</ul>
+                  {next ? <p class="stage-next"><span class="stage-label">{t('stage.next')}</span><span>{next}</span></p> : null}
+                </div>
+              </details>
+            </li>
+          )
+        })}
+      </ol>
+      <p class="muted small">{t('stage.note')}</p>
+    </Sheet>
+  )
+}
+
 function StreamBubble({ stream }) {
   if (!stream) return null
   return (
@@ -113,6 +180,8 @@ export function Chat({ sessionId }) {
   const running = row?.running === true
   const subagents = useSubagents(sessionId, running, parentId === null)
   const [showSubagents, setShowSubagents] = useState(false)
+  const stages = useStages(sessionId, running)
+  const [showStages, setShowStages] = useState(false)
   const activeSubagents = subagents.filter((s) => s.state === 'running').length
   const [announcement, setAnnouncement] = useState('')
   const before = useRef({ running, waiting: pending.length })
@@ -222,6 +291,17 @@ export function Chat({ sessionId }) {
         </div>
       ) : null}
 
+      {stages.snapshot.kind !== 'no-repo' && !(stages.snapshot.kind === 'loading' && stages.error) ? (
+        <div class="sub-strip stage-strip">
+          <button type="button" class="sub-btn stage-btn" disabled={stages.snapshot.kind !== 'ok'} onClick={() => setShowStages(true)}>
+            <Icon name="stages" size={18} />
+            {stages.snapshot.kind === 'ok' ? <StageDots snapshot={stages.snapshot} /> : null}
+            <span class="one-line">{stageSummary(stages.snapshot, stages.error)}</span>
+            {stages.snapshot.kind === 'ok' ? <span class="pending-go">{t('view')}</span> : null}
+          </button>
+        </div>
+      ) : null}
+
       {subagents.length > 0 ? (
         <div class="sub-strip">
           <button type="button" class="sub-btn" onClick={() => setShowSubagents(true)}>
@@ -254,6 +334,7 @@ export function Chat({ sessionId }) {
       <p class="visually-hidden" role="status">{announcement}</p>
       {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} />}
       {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
+      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} onClose={() => setShowStages(false)} /> : null}
     </div>
   )
 }

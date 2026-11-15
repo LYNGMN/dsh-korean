@@ -37,6 +37,7 @@ flowchart LR
 | `server/gateway/access-auth.js` | Access JWT 검증, 허용 이메일 | 세션 쿠키(Access가 맡음) |
 | `server/gateway/server.js` | 누가 묻는지(Access·개발 우회), Origin 확인, 보안 헤더, 정적 파일, `/h/live` 연결 받기 | DSH 규약 |
 | `server/gateway/routes.js` | `/h/api` 하나하나의 처리 | 인증 |
+| `server/gateway/git-read.js` | 세션 작업 폴더의 Git 사실을 읽기 전용 `git`·`gh`로 읽기(`plugins/git-stage` 복사본). `GET /h/api/sessions/:id/stages`가 허브의 `stages()`로 부름. 작업 폴더·할 일은 `server/dsh/api.js`의 `workState()`(DSH `session/projections`) | 단계 판단(화면의 `web/src/lib/stages.js`) |
 | `server/gateway/live.js` | 휴대폰 WebSocket 하나의 규약(hello·watch·ping) | |
 | `server/push/web-push.js` | 암호화·VAPID·발송 | 언제 보낼지 |
 | `server/push/notifier.js` | 허브 알림 → 푸시 문구·긴급도, 사라진 구독 지우기 | 암호화 |

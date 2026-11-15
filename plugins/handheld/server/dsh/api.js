@@ -1,7 +1,7 @@
 // Gateway operations expressed as DSH calls. Outside server/dsh/ nobody sees
 // DSH endpoint names, argument wrappers or event names.
 import { randomUUID } from 'node:crypto'
-import { normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession } from './normalize.js'
+import { normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
 
 const HISTORY_PAGE_MESSAGES = 20
 
@@ -108,6 +108,17 @@ export class DshApi {
       this.#listRows(),
     ])
     return subagentsOf(sessionId, projections, rows)
+  }
+
+  /**
+   * Working folder and todo list of a session, for the work-stage strip. A subagent
+   * conversation reads its parent's folder and todos.
+   * @returns {Promise<{sessionId: string, cwd: string|null, todos: Array<{content: string, status: string}>|null}>}
+   */
+  async workState(sessionId) {
+    const own = parseSubagentRef(sessionId)?.parentId ?? sessionId
+    const projections = await this.client.rpc('session/projections', { request: { sessionId: own } }).catch(() => null)
+    return { sessionId: own, ...workStateOf(projections) }
   }
 
   async listSessions() {

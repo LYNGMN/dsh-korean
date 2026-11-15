@@ -206,3 +206,16 @@ export function subagentsOf(parentId, projections, listRows) {
     return { id: subagentRef(parentId, entry.id, entry.mode), title, mode: SUBAGENT_MODES.has(entry.mode) ? entry.mode : 'unknown', state: subagentState(row), createdAt: entry.createdAt ?? 0 }
   }).sort((a, b) => a.createdAt - b.createdAt)
 }
+
+const TODO_STATUS = new Set(['pending', 'in_progress', 'completed'])
+
+/** `session/projections` reply -> working folder and todo list (each may be null). */
+export function workStateOf(projections) {
+  const values = projections?.values ?? projections?.projections?.values ?? {}
+  const cwd = typeof values.workingDirectory === 'string' && values.workingDirectory !== '' ? values.workingDirectory : null
+  const raw = Array.isArray(values.todos) ? values.todos : Array.isArray(values.todos?.todos) ? values.todos.todos : null
+  const todos = raw === null ? null : raw
+    .filter((t) => t && typeof t.content === 'string' && TODO_STATUS.has(t.status))
+    .map((t) => ({ content: t.content.slice(0, 300), status: t.status }))
+  return { cwd, todos }
+}
