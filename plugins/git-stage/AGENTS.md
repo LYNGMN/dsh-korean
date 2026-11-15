@@ -9,7 +9,7 @@ DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭에 **작업 단계** �
 - `/Applications/DeepSeek Harness.app` 안의 파일은 읽기만 합니다. DSH 코드·CSS를 복사하지 않습니다.
 - Git은 **읽기만** 합니다. `fetch`·`pull`·`push`·`commit`·`merge`·`tag` 만들기처럼 상태를 바꾸거나 네트워크를 타는 `git` 명령을 넣지 않습니다. `gh`는 `pr view`만 부릅니다. 화면에 푸시·머지·태그 단추를 넣지 않습니다.
 - 명령은 셸 없이 `execFile`의 argv로 돌리고, 환경에 `GIT_OPTIONAL_LOCKS=0`·`GIT_TERMINAL_PROMPT=0`·`GH_PROMPT_DISABLED=1`을 둡니다. 5초 제한입니다.
-- 작업 폴더는 서버가 세션 id로 `sessionQuery`에서 찾습니다. 화면이 보낸 경로(`?cwd=`)는 믿지 않습니다.
+- 작업 폴더는 서버가 세션 id로 `sessionQuery`에서 찾습니다. 화면이 보낸 경로(`?cwd=`)는 믿지 않습니다. 작업 폴더가 저장소 묶음이면 화면은 저장소 **이름**(`?repo=`)만 보내고, 서버는 `findRepos`가 찾은 목록에 그 이름이 있을 때만 씁니다.
 - `gh` 출력 원문·토큰은 로그와 화면에 내보내지 않습니다. 화면에는 로그인 만료·없음·시간 초과 같은 분류만 보입니다. PR 주소는 `https:`일 때만 씁니다.
 - 단계 규칙은 `src/stages.js`(순수 함수) 하나가 정합니다. 휴대폰 앱(`plugins/handheld/web/src/lib/stages.js`)과 Git 읽기(`plugins/handheld/server/gateway/git-read.js`)는 이 플러그인 파일의 **복사본**입니다(키트는 플러그인 사이 공용 패키지를 두지 않음). 고치면 두 사본을 같이 고치고, 키트 루트 `test/git-stage-copies.test.mjs`가 같은지 봅니다.
 - `@deepseek-ai/dsh-client-ui-primitives` 같은 Harness Client 패키지를 `require`하지 않습니다. 공용 모듈로 받는 것은 `react`·`react-dom`뿐입니다.
@@ -52,3 +52,5 @@ DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭에 **작업 단계** �
 이 프로젝트에만 맞는 교훈입니다. 모든 프로젝트에 맞는 교훈은 `~/Dev/docs/agent-rules-architecture.md`의 공통 지식베이스에 둡니다.
 
 - 브랜치를 원본에 머지하고 지우지 않았으면 원본보다 앞선 커밋이 0개가 됩니다. 이것만으로 "합치기 끝남"이라 하면 새로 만든 빈 브랜치도 끝남이 되므로, 그 브랜치에 커밋했던 기록(reflog)이 있을 때만 머지로 봅니다. — 처음 2026-11-15 — 지키는 방법: `src/stages.js`, `test/stages.test.mjs`
+- 원본 브랜치(`main`)에 있으면 원본이 GitHub와 같다는 이유로 "공유 끝남", 지난 할 일 때문에 "검증 끝남"이 칠해졌습니다. 원본 브랜치에서는 작업실 뒤 단계를 모두 시작 전으로 봅니다. — 처음 2026-11-15 — 지키는 방법: `src/stages.js`, `test/stages.test.mjs`
+- DSH에서 `~/Dev`처럼 여러 저장소를 담은 폴더를 작업 공간으로 쓰면 세션 작업 폴더가 저장소가 아닙니다. 그 안의 저장소를 `.git`의 마지막 변경 시각으로 찾아 따라갑니다(명령 없이 파일만, `~/Dev` 246곳에 0.14초). — 처음 2026-11-15 — 지키는 방법: `lib/git-read.js`의 `findRepos`, `test/git-read.test.mjs`

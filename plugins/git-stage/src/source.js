@@ -26,6 +26,8 @@ export function createStageSource({ load, now = Date.now, every, visible = () =>
   return {
     getSnapshot: () => snapshot,
     refresh,
+    // 읽는 조건(고른 저장소)이 바뀌었을 때: 이미 떠난 요청이 끝난 뒤 새로 한 번 더 읽는다.
+    reload: () => (inflight ? inflight.then(refresh) : refresh()),
     subscribe(listener) {
       listeners.add(listener)
       if (listeners.size === 1) {
@@ -40,6 +42,7 @@ export function createStageSource({ load, now = Date.now, every, visible = () =>
   }
 }
 
-export function routeOf(sessionId) {
-  return `api/dsh-git-stage?sessionId=${encodeURIComponent(sessionId)}`
+export function routeOf(sessionId, pick = null) {
+  const repo = pick ? `&repo=${encodeURIComponent(pick)}` : ''
+  return `api/dsh-git-stage?sessionId=${encodeURIComponent(sessionId)}${repo}`
 }

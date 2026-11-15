@@ -21,6 +21,9 @@ test('원본 브랜치에 있으면 작업실 단계가 지금이다', () => {
   assert.deepEqual(statuses(snap), ['current', 'todo', 'todo', 'todo', 'todo', 'todo'])
   assert.equal(snap.current, 0)
   assert.match(factsOf(snap.stages[0])[0], /원본 브랜치\(main\)/)
+  // 원본이 GitHub와 같고 지난 검증 할 일이 끝났어도 뒤 단계를 끝남으로 칠하지 않는다.
+  const synced = at({ branch: 'main', isBase: true, upstream: 'origin/main' }, { todos: [{ content: 'npm test로 검증하기', status: 'completed' }] })
+  assert.deepEqual(statuses(synced), ['current', 'todo', 'todo', 'todo', 'todo', 'todo'])
 })
 
 test('새 브랜치에 아직 저장이 없으면 저장 단계가 지금이다', () => {

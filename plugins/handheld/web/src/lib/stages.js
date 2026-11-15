@@ -57,6 +57,8 @@ export function stagesOf(facts, extra = {}) {
   }
   // 저장 단계는 미커밋이 남아 있으면 앞 단계가 다 끝나도 다시 "지금"이 된다.
   if (facts.changes > 0 && !facts.isBase) reached.commit = false
+  // 원본 브랜치에 있으면 이번 일의 작업실이 아직 없다. 원본이 GitHub와 같거나 지난 할 일이 끝났어도 뒤 단계는 시작 전이다.
+  if (facts.isBase) for (const key of STAGE_KEYS) reached[key] = false
 
   const lastReached = STAGE_KEYS.reduce((last, key, i) => (reached[key] ? i : last), -1)
   let current = null

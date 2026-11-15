@@ -1,5 +1,5 @@
 // 서버(Host) 쪽: 인증 울타리 안 주소 하나(/api/dsh-git-stage)를 연다. 화면은 세션 id만 보내고,
-// 작업 폴더는 여기서 세션 기록으로 찾는다(화면이 보낸 경로로 명령을 돌리지 않는다).
+// 작업 폴더는 여기서 세션 기록으로 찾는다(화면이 보낸 경로로 명령을 돌리지 않는다). 작업 폴더가 저장소 묶음이면 고른 저장소 이름(?repo=)만 받는다.
 import { createGitReader } from './git-read.js'
 
 export const name = 'dsh-git-stage'
@@ -22,7 +22,10 @@ const json = (body, status = 200) => Response.json(body, { status, headers: { 'c
 
 export function createHandler({ sessionQuery, reader, logger }) {
   return async request => {
-    const sessionId = new URL(request.url, 'http://host').searchParams.get('sessionId') ?? ''
+    const params = new URL(request.url, 'http://host').searchParams
+    const sessionId = params.get('sessionId') ?? ''
+    // 고른 저장소는 이름만 받는다. 리더가 찾은 목록에 있을 때만 쓰므로 경로로 쓰이지 않는다.
+    const pick = params.get('repo')?.slice(0, 300) || null
     if (!SESSION_ID.test(sessionId)) return json({ error: 'bad-session' }, 400)
     let cwd
     try {
@@ -31,7 +34,7 @@ export function createHandler({ sessionQuery, reader, logger }) {
       return json({ error: 'session-not-found' }, 404)
     }
     try {
-      return json({ facts: await reader.read(cwd) })
+      return json({ facts: await reader.read(cwd, { pick }) })
     } catch (error) {
       logger?.warn(`[dsh-git-stage] git read failed (${error?.code ?? error?.name ?? 'error'})`)
       return json({ error: 'read-failed' }, 500)

@@ -269,6 +269,8 @@ export default {
   'stage.doing': 'Doing now',
   'stage.next': 'Next',
   'stage.note': 'Git state is only read here. Push, merge and deploy happen only after a person approves.',
+  'stage.repoIn': 'Repository in {folder}',
+  'stage.repoAuto': 'Follow latest activity',
   'stage.approval': 'Needs approval',
   'stage.blocked': 'Sign-in needed',
   'stage.status.done': 'Done',

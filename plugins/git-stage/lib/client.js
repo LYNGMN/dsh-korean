@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useState, useEffect, useRef, useId } = React
     const VERSION = "1.0.0"
-    const STYLE_TEXT = ".dgs-root {\n  box-sizing: border-box;\n  width: 100%;\n  max-width: calc(var(--dsh-chat-content-width, 760px) + 32px);\n  margin: 0 auto;\n  padding: 20px 16px 32px;\n  color: var(--dsw-alias-label-primary, #1f2329);\n  word-break: keep-all;\n  overflow-wrap: break-word;\n  container-type: inline-size;\n}\n.dgs-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }\n.dgs-head { display: flex; align-items: center; gap: 10px; min-width: 0; }\n.dgs-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }\n.dgs-meta { min-width: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }\n.dgs-where { margin: -6px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; }\n.dgs-empty, .dgs-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dgs-note { font-size: 13px; line-height: 20px; }\n.dgs-card, .dgs-detail {\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-card-fill, transparent);\n}\n.dgs-message { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; font-size: 14px; line-height: 22px; }\n.dgs-message p { margin: 0; }\n\n/* 지금 하는 일 · 다음 */\n.dgs-doing, .dgs-next { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 22px; text-wrap: pretty; }\n.dgs-next-label {\n  flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); white-space: nowrap; font-weight: 500;\n  color: var(--dsw-alias-label-primary, #1f2329); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.1));\n}\n.dgs-next-text { min-width: 0; text-wrap: balance; }\n\n/* 단계 줄: 넓으면 6칸, 좁으면 3칸 두 줄. 칸 폭은 모두 같다. */\n.dgs-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }\n@container (max-width: 520px) { .dgs-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }\n.dgs-step { min-width: 0; }\n.dgs-step-btn {\n  box-sizing: border-box; width: 100%; min-height: 64px; margin: 0; padding: 8px 6px;\n  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 10px; background: transparent;\n  font: inherit; color: inherit; cursor: pointer; text-align: center;\n}\n@media (hover: hover) { .dgs-step-btn:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dgs-step-btn[aria-pressed='true'] { border-color: var(--dsw-alias-state-business-primary, #3d7be0); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.08)); }\n.dgs-step-btn:focus-visible, .dgs-link:focus-visible, .dgs-chip:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px;\n}\n.dgs-step-text { display: flex; align-items: baseline; gap: 4px; max-width: 100%; }\n.dgs-step-num { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); font-variant-numeric: tabular-nums; }\n.dgs-step-title { font-size: 14px; line-height: 20px; font-weight: 500; white-space: nowrap; }\n.dgs-step-status { font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }\n.dgs-step[data-status='current'] .dgs-step-status { color: var(--dsw-alias-label-primary, #1f2329); font-weight: 600; }\n.dgs-step[data-status='todo'] .dgs-step-title { color: var(--dsw-alias-label-secondary, #646a73); }\n\n/* 상태 아이콘 */\n.dgs-icon { flex: none; width: 16px; height: 16px; overflow: visible; }\n.dgs-icon-ring { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-icon-ring-now { stroke: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-dot { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-fill { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-check { stroke: #fff; }\n\n/* 설명 칸 */\n.dgs-detail { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; min-width: 0; }\n.dgs-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }\n.dgs-detail-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; }\n.dgs-plain { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dgs-facts { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; line-height: 22px; }\n.dgs-facts li { text-wrap: balance; }\n.dgs-facts li::marker { color: var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-status, .dgs-badge {\n  flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); white-space: nowrap;\n  color: var(--dsw-alias-label-secondary, #646a73); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n}\n.dgs-status[data-status='current'] { color: var(--dsw-alias-state-business-primary, #3d7be0); border-color: currentColor; }\n.dgs-badge[data-tone='approval'] { color: var(--dsw-alias-state-warning-primary, #b26a00); border-color: currentColor; }\n.dgs-badge[data-tone='blocked'] { color: var(--dsw-alias-state-danger-primary, #d83931); border-color: currentColor; }\n.dgs-link { min-height: 44px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 14px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }\n\n/* 채팅 머리 칩 */\n.dgs-chip {\n  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; margin: 0;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 14px; background: transparent;\n  font: inherit; font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); cursor: pointer; white-space: nowrap;\n}\n@media (hover: hover) { .dgs-chip:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dgs-chip[aria-expanded='true'] { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); }\n.dgs-chip[data-approval] .dgs-chip-text { color: var(--dsw-alias-state-warning-primary, #b26a00); }\n.dgs-dots { display: inline-flex; align-items: center; gap: 3px; }\n.dgs-dot { width: 6px; height: 6px; border-radius: 50%; box-sizing: border-box; border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-dot[data-status='done'] { border-color: var(--dsw-alias-state-business-primary, #3d7be0); background: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-dot[data-status='current'] { width: 8px; height: 8px; border: 2px solid var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-dot[data-status='unknown'] { border-style: dashed; }\n\n/* 칩을 누르면 뜨는 창 */\n.dgs-panel {\n  position: fixed; z-index: 1000; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;\n  padding: 12px; overflow-y: auto; overscroll-behavior: contain;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-specific-menu, var(--dsw-alias-card-fill, #fff)); box-shadow: var(--dsw-elevation-panel, 0 8px 24px rgba(0, 0, 0, 0.16));\n  backdrop-filter: var(--dsw-menu-backdrop-filter, none);\n  color: var(--dsw-alias-label-primary, #1f2329); word-break: keep-all; overflow-wrap: break-word;\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dgs-panel:focus { outline: none; }\n.dgs-panel:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); }\n.dgs-compact { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }\n.dgs-compact-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 30px; font-size: 14px; line-height: 20px; }\n.dgs-compact-title { flex: 1 0 auto; white-space: nowrap; }\n.dgs-compact-row[data-status='current'] .dgs-compact-title { font-weight: 600; }\n.dgs-compact-row[data-status='todo'] .dgs-compact-title { color: var(--dsw-alias-label-secondary, #646a73); }"
+    const STYLE_TEXT = ".dgs-root {\n  box-sizing: border-box;\n  width: 100%;\n  max-width: calc(var(--dsh-chat-content-width, 760px) + 32px);\n  margin: 0 auto;\n  padding: 20px 16px 32px;\n  color: var(--dsw-alias-label-primary, #1f2329);\n  word-break: keep-all;\n  overflow-wrap: break-word;\n  container-type: inline-size;\n}\n.dgs-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }\n.dgs-head { display: flex; align-items: center; gap: 10px; min-width: 0; }\n.dgs-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }\n.dgs-meta { min-width: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }\n.dgs-where { margin: -6px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; text-wrap: balance; }\n.dgs-repo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }\n.dgs-repo-label { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }\n.dgs-repo-select {\n  box-sizing: border-box; flex: 1 1 220px; min-width: 0; max-width: 100%; min-height: 36px; margin: 0; padding: 6px 10px;\n  border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); border-radius: 8px;\n  background: transparent; color: inherit; font: inherit; font-size: 14px; line-height: 20px; cursor: pointer;\n}\n.dgs-repo-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; }\n.dgs-panel .dgs-where { margin: 0; }\n.dgs-empty, .dgs-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dgs-note { font-size: 13px; line-height: 20px; }\n.dgs-card, .dgs-detail {\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-card-fill, transparent);\n}\n.dgs-message { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; font-size: 14px; line-height: 22px; }\n.dgs-message p { margin: 0; }\n\n/* 지금 하는 일 · 다음 */\n.dgs-doing, .dgs-next { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 22px; text-wrap: pretty; }\n.dgs-next-label {\n  flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); white-space: nowrap; font-weight: 500;\n  color: var(--dsw-alias-label-primary, #1f2329); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.1));\n}\n.dgs-next-text { min-width: 0; text-wrap: balance; }\n\n/* 단계 줄: 넓으면 6칸, 좁으면 3칸 두 줄. 칸 폭은 모두 같다. */\n.dgs-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }\n@container (max-width: 520px) { .dgs-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }\n.dgs-step { min-width: 0; }\n.dgs-step-btn {\n  box-sizing: border-box; width: 100%; min-height: 64px; margin: 0; padding: 8px 6px;\n  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 10px; background: transparent;\n  font: inherit; color: inherit; cursor: pointer; text-align: center;\n}\n@media (hover: hover) { .dgs-step-btn:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dgs-step-btn[aria-pressed='true'] { border-color: var(--dsw-alias-state-business-primary, #3d7be0); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.08)); }\n.dgs-step-btn:focus-visible, .dgs-link:focus-visible, .dgs-chip:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px;\n}\n.dgs-step-text { display: flex; align-items: baseline; gap: 4px; max-width: 100%; }\n.dgs-step-num { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); font-variant-numeric: tabular-nums; }\n.dgs-step-title { font-size: 14px; line-height: 20px; font-weight: 500; white-space: nowrap; }\n.dgs-step-status { font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }\n.dgs-step[data-status='current'] .dgs-step-status { color: var(--dsw-alias-label-primary, #1f2329); font-weight: 600; }\n.dgs-step[data-status='todo'] .dgs-step-title { color: var(--dsw-alias-label-secondary, #646a73); }\n\n/* 상태 아이콘 */\n.dgs-icon { flex: none; width: 16px; height: 16px; overflow: visible; }\n.dgs-icon-ring { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-icon-ring-now { stroke: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-dot { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-fill { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-icon-check { stroke: #fff; }\n\n/* 설명 칸 */\n.dgs-detail { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; min-width: 0; }\n.dgs-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }\n.dgs-detail-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; }\n.dgs-plain { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dgs-facts { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; line-height: 22px; }\n.dgs-facts li { text-wrap: balance; }\n.dgs-facts li::marker { color: var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-status, .dgs-badge {\n  flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); white-space: nowrap;\n  color: var(--dsw-alias-label-secondary, #646a73); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n}\n.dgs-status[data-status='current'] { color: var(--dsw-alias-state-business-primary, #3d7be0); border-color: currentColor; }\n.dgs-badge[data-tone='approval'] { color: var(--dsw-alias-state-warning-primary, #b26a00); border-color: currentColor; }\n.dgs-badge[data-tone='blocked'] { color: var(--dsw-alias-state-danger-primary, #d83931); border-color: currentColor; }\n.dgs-link { min-height: 44px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 14px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }\n\n/* 채팅 머리 칩 */\n.dgs-chip {\n  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; margin: 0;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 14px; background: transparent;\n  font: inherit; font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); cursor: pointer; white-space: nowrap;\n}\n@media (hover: hover) { .dgs-chip:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dgs-chip[aria-expanded='true'] { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); }\n.dgs-chip[data-approval] .dgs-chip-text { color: var(--dsw-alias-state-warning-primary, #b26a00); }\n.dgs-dots { display: inline-flex; align-items: center; gap: 3px; }\n.dgs-dot { width: 6px; height: 6px; border-radius: 50%; box-sizing: border-box; border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); }\n.dgs-dot[data-status='done'] { border-color: var(--dsw-alias-state-business-primary, #3d7be0); background: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-dot[data-status='current'] { width: 8px; height: 8px; border: 2px solid var(--dsw-alias-state-business-primary, #3d7be0); }\n.dgs-dot[data-status='unknown'] { border-style: dashed; }\n\n/* 칩을 누르면 뜨는 창 */\n.dgs-panel {\n  position: fixed; z-index: 1000; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;\n  padding: 12px; overflow-y: auto; overscroll-behavior: contain;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-specific-menu, var(--dsw-alias-card-fill, #fff)); box-shadow: var(--dsw-elevation-panel, 0 8px 24px rgba(0, 0, 0, 0.16));\n  backdrop-filter: var(--dsw-menu-backdrop-filter, none);\n  color: var(--dsw-alias-label-primary, #1f2329); word-break: keep-all; overflow-wrap: break-word;\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dgs-panel:focus { outline: none; }\n.dgs-panel:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); }\n.dgs-compact { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }\n.dgs-compact-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 30px; font-size: 14px; line-height: 20px; }\n.dgs-compact-title { flex: 1 0 auto; white-space: nowrap; }\n.dgs-compact-row[data-status='current'] .dgs-compact-title { font-weight: 600; }\n.dgs-compact-row[data-status='todo'] .dgs-compact-title { color: var(--dsw-alias-label-secondary, #646a73); }"
     const VIEW_ID = 'dsh-git-stage'
 
     const STAGE_KEYS = ['branch', 'commit', 'verify', 'share', 'merge', 'deploy']
@@ -65,6 +65,8 @@ window.__ModuleLoader__.load({
       }
       // 저장 단계는 미커밋이 남아 있으면 앞 단계가 다 끝나도 다시 "지금"이 된다.
       if (facts.changes > 0 && !facts.isBase) reached.commit = false
+      // 원본 브랜치에 있으면 이번 일의 작업실이 아직 없다. 원본이 GitHub와 같거나 지난 할 일이 끝났어도 뒤 단계는 시작 전이다.
+      if (facts.isBase) for (const key of STAGE_KEYS) reached[key] = false
     
       const lastReached = STAGE_KEYS.reduce((last, key, i) => (reached[key] ? i : last), -1)
       let current = null
@@ -182,6 +184,8 @@ window.__ModuleLoader__.load({
       return {
         getSnapshot: () => snapshot,
         refresh,
+        // 읽는 조건(고른 저장소)이 바뀌었을 때: 이미 떠난 요청이 끝난 뒤 새로 한 번 더 읽는다.
+        reload: () => (inflight ? inflight.then(refresh) : refresh()),
         subscribe(listener) {
           listeners.add(listener)
           if (listeners.size === 1) {
@@ -196,11 +200,26 @@ window.__ModuleLoader__.load({
       }
     }
     
-    function routeOf(sessionId) {
-      return `api/dsh-git-stage?sessionId=${encodeURIComponent(sessionId)}`
+    function routeOf(sessionId, pick = null) {
+      const repo = pick ? `&repo=${encodeURIComponent(pick)}` : ''
+      return `api/dsh-git-stage?sessionId=${encodeURIComponent(sessionId)}${repo}`
     }
 
     // ── 세션별 Git 사실 ───────────────────────────────────────
+
+    // 작업 폴더가 저장소 묶음(예: ~/Dev)일 때 사람이 고른 저장소. 세션마다 이 기기에 기억한다.
+    const PICK_KEY = 'dsh-git-stage:repo:'
+    function readPick(sessionId) {
+      try { return window.localStorage.getItem(PICK_KEY + sessionId) || null } catch { return null }
+    }
+    function writePick(sessionId, name) {
+      try {
+        if (name) window.localStorage.setItem(PICK_KEY + sessionId, name)
+        else window.localStorage.removeItem(PICK_KEY + sessionId)
+      } catch { /* 저장이 막혀도 이번 화면에서는 고른 대로 읽는다 */ }
+    }
+    const memoryPicks = new Map()
+    const pickOf = sessionId => (memoryPicks.has(sessionId) ? memoryPicks.get(sessionId) : readPick(sessionId))
 
     const sources = new Map()
     function sourceOf(sessionId) {
@@ -208,7 +227,7 @@ window.__ModuleLoader__.load({
       if (!source) {
         source = createStageSource({
           load: async () => {
-            const response = await fetch(routeOf(sessionId), { cache: 'no-store' })
+            const response = await fetch(routeOf(sessionId, pickOf(sessionId)), { cache: 'no-store' })
             if (!response.ok) throw Object.assign(new Error('stage route'), { code: response.status })
             return (await response.json()).facts
           },
@@ -235,7 +254,31 @@ window.__ModuleLoader__.load({
         wasRunning.current = running
       }, [running])
       const todos = useProjection('todos')
-      return { snapshot: stagesOf(state.facts, { todos }), source: state, refresh: source.refresh, running }
+      const choose = name => {
+        memoryPicks.set(sessionId, name || null)
+        writePick(sessionId, name || null)
+        void source.reload()
+      }
+      return { snapshot: stagesOf(state.facts, { todos }), source: state, refresh: source.refresh, running, choose }
+    }
+
+    // 작업 폴더 이름 · 브랜치. 묶음 폴더면 저장소 이름이 상대 경로로 온다.
+    function Where({ facts }) {
+      if (!facts?.repo) return null
+      return h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`)
+    }
+
+    // 묶음 폴더일 때만: 최근 활동을 따라갈지, 저장소 하나를 고정할지 고른다. 읽는 저장소 이름은 바로 아래 줄(Where)에 보인다.
+    function RepoPicker({ within, choose }) {
+      const id = useId()
+      return h('div', { className: 'dgs-repo' },
+        h('label', { className: 'dgs-repo-label', htmlFor: id }, `${within.folder} 안 저장소`),
+        h('select', {
+          id, className: 'dgs-repo-select', value: within.auto ? '' : within.picked,
+          onChange: event => choose(event.target.value),
+        },
+        h('option', { value: '' }, '최근 활동 따라가기'),
+        within.repos.map(name => h('option', { key: name, value: name }, name))))
     }
 
     // ── 작은 부품 ─────────────────────────────────────────────
@@ -317,7 +360,7 @@ window.__ModuleLoader__.load({
     }
 
     function StageView(props) {
-      const { snapshot, source, refresh } = useStages(props)
+      const { snapshot, source, refresh, choose } = useStages(props)
       const detailId = useId()
       const [picked, setPicked] = useState(null)
       const fallback = snapshot.current ?? Math.max(0, snapshot.stages.length - 1)
@@ -328,7 +371,8 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dgs-head' },
             h('h2', { className: 'dgs-title', id: 'dgs-title' }, '작업 단계'),
             snapshot.kind === 'ok' ? h('span', { className: 'dgs-meta', role: 'status' }, summaryOf(snapshot)) : null),
-          facts?.repo ? h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`) : null,
+          facts?.within ? h(RepoPicker, { within: facts.within, choose }) : null,
+          h(Where, { facts }),
           snapshot.doing ? h('p', { className: 'dgs-doing' }, h('span', { className: 'dgs-next-label' }, '지금 하는 일'), h('span', { className: 'dgs-next-text' }, snapshot.doing)) : null,
           snapshot.kind !== 'ok'
             ? h(Message, { snapshot, source, onRetry: () => void refresh() })
@@ -355,7 +399,7 @@ window.__ModuleLoader__.load({
     }
 
     function StageChip(props) {
-      const { snapshot } = useStages(props)
+      const { snapshot, source } = useStages(props)
       const [open, setOpen] = useState(false)
       const [place, setPlace] = useState(null)
       const button = useRef(null)
@@ -410,6 +454,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dgs-head' },
             h('h2', { className: 'dgs-title', id: `${panelId}-title` }, '작업 단계'),
             h('span', { className: 'dgs-meta' }, `${snapshot.done}/${snapshot.total} 끝남`)),
+          h(Where, { facts: source.facts }),
           snapshot.doing ? h('p', { className: 'dgs-doing' }, h('span', { className: 'dgs-next-label' }, '지금 하는 일'), h('span', { className: 'dgs-next-text' }, snapshot.doing)) : null,
           h('ol', { className: 'dgs-compact' }, snapshot.stages.map((stage, i) =>
             h('li', { key: stage.key, className: 'dgs-compact-row', 'data-status': stage.status, 'aria-current': stage.status === 'current' ? 'step' : undefined },

@@ -15,13 +15,27 @@ window.__ModuleLoader__.load({
 
     // ── 세션별 Git 사실 ───────────────────────────────────────
 
+    // 작업 폴더가 저장소 묶음(예: ~/Dev)일 때 사람이 고른 저장소. 세션마다 이 기기에 기억한다.
+    const PICK_KEY = 'dsh-git-stage:repo:'
+    function readPick(sessionId) {
+      try { return window.localStorage.getItem(PICK_KEY + sessionId) || null } catch { return null }
+    }
+    function writePick(sessionId, name) {
+      try {
+        if (name) window.localStorage.setItem(PICK_KEY + sessionId, name)
+        else window.localStorage.removeItem(PICK_KEY + sessionId)
+      } catch { /* 저장이 막혀도 이번 화면에서는 고른 대로 읽는다 */ }
+    }
+    const memoryPicks = new Map()
+    const pickOf = sessionId => (memoryPicks.has(sessionId) ? memoryPicks.get(sessionId) : readPick(sessionId))
+
     const sources = new Map()
     function sourceOf(sessionId) {
       let source = sources.get(sessionId)
       if (!source) {
         source = createStageSource({
           load: async () => {
-            const response = await fetch(routeOf(sessionId), { cache: 'no-store' })
+            const response = await fetch(routeOf(sessionId, pickOf(sessionId)), { cache: 'no-store' })
             if (!response.ok) throw Object.assign(new Error('stage route'), { code: response.status })
             return (await response.json()).facts
           },
@@ -48,7 +62,31 @@ window.__ModuleLoader__.load({
         wasRunning.current = running
       }, [running])
       const todos = useProjection('todos')
-      return { snapshot: stagesOf(state.facts, { todos }), source: state, refresh: source.refresh, running }
+      const choose = name => {
+        memoryPicks.set(sessionId, name || null)
+        writePick(sessionId, name || null)
+        void source.reload()
+      }
+      return { snapshot: stagesOf(state.facts, { todos }), source: state, refresh: source.refresh, running, choose }
+    }
+
+    // 작업 폴더 이름 · 브랜치. 묶음 폴더면 저장소 이름이 상대 경로로 온다.
+    function Where({ facts }) {
+      if (!facts?.repo) return null
+      return h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`)
+    }
+
+    // 묶음 폴더일 때만: 최근 활동을 따라갈지, 저장소 하나를 고정할지 고른다. 읽는 저장소 이름은 바로 아래 줄(Where)에 보인다.
+    function RepoPicker({ within, choose }) {
+      const id = useId()
+      return h('div', { className: 'dgs-repo' },
+        h('label', { className: 'dgs-repo-label', htmlFor: id }, `${within.folder} 안 저장소`),
+        h('select', {
+          id, className: 'dgs-repo-select', value: within.auto ? '' : within.picked,
+          onChange: event => choose(event.target.value),
+        },
+        h('option', { value: '' }, '최근 활동 따라가기'),
+        within.repos.map(name => h('option', { key: name, value: name }, name))))
     }
 
     // ── 작은 부품 ─────────────────────────────────────────────
@@ -130,7 +168,7 @@ window.__ModuleLoader__.load({
     }
 
     function StageView(props) {
-      const { snapshot, source, refresh } = useStages(props)
+      const { snapshot, source, refresh, choose } = useStages(props)
       const detailId = useId()
       const [picked, setPicked] = useState(null)
       const fallback = snapshot.current ?? Math.max(0, snapshot.stages.length - 1)
@@ -141,7 +179,8 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dgs-head' },
             h('h2', { className: 'dgs-title', id: 'dgs-title' }, '작업 단계'),
             snapshot.kind === 'ok' ? h('span', { className: 'dgs-meta', role: 'status' }, summaryOf(snapshot)) : null),
-          facts?.repo ? h('p', { className: 'dgs-where' }, `${facts.folder} · ${facts.branch ?? '브랜치 없음'}`) : null,
+          facts?.within ? h(RepoPicker, { within: facts.within, choose }) : null,
+          h(Where, { facts }),
           snapshot.doing ? h('p', { className: 'dgs-doing' }, h('span', { className: 'dgs-next-label' }, '지금 하는 일'), h('span', { className: 'dgs-next-text' }, snapshot.doing)) : null,
           snapshot.kind !== 'ok'
             ? h(Message, { snapshot, source, onRetry: () => void refresh() })
@@ -168,7 +207,7 @@ window.__ModuleLoader__.load({
     }
 
     function StageChip(props) {
-      const { snapshot } = useStages(props)
+      const { snapshot, source } = useStages(props)
       const [open, setOpen] = useState(false)
       const [place, setPlace] = useState(null)
       const button = useRef(null)
@@ -223,6 +262,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dgs-head' },
             h('h2', { className: 'dgs-title', id: `${panelId}-title` }, '작업 단계'),
             h('span', { className: 'dgs-meta' }, `${snapshot.done}/${snapshot.total} 끝남`)),
+          h(Where, { facts: source.facts }),
           snapshot.doing ? h('p', { className: 'dgs-doing' }, h('span', { className: 'dgs-next-label' }, '지금 하는 일'), h('span', { className: 'dgs-next-text' }, snapshot.doing)) : null,
           h('ol', { className: 'dgs-compact' }, snapshot.stages.map((stage, i) =>
             h('li', { key: stage.key, className: 'dgs-compact-row', 'data-status': stage.status, 'aria-current': stage.status === 'current' ? 'step' : undefined },

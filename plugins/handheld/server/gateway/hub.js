@@ -130,10 +130,11 @@ export class Hub extends EventEmitter {
    * Git facts of the session's working folder plus its todo list, for the work-stage strip.
    * Reads only; the folder comes from DSH, never from the phone.
    */
-  async stages(sessionId) {
+  /** @param {string | null} [pick] 작업 폴더가 저장소 묶음일 때 고른 저장소 이름(리더가 찾은 목록에 있을 때만 씀). */
+  async stages(sessionId, pick = null) {
     const state = await this.api.workState(sessionId)
     const cwd = state.cwd ?? (await this.sessions()).find((r) => r.id === state.sessionId)?.cwd ?? null
-    return { facts: await this.gitReader.read(cwd), todos: state.todos }
+    return { facts: await this.gitReader.read(cwd, { pick }), todos: state.todos }
   }
 
   history(sessionId, beforeSeq) {

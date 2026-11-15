@@ -269,6 +269,8 @@ export default {
   'stage.doing': '正在做',
   'stage.next': '下一步',
   'stage.note': '这里只读取 Git 状态。推送、合并和部署只在有人批准后进行。',
+  'stage.repoIn': '{folder} 中的仓库',
+  'stage.repoAuto': '跟随最近活动',
   'stage.approval': '需要批准',
   'stage.blocked': '需要登录',
   'stage.status.done': '已完成',

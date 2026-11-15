@@ -269,6 +269,8 @@ export default {
   'stage.doing': '지금 하는 일',
   'stage.next': '다음',
   'stage.note': 'Git 상태를 읽기만 합니다. 푸시·합치기·배포는 사람이 승인한 뒤에만 합니다.',
+  'stage.repoIn': '{folder} 안 저장소',
+  'stage.repoAuto': '최근 활동 따라가기',
   'stage.approval': '승인 필요',
   'stage.blocked': '로그인 필요',
   'stage.status.done': '끝남',

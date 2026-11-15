@@ -13,7 +13,16 @@
 .dgs-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dgs-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }
 .dgs-meta { min-width: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-.dgs-where { margin: -6px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; }
+.dgs-where { margin: -6px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; text-wrap: balance; }
+.dgs-repo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.dgs-repo-label { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
+.dgs-repo-select {
+  box-sizing: border-box; flex: 1 1 220px; min-width: 0; max-width: 100%; min-height: 36px; margin: 0; padding: 6px 10px;
+  border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); border-radius: 8px;
+  background: transparent; color: inherit; font: inherit; font-size: 14px; line-height: 20px; cursor: pointer;
+}
+.dgs-repo-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; }
+.dgs-panel .dgs-where { margin: 0; }
 .dgs-empty, .dgs-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 .dgs-note { font-size: 13px; line-height: 20px; }
 .dgs-card, .dgs-detail {

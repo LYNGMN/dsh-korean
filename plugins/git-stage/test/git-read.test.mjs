@@ -2,10 +2,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createGitReader, parseStatus, prErrorOf, runCommand } from '../lib/git-read.js'
+import { createGitReader, findRepos, parseStatus, prErrorOf, runCommand } from '../lib/git-read.js'
 import { createHandler, workingDirectoryOf } from '../lib/index.js'
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
@@ -137,10 +137,70 @@ test('주소 처리기는 세션 id를 검사하고 작업 폴더를 세션 기�
   assert.equal(await workingDirectoryOf(sessionQuery, 's1'), '/moved')
   assert.equal(disposed, 1)
   const seen = []
-  const handler = createHandler({ sessionQuery, reader: { read: async cwd => { seen.push(cwd); return { repo: false } } } })
+  const handler = createHandler({ sessionQuery, reader: { read: async (cwd, options) => { seen.push([cwd, options.pick]); return { repo: false } } } })
   assert.equal((await handler(new Request('http://h/api/dsh-git-stage?sessionId=../etc'))).status, 400)
   assert.equal((await handler(new Request('http://h/api/dsh-git-stage?sessionId=zz'))).status, 404)
   const ok = await handler(new Request('http://h/api/dsh-git-stage?sessionId=s1&cwd=/evil'))
   assert.deepEqual(await ok.json(), { facts: { repo: false } })
-  assert.deepEqual(seen, ['/moved'])
+  await handler(new Request('http://h/api/dsh-git-stage?sessionId=s1&repo=app'))
+  assert.deepEqual(seen, [['/moved', null], ['/moved', 'app']])
+})
+
+// 저장소 묶음 폴더: 바로 아래 저장소 둘(old·app), 저장소가 아닌 docs, worktrees/app/feat 작업본.
+function workspace(t) {
+  const root = mkdtempSync(join(tmpdir(), 'git-stage-ws-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  for (const name of ['old', 'app']) {
+    const dir = join(root, name)
+    mkdirSync(dir)
+    sh(dir, 'init', '-q', '-b', 'main')
+    writeFileSync(join(dir, 'a.txt'), 'a\n')
+    sh(dir, 'add', '.')
+    sh(dir, 'commit', '-q', '-m', 'first')
+  }
+  mkdirSync(join(root, 'docs', 'deep'), { recursive: true })
+  mkdirSync(join(root, 'worktrees', 'app'), { recursive: true })
+  sh(join(root, 'app'), 'worktree', 'add', '-q', '-b', 'claude/feat/x', join(root, 'worktrees', 'app', 'feat'))
+  const at = (name, seconds) => {
+    const gitDir = name === 'feat' ? join(root, 'app', '.git', 'worktrees', 'feat') : join(root, name, '.git')
+    for (const file of ['logs/HEAD', 'index', 'HEAD']) {
+      try { utimesSync(join(gitDir, file), seconds, seconds) } catch { /* 없는 파일 */ }
+    }
+  }
+  at('old', 1_000)
+  at('app', 2_000)
+  at('feat', 3_000)
+  return root
+}
+
+test('findRepos는 묶음 폴더 안 저장소와 작업본을 최근 활동 순으로 찾는다', async t => {
+  const root = workspace(t)
+  assert.deepEqual((await findRepos(root)).map(item => item.name), ['worktrees/app/feat', 'app', 'old'])
+})
+
+test('묶음 폴더 세션은 가장 최근 저장소를 읽고, 고른 저장소가 목록에 있을 때만 그것을 읽는다', async t => {
+  const root = workspace(t)
+  const reader = readerWith(NO_PR)
+  const auto = await reader.read(root)
+  assert.equal(auto.repo, true)
+  assert.equal(auto.folder, 'worktrees/app/feat')
+  assert.equal(auto.branch, 'claude/feat/x')
+  assert.deepEqual(auto.within, { folder: root.split('/').pop(), repos: ['worktrees/app/feat', 'app', 'old'], picked: 'worktrees/app/feat', auto: true })
+  const picked = await reader.read(root, { pick: 'old' })
+  assert.equal(picked.folder, 'old')
+  assert.equal(picked.branch, 'main')
+  assert.equal(picked.within.auto, false)
+  // 목록에 없는 이름(경로 넘기기 포함)은 무시하고 자동으로 고른다.
+  for (const pick of ['../..', '/etc', 'docs']) {
+    const fallback = await reader.read(root, { pick })
+    assert.equal(fallback.folder, 'worktrees/app/feat')
+    assert.equal(fallback.within.auto, true)
+  }
+})
+
+test('안에 저장소도 없는 폴더는 repo: false', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'git-stage-empty-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  mkdirSync(join(root, 'a', 'b'), { recursive: true })
+  assert.deepEqual(await readerWith(NO_PR).read(root), { repo: false })
 })

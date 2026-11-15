@@ -651,6 +651,7 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .review-actions { position: sticky; bottom: calc(-1 * max(40px, env(safe-area-inset-bottom) + 20px)); margin: 12px -20px calc(-1 * max(40px, env(safe-area-inset-bottom) + 20px)); padding: 10px 20px max(40px, calc(env(safe-area-inset-bottom) + 20px)); border-top: 1px solid var(--border); background: var(--surface); }
 .review-actions .btn-grid { margin-top: 10px; }
 .select-wrap { position: relative; margin-top: 8px; }
+.stage-repo { margin-bottom: 12px; }
 .select-wrap .icon { position: absolute; right: 14px; top: 50%; margin-top: -9px; color: var(--muted); pointer-events: none; }
 .select { display: block; width: 100%; min-height: 48px; padding: 0 42px 0 14px; border: 1px solid var(--control); border-radius: var(--r-md); background: var(--bg); font-size: 16px; appearance: none; -webkit-appearance: none; }
 .form-hint { margin-top: 10px; }

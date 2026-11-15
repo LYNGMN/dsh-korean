@@ -269,6 +269,8 @@ export default {
   'stage.doing': 'いまの作業',
   'stage.next': '次',
   'stage.note': 'Git の状態は読むだけです。プッシュ・マージ・デプロイは人が承認したあとにだけ行います。',
+  'stage.repoIn': '{folder} 内のリポジトリ',
+  'stage.repoAuto': '最近の作業を追う',
   'stage.approval': '承認が必要',
   'stage.blocked': 'ログインが必要',
   'stage.status.done': '完了',

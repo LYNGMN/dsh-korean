@@ -17,12 +17,12 @@ const React = {
 }
 const ReactDOM = { createPortal: node => ({ portal: node }) }
 
-function loadBundle(facts) {
+function loadBundle(facts, { urls = [], storage } = {}) {
   let registered
   const sandbox = {
-    window: { __ModuleLoader__: { load: entry => { registered = entry } } },
+    window: { __ModuleLoader__: { load: entry => { registered = entry } }, localStorage: storage },
     document: { createElement: () => ({ dataset: {} }), head: { appendChild: () => {} }, visibilityState: 'visible' },
-    fetch: async () => ({ ok: true, json: async () => ({ facts }) }),
+    fetch: async url => { urls.push(url); return { ok: true, json: async () => ({ facts }) } },
     setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, encodeURIComponent, Promise, Error, Object, String,
   }
   vm.runInNewContext(build(), sandbox)
@@ -121,4 +121,54 @@ test('createStageSource는 보는 화면이 있을 때만 주기적으로 읽고
   off()
   assert.equal(stopped, 1)
   assert.equal(routeOf('a b'), 'api/dsh-git-stage?sessionId=a%20b')
+})
+
+// 나무에서 조건에 맞는 첫 노드. 함수 컴포넌트는 불러서 펼친다.
+function find(node, match) {
+  if (node == null || typeof node !== 'object') return null
+  if (typeof node.type === 'function') return find(node.type(node.props), match)
+  if (node.portal) return find(node.portal, match)
+  if (match(node)) return node
+  for (const child of node.children ?? []) {
+    const hit = find(child, match)
+    if (hit) return hit
+  }
+  return null
+}
+
+test('묶음 폴더면 저장소 고르기를 보이고, 고른 저장소를 세션마다 기억해 그 이름으로 다시 읽는다', async () => {
+  const within = { folder: 'Dev', repos: ['DiscordActions', 'dsh-korean'], picked: 'DiscordActions', auto: true }
+  const facts = { ...FACTS, folder: 'DiscordActions', within }
+  const urls = []
+  const saved = new Map()
+  const storage = { getItem: k => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: k => saved.delete(k) }
+  const { mod } = loadBundle(facts, { urls, storage })
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, facts, [])
+  await mod.internals.sources.get('s1').refresh()
+  const tree = render(slots['conversation.view'], mod, facts, [])
+  assert.match(text(tree), /DiscordActions · claude\/feat\/x/)
+  const select = find(tree, node => node.type === 'select')
+  assert.equal(select.props.value, '')
+  assert.deepEqual(select.children.map(option => option.props.value), ['', 'DiscordActions', 'dsh-korean'])
+  assert.equal(select.children[0].children.join(''), '최근 활동 따라가기')
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1')
+
+  select.props.onChange({ target: { value: 'dsh-korean' } })
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(saved.get('dsh-git-stage:repo:s1'), 'dsh-korean')
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1&repo=dsh-korean')
+
+  select.props.onChange({ target: { value: '' } })
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(saved.has('dsh-git-stage:repo:s1'), false)
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1')
+})
+
+test('저장소 하나만 연 세션에는 저장소 고르기가 없다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(find(render(slots['conversation.view'], mod, FACTS, []), node => node.type === 'select'), null)
 })

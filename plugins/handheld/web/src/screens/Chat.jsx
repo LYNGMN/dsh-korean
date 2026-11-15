@@ -93,10 +93,13 @@ const STAGE_POLL_IDLE_MS = 30_000
 /** Git work stage of the session's folder; asked again while it works and once more when it stops. */
 function useStages(sessionId, running) {
   const [state, setState] = useState({ facts: null, todos: null, error: null })
+  // When the session's folder holds several repositories, the one picked here (remembered per session).
+  const [pick, setPick] = useState(() => storageGet(`stage-repo:${sessionId}`))
+  useEffect(() => { setPick(storageGet(`stage-repo:${sessionId}`)) }, [sessionId])
   useEffect(() => {
     let alive = true
-    setState({ facts: null, todos: null, error: null })
-    const load = () => api(`${sessionPath(sessionId)}/stages`).then((r) => {
+    const query = pick ? `?repo=${encodeURIComponent(pick)}` : ''
+    const load = () => api(`${sessionPath(sessionId)}/stages${query}`).then((r) => {
       if (alive) setState({ facts: r.facts, todos: r.todos, error: null })
     }).catch((error) => {
       if (alive) setState((s) => ({ ...s, error: error.message }))
@@ -107,8 +110,29 @@ function useStages(sessionId, running) {
       alive = false
       clearInterval(timer)
     }
-  }, [sessionId, running])
-  return { snapshot: stagesOf(state.facts, { todos: state.todos }), facts: state.facts, error: state.error }
+  }, [sessionId, running, pick])
+  useEffect(() => { setState({ facts: null, todos: null, error: null }) }, [sessionId])
+  const choose = (name) => {
+    storageSet(`stage-repo:${sessionId}`, name || null)
+    setPick(name || null)
+  }
+  return { snapshot: stagesOf(state.facts, { todos: state.todos }), facts: state.facts, error: state.error, choose }
+}
+
+// The repository being read is named on the line right below, so the follow option carries no name.
+function RepoPicker({ within, choose }) {
+  return (
+    <div class="stage-repo">
+      <label class="setting-choice-label" for="stage-repo-select">{t('stage.repoIn', { folder: within.folder })}</label>
+      <div class="select-wrap">
+        <select id="stage-repo-select" class="select" value={within.auto ? '' : within.picked} onChange={(e) => choose(e.currentTarget.value)}>
+          <option value="">{t('stage.repoAuto')}</option>
+          {within.repos.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <Icon name="chevron" size={18} />
+      </div>
+    </div>
+  )
 }
 
 function StageDots({ snapshot }) {
@@ -119,9 +143,10 @@ function StageDots({ snapshot }) {
   )
 }
 
-function StageSheet({ snapshot, facts, onClose }) {
+function StageSheet({ snapshot, facts, choose, onClose }) {
   return (
     <Sheet title={t('stage.title')} onClose={onClose} labelId="stage-sheet-title">
+      {facts?.within ? <RepoPicker within={facts.within} choose={choose} /> : null}
       {facts?.repo ? <p class="muted small mono-line">{`${facts.folder} · ${facts.branch ?? t('stage.noBranch')}`}</p> : null}
       {snapshot.doing ? <p class="stage-doing"><span class="stage-label">{t('stage.doing')}</span><span>{snapshot.doing}</span></p> : null}
       <ol class="stage-list">
@@ -334,7 +359,7 @@ export function Chat({ sessionId }) {
       <p class="visually-hidden" role="status">{announcement}</p>
       {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} />}
       {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
-      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} onClose={() => setShowStages(false)} /> : null}
+      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} choose={stages.choose} onClose={() => setShowStages(false)} /> : null}
     </div>
   )
 }

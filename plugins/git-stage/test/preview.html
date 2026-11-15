@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작업 단계 미리보기</title>
 <!-- 실제 DSH 없이 lib/client.js의 작업 단계 탭과 채팅 머리 칩을 올려 보는 틀.
-     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?fail=1 읽기 실패. -->
+     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?within=1 저장소 묶음 폴더(~/Dev처럼), ?fail=1 읽기 실패. -->
 <style>
   :root {
     --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
@@ -52,9 +52,17 @@
     hadCommits: true, headTime: 1, pr: null, prError: params.get('blocked') === 'gh' ? 'auth' : null, tag: null,
     ...FACTS[Math.min(Math.max(stage, 0), FACTS.length - 1)],
   }
-  window.fetch = async () => (params.get('fail') === '1'
-    ? new Response('{}', { status: 500 })
-    : new Response(JSON.stringify({ facts }), { headers: { 'content-type': 'application/json' } }))
+  const REPOS = ['DiscordActions', 'dsh-korean', 'worktrees/summarize-feed/claude-fix-localized-search-all-languages', 'summarize-meta']
+  window.fetch = async url => {
+    if (params.get('fail') === '1') return new Response('{}', { status: 500 })
+    let body = facts
+    if (params.get('within') === '1' && facts.repo) {
+      const pick = new URL(url, location.href).searchParams.get('repo')
+      const picked = REPOS.includes(pick) ? pick : REPOS[0]
+      body = { ...facts, folder: picked, within: { folder: 'Dev', repos: REPOS, picked, auto: picked !== pick } }
+    }
+    return new Response(JSON.stringify({ facts: body }), { headers: { 'content-type': 'application/json' } })
+  }
   window.__todos = stage >= 3
     ? [{ content: '단계 규칙 만들기', status: 'completed' }, { content: 'npm test로 검증하기', status: 'completed' }, { content: '검토 요청 열기', status: 'in_progress' }]
     : [{ content: '단계 규칙 만들기', status: stage >= 2 ? 'completed' : 'in_progress' }, { content: 'npm test로 검증하기', status: 'pending' }]

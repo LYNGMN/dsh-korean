@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './support/fake-dsh.js'
@@ -86,6 +86,29 @@ test('a folder that is not a Git repository says so', async (t) => {
   assert.deepEqual(reply.facts, { repo: false })
   setLang('ko')
   assert.equal(stageSummary(stagesOf(reply.facts)), 'Git 저장소가 아닙니다')
+})
+
+test('a folder holding repositories follows the latest one, and a picked one when it is listed', async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'handheld-ws-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  for (const [name, seconds] of [['a', 1000], ['b', 2000]]) {
+    const dir = join(root, name)
+    mkdirSync(dir)
+    git(dir, 'init', '-q', '-b', 'main')
+    writeFileSync(join(dir, 'x.txt'), 'x\n')
+    git(dir, 'add', '.')
+    git(dir, 'commit', '-q', '-m', 'first')
+    for (const file of ['logs/HEAD', 'index', 'HEAD']) utimesSync(join(dir, '.git', file), seconds, seconds)
+  }
+  const hub = await setup(t, [{ sessionId: 's1', cwd: root, title: 'x' }])
+  const auto = await hub.stages('s1')
+  assert.equal(auto.facts.folder, 'b')
+  assert.deepEqual(auto.facts.within.repos, ['b', 'a'])
+  assert.equal(auto.facts.within.auto, true)
+  const picked = await hub.stages('s1', 'a')
+  assert.equal(picked.facts.folder, 'a')
+  assert.equal(picked.facts.within.auto, false)
+  assert.equal((await hub.stages('s1', '../..')).facts.folder, 'b')
 })
 
 test('stage text follows the language and names the approval step', (t) => {

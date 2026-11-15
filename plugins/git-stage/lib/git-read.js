@@ -1,9 +1,14 @@
 // 작업 폴더의 Git 상태를 읽기만 해서 "사실"로 바꾼다. fetch·push 같은 네트워크·쓰기 명령은 돌리지 않는다.
 // 휴대폰 앱(plugins/handheld/server/gateway/git-read.js)이 같은 파일을 복사해 쓴다. 키트 test/git-stage-copies.test.mjs가 둘이 같은지 본다.
 import { execFile } from 'node:child_process'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { basename, join, resolve } from 'node:path'
 
 const TIMEOUT_MS = 5000
 const PR_TTL_MS = 30_000
+const MAX_REPOS = 40
+const MAX_DIRS = 600
+const SKIP_DIRS = new Set(['node_modules'])
 const ENV = { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', LC_ALL: 'C' }
 
 /** execFile을 약속으로. 실패해도 던지지 않고 { ok, out, err, code }를 준다. 출력 원문은 밖으로 내보내지 않는다. */
@@ -66,6 +71,59 @@ function parsePr(text) {
   }
 }
 
+// ── 저장소 묶음 폴더(예: ~/Dev) 안의 저장소 찾기 ─────────────────────
+// 명령 없이 파일만 본다. 저장소가 아닌 하위 폴더는 세 단계(예: worktrees/<저장소>/<작업본>)까지 내려간다.
+
+async function childDirs(dir) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    return entries.filter(entry => entry.isDirectory() && !entry.name.startsWith('.') && !SKIP_DIRS.has(entry.name)).map(entry => entry.name).sort()
+  } catch {
+    return []
+  }
+}
+
+// .git 폴더, 또는 작업본의 .git 파일("gitdir: …")이 가리키는 폴더.
+async function gitDirOf(dir) {
+  const dotGit = join(dir, '.git')
+  let info
+  try { info = await stat(dotGit) } catch { return null }
+  if (info.isDirectory()) return dotGit
+  if (!info.isFile()) return null
+  const match = /^gitdir:\s*(.+)$/m.exec(await readFile(dotGit, 'utf8').catch(() => ''))
+  return match ? resolve(dir, match[1].trim()) : null
+}
+
+// 마지막 Git 활동 시각: 브랜치 기록·색인·HEAD 가운데 가장 늦게 바뀐 것.
+async function activityOf(gitDir) {
+  let latest = 0
+  for (const name of ['logs/HEAD', 'index', 'HEAD']) {
+    try { latest = Math.max(latest, (await stat(join(gitDir, name))).mtimeMs) } catch { /* 없으면 건너뜀 */ }
+  }
+  return latest
+}
+
+/** @returns {Promise<{ name: string, activeAt: number }[]>} name은 folder 기준 상대 경로. 최근 활동 순. */
+export async function findRepos(folder) {
+  const found = []
+  let budget = MAX_DIRS
+  const visit = async rel => {
+    budget -= 1
+    const gitDir = await gitDirOf(join(folder, rel))
+    if (gitDir !== null) found.push({ name: rel, activeAt: await activityOf(gitDir) })
+    return gitDir !== null
+  }
+  const walk = async (rel, depth) => {
+    for (const child of await childDirs(join(folder, rel))) {
+      if (budget <= 0) return
+      const next = rel === '' ? child : `${rel}/${child}`
+      if (!(await visit(next)) && depth < 3) await walk(next, depth + 1)
+    }
+  }
+  await walk('', 1)
+  return found.sort((a, b) => b.activeAt - a.activeAt || a.name.localeCompare(b.name))
+}
+
 /**
  * @param {{ run?: typeof runCommand, now?: () => number }} [options] run은 시험에서 바꿔 끼운다.
  */
@@ -96,11 +154,33 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
     return value
   }
 
-  /** @returns {Promise<object>} stagesOf가 읽는 사실. Git 저장소가 아니면 { repo: false }. */
-  async function read(cwd) {
+  /**
+   * @param {string} cwd 세션 작업 폴더
+   * @param {{ pick?: string | null }} [options] 저장소 묶음 폴더일 때 사람이 고른 저장소(상대 경로). 목록에 없으면 무시.
+   * @returns {Promise<object>} stagesOf가 읽는 사실. 저장소도, 안에 저장소도 없으면 { repo: false }.
+   *   묶음 폴더면 가장 최근에 Git 활동이 있던 저장소(또는 고른 저장소)를 읽고 within에 목록을 붙인다.
+   */
+  async function read(cwd, { pick = null } = {}) {
     if (typeof cwd !== 'string' || cwd === '') return { repo: false }
     const top = await git(cwd, 'rev-parse', '--show-toplevel')
-    if (!top.ok) return { repo: false }
+    if (top.ok) return readRepo(cwd, top.out.trim())
+
+    const repos = await findRepos(cwd)
+    const chosen = repos.find(item => item.name === pick) ?? repos[0]
+    if (chosen === undefined) return { repo: false }
+    const path = join(cwd, chosen.name)
+    const inner = await git(path, 'rev-parse', '--show-toplevel')
+    if (!inner.ok) return { repo: false }
+    const names = repos.slice(0, MAX_REPOS).map(item => item.name)
+    if (!names.includes(chosen.name)) names.push(chosen.name)
+    return {
+      ...(await readRepo(path, inner.out.trim())),
+      folder: chosen.name,
+      within: { folder: basename(cwd), repos: names, picked: chosen.name, auto: chosen.name !== pick },
+    }
+  }
+
+  async function readRepo(cwd, topLevel) {
 
     const status = parseStatus((await git(cwd, 'status', '--porcelain=v2', '--branch')).out)
     const base = await baseOf(cwd)
@@ -127,7 +207,7 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
 
     return {
       repo: true,
-      folder: top.out.trim().split('/').pop() ?? '',
+      folder: topLevel.split('/').pop() ?? '',
       branch: status.branch,
       base,
       isBase,
