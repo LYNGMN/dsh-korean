@@ -4,7 +4,7 @@
 
 # 한국어 DeepSeek Harness 키트
 
-**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 13개를 명령 한 번으로 설치합니다.
+**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 14개를 명령 한 번으로 설치합니다.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,7 +30,7 @@
 
 </div>
 
-DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 13개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
+DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 14개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
 
 플러그인 이름은 모두 `@lyngmn/dsh-<이름>`입니다. DSH 플러그인 화면에 플러그인마다 카드가 생기고, 하나씩 켜고 끌 수 있습니다.
 
@@ -58,6 +58,10 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <tr>
 <td align="center" nowrap><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""><br><strong>계획 보기</strong></td>
 <td>대화 보기 방식에 '계획' 탭을 더해 할 일 목록과 제출된 계획을 한 화면에 띄워 둬요.</td>
+</tr>
+<tr>
+<td align="center" nowrap><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""><br><strong>작업 단계</strong></td>
+<td>대화 보기 방식에 '작업 단계' 탭을 더해 작업실 만들기부터 배포까지 Git 작업이 어디쯤인지, 다음에 무엇을 승인해야 하는지 보여 줘요.</td>
 </tr>
 <tr>
 <td align="center" nowrap><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>각주 미리보기</strong></td>
@@ -180,7 +184,7 @@ cd ~/dsh-korean && ./install.sh --dry-run
 
 ### 4. 확인
 
-DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 13개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
+DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 14개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
 
 ### 하나만 설치하기
 
