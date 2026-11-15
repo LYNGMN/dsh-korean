@@ -8,6 +8,8 @@ import { DEFAULT_ENTER_KEY, enterAction, lineBreakAction } from '../lib/enter-ke
 import { radioProps } from '../lib/radio.js'
 import { Icon } from './Icon.jsx'
 import { imeConfirmsWithEnter, speechLang, t } from '../lib/i18n.js'
+import { commandNameOf, matchingCommands } from '../lib/commands.js'
+import { Sheet } from './Sheet.jsx'
 
 export const ENTER_KEY_STORAGE = 'enter-key'
 export const BUSY_ENTER_STORAGE = 'busy-enter'
@@ -50,6 +52,34 @@ function useVoice(onText) {
   return { listening, toggle }
 }
 
+/** Slash commands DSH accepts in this session; empty until loaded or when DSH has none. */
+function useCommands(sessionId) {
+  const [commands, setCommands] = useState([])
+  useEffect(() => {
+    let alive = true
+    api(`${sessionPath(sessionId)}/commands`).then((r) => { if (alive) setCommands(r.items) }).catch(() => {})
+    return () => { alive = false }
+  }, [sessionId])
+  return commands
+}
+
+function CommandRows({ commands, onPick }) {
+  return (
+    <ul class="list cmd-list">
+      {commands.map((c) => (
+        <li key={c.name}>
+          <button type="button" class="row" data-qa-multiline onClick={() => onPick(c)}>
+            <span class="row-main">
+              <span class="cmd-name one-line">/{c.name}{c.hint ? <span class="cmd-hint"> {c.hint}</span> : null}</span>
+              {c.description ? <span class="row-meta cmd-desc">{c.description}</span> : null}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function Composer({ sessionId, running }) {
   const draftKey = `draft:${sessionId}`
   const [text, setText] = useState(() => storageGet(draftKey, ''))
@@ -63,6 +93,15 @@ export function Composer({ sessionId, running }) {
   const sendAfterCompose = useRef(null)
   const area = useRef(null)
   const voice = useVoice((value) => setText(value))
+  const commands = useCommands(sessionId)
+  const [browsing, setBrowsing] = useState(false)
+  const suggestions = matchingCommands(text, commands)
+  // A picked command goes into the box, never straight to DSH: it runs when the person sends it.
+  const pickCommand = (command) => {
+    setBrowsing(false)
+    setText(`/${command.name} `)
+    setTimeout(() => area.current?.focus(), 0)
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => storageSet(draftKey, text), 300)
@@ -89,7 +128,11 @@ export function Composer({ sessionId, running }) {
     inFlight.current = true
     setSending(true)
     try {
-      await api(`${sessionPath(sessionId)}/prompt`, { method: 'POST', body: { text: value, mode: running ? chosen : 'queue' } })
+      // A line that starts with a command DSH listed runs as that command; anything else is a message.
+      const command = commandNameOf(value, commands)
+      const ran = command ? await api(`${sessionPath(sessionId)}/command`, { method: 'POST', body: { line: value } }) : null
+      if (ran?.ran) toast(ran.text ? ran.text.slice(0, 200) : t(ran.ok ? 'cmd.ran' : 'cmd.failed', { line: `/${command}` }), ran.ok ? {} : { tone: 'error' })
+      else await api(`${sessionPath(sessionId)}/prompt`, { method: 'POST', body: { text: value, mode: running ? chosen : 'queue' } })
       // Keep anything typed while the request was in flight.
       if ((area.current?.value ?? '').trim() === value) {
         setText('')
@@ -143,7 +186,17 @@ export function Composer({ sessionId, running }) {
           ))}
         </div>
       ) : null}
+      {suggestions.length > 0 ? (
+        <section class="cmd-suggest" aria-label={t('cmd.title')}>
+          <CommandRows commands={suggestions} onPick={pickCommand} />
+        </section>
+      ) : null}
       <div class="composer-row">
+        {commands.length > 0 ? (
+          <button type="button" class="icon-btn round" aria-label={t('cmd.title')} aria-haspopup="dialog" onClick={() => setBrowsing(true)}>
+            <Icon name="command" />
+          </button>
+        ) : null}
         <label class="visually-hidden" for="composer-input">{t('composer.label')}</label>
         <textarea
           id="composer-input"
@@ -177,6 +230,12 @@ export function Composer({ sessionId, running }) {
           {sending ? <span class="spinner light" aria-hidden="true" /> : <Icon name="send" />}
         </button>
       </div>
+      {browsing ? (
+        <Sheet title={t('cmd.title')} onClose={() => setBrowsing(false)}>
+          <p class="muted small">{t('cmd.note')}</p>
+          <CommandRows commands={commands} onPick={pickCommand} />
+        </Sheet>
+      ) : null}
     </form>
   )
 }

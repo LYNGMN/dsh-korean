@@ -39,6 +39,8 @@ export function createRoutes({ hub, store, notifier, version }) {
         return { sessionId: await hub.createSession({ workspaceId: body.workspaceId }) }
       },
     },
+    { method: 'GET', pattern: /^\/sessions\/([^/]+)\/commands$/, handle: async ({ params }) => ({ items: await hub.commands(sessionIdOf(params[0])) }) },
+    { method: 'POST', pattern: /^\/sessions\/([^/]+)\/command$/, handle: async ({ params, body }) => hub.runCommand(sessionIdOf(params[0]), body.line) },
     { method: 'GET', pattern: /^\/sessions\/([^/]+)\/subagents$/, handle: async ({ params }) => ({ items: await hub.subagents(sessionIdOf(params[0])) }) },
     {
       method: 'GET',

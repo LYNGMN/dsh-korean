@@ -97,6 +97,13 @@ if (real) {
   upstreamUrl = () => readJson(path.join(dataDir(), 'upstream.json'))?.url ?? upstream.url
 } else {
   const dsh = await createFakeDsh({
+    commands: [
+      { name: 'plan', description: '계획 모드로 들어가 먼저 계획을 세웁니다', input: { hint: '무엇을 계획할지' } },
+      { name: 'compact', description: '지난 대화를 요약해 기록을 줄입니다' },
+      { name: 'goal', description: '이 세션의 목표를 정합니다', input: { hint: '목표' } },
+      { name: 'review', description: '바뀐 코드를 검토합니다' },
+      { name: 'status', description: '모델과 작업 폴더 상태를 보여 줍니다' },
+    ],
     sessions: [
       { sessionId: DEMO, cwd: '/home/user/app' },
       { sessionId: SECOND, cwd: '/home/user/deploy' },

@@ -545,12 +545,21 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
   border-top: 1px solid var(--border);
 }
 .composer-row { display: flex; align-items: flex-end; gap: 8px; }
+/* slash commands: the same bordered list as elsewhere, in the sheet and above the box while a name is typed */
+.cmd-list { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+.cmd-list .row { min-height: 52px; }
+.cmd-name { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+.cmd-hint { font-family: var(--sans); font-weight: 400; color: var(--muted); }
+.cmd-desc { white-space: normal; }
+.cmd-suggest { position: relative; max-height: min(40vh, 264px); margin-bottom: 8px; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-md); }
+.cmd-suggest .cmd-list { margin-top: 0; }
 .composer textarea {
   flex: 1;
   min-width: 0;
   min-height: 44px;
   max-height: 40vh;
-  padding: 10px 16px;
+  padding: 10px 12px;
+  overscroll-behavior: contain;
   border: 1px solid var(--control);
   border-radius: var(--r-md);
   background: var(--bg);
@@ -561,7 +570,7 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
   overflow-wrap: anywhere;
   transition: border-color 0.12s var(--ease);
 }
-.composer textarea::placeholder { color: var(--muted); opacity: 1; }
+.composer textarea::placeholder { color: var(--muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* how to send while work runs: two equal halves, each naming what it does */
 .mode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-bottom: 8px; padding: 4px; border-radius: var(--r-md); background: var(--surface-2); }
 .mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 48px; padding: 5px 6px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--muted); white-space: nowrap; transition: color 0.12s var(--ease); }

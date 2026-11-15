@@ -51,6 +51,8 @@ flowchart LR
 
 계획 검토: DSH가 질문으로 보내는 계획 검토는 `server/dsh/api.js`가 `review: { approve, revise }`를 붙여 넘기고, 휴대폰은 그것을 계획 본문과 "승인·수정 요청" 단추로 그립니다(`web/src/components/PendingSheet.jsx`).
 
+명령어: 세션이 받는 `/명령` 목록은 `GET /sessions/:id/commands`, 실행은 `POST /sessions/:id/command`입니다. 게이트웨이는 DSH의 `commands/list`·`commands/execute`를 그대로 잇고, 휴대폰 입력창(`web/src/components/Composer.jsx`)이 목록에 있는 이름으로 시작하는 줄만 명령으로 보냅니다. 고른 명령은 입력창에 넣기만 하고, 사람이 보내야 실행됩니다.
+
 하위 에이전트: 부모 세션의 하위 에이전트 목록은 `DshApi.subagents()`가 DSH의 세션 투영(`subagentCatalog`)과 세션 목록 줄에서 만듭니다. 휴대폰에는 `sub~부모~자식~방식` 꼴의 불투명한 이름으로 나가고, 이 이름을 DSH 주소로 푸는 곳은 `server/dsh/`뿐입니다. 하위 에이전트 대화는 세션과 같은 흐름(`SessionFeed`)으로 따라가되 보기 전용이라 허브가 글 보내기와 중단을 거절합니다.
 
 ```mermaid
