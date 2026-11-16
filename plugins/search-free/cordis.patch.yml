@@ -3,7 +3,7 @@
 #   web_search providers  you, parallel, keenable, tavily, tinyfish, jina,
 #                         firecrawl, naver, kakao, bing
 #   auto                  a web_search provider that tries them in turn
-#                         (Korean queries start with Naver and Kakao)
+#                         (in the order set on the plugin page: autoOrder)
 #   free_search           a tool that searches one engine, or "auto"
 #   /search <engine> <question>
 #                         a command that uses that engine for one request
@@ -18,10 +18,9 @@
       name: '@lyngmn/dsh-search-free'
       config:
         providers: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
-        # Order of the automatic "auto" provider: ko for queries with Hangul, en for the rest.
-        freeOrder:
-          ko: [naver, kakao, you, parallel, keenable, tavily, tinyfish, jina, firecrawl, bing]
-          en: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
+        # Engines the automatic "auto" provider uses, in order. The plugin page
+        # changes it (DSH keeps that change in the profile and applies it live).
+        autoOrder: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
         count: 8
         timeoutMs: 20000
         # Bing market (mkt) and Accept-Language.

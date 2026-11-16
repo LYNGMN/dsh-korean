@@ -2,7 +2,7 @@
   "name": "@lyngmn/dsh-search-free",
   "version": "1.1.0",
   "private": true,
-  "description": "Adds ten web_search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (auto) and the /search command. Each provider takes an API key on this page; leave it empty to search without a key on a small quota. Naver, Kakao, TinyFish and Jina need a key. Not an official DeepSeek plugin.",
+  "description": "Adds ten web_search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (auto) that follows the order set on this page and the /search command. Each provider takes an API key on this page; leave it empty to search without a key on a small quota. Naver, Kakao, TinyFish and Jina need a key. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "index.js",
@@ -44,5 +44,8 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.19.0"
   }
 }

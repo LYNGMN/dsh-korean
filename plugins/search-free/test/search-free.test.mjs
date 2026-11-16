@@ -1,13 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { FreeAutoProvider, QUOTA_COOLDOWN_MS, apply, errorDetail } from '../index.js'
+import { Config, FreeAutoProvider, QUOTA_COOLDOWN_MS, apply, errorDetail } from '../index.js'
 import {
   PROVIDER_IDS,
   buildRequest,
   clip,
   decodeBingUrl,
-  isKoreanQuery,
+  normalizeOrder,
+  readVolatile,
   looksRelevant,
   normalizeSettings,
   parseMcpMessage,
@@ -66,8 +67,29 @@ test('apply registers ten engines plus the automatic one, the free_search tool a
 test('the providers list in the config limits what is registered and the automatic order follows it', () => {
   const { providers } = register({ providers: ['bing', 'tavily', 'nope'] })
   assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto'])
-  const settings = normalizeSettings({ providers: ['bing', 'naver'], freeOrder: { ko: ['bing', 'naver', 'naver', 'x'] } })
-  assert.deepEqual(settings.freeOrder, { ko: ['bing', 'naver'], en: ['naver', 'bing'] })
+  const settings = normalizeSettings({ providers: ['bing', 'naver'], autoOrder: ['bing', 'naver', 'naver', 'x'] })
+  assert.deepEqual(settings.autoOrder(), ['bing', 'naver'])
+  assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'] }).autoOrder(), ['naver', 'bing'])
+})
+
+test('the automatic order is a volatile setting: no language priority, read again on every search', () => {
+  // The default order does not put Korean engines first.
+  assert.deepEqual(normalizeOrder(undefined), PROVIDER_IDS)
+  assert.equal(PROVIDER_IDS[0], 'you')
+  assert.deepEqual(normalizeOrder([]), [])
+  assert.deepEqual(normalizeOrder([' kakao', 'you', 'kakao', 'google']), ['kakao', 'you'])
+  assert.equal(readVolatile({ get: () => ['bing'] })[0], 'bing')
+  assert.equal(readVolatile('plain'), 'plain')
+
+  let current = ['kakao', 'bing']
+  const settings = normalizeSettings({ autoOrder: { get: () => current } })
+  assert.deepEqual(settings.autoOrder(), ['kakao', 'bing'])
+  current = ['you']
+  assert.deepEqual(settings.autoOrder(), ['you'])
+
+  const config = Config({})
+  assert.deepEqual(readVolatile(config.autoOrder), PROVIDER_IDS)
+  assert.deepEqual(config.providers, PROVIDER_IDS)
 })
 
 test('the bundle patch does not pick web.searchProvider and names every key', async () => {
@@ -113,10 +135,14 @@ test('keyless and keyed requests go to the right endpoint with the right headers
   assert.equal(jina.url, 'https://s.jina.ai/?q=q')
   assert.equal(jina.init.headers.authorization, 'Bearer k7')
 
+  // NAVER API HUB first, the old Naver Developers host as the fallback.
   const naver = buildRequest('naver', { ...base, keys: ['id8', 'secret8'] })
-  assert.equal(naver.url, 'https://openapi.naver.com/v1/search/webkr.json?query=q&display=5')
-  assert.equal(naver.init.headers['x-naver-client-id'], 'id8')
-  assert.equal(naver.init.headers['x-naver-client-secret'], 'secret8')
+  assert.equal(naver.url, 'https://naverapihub.apigw.ntruss.com/search/v1/webkr?query=q&display=5&format=json')
+  assert.equal(naver.init.headers['x-ncp-apigw-api-key-id'], 'id8')
+  assert.equal(naver.init.headers['x-ncp-apigw-api-key'], 'secret8')
+  assert.equal(naver.fallback.url, 'https://openapi.naver.com/v1/search/webkr.json?query=q&display=5')
+  assert.equal(naver.fallback.init.headers['x-naver-client-id'], 'id8')
+  assert.equal(naver.fallback.init.headers['x-naver-client-secret'], 'secret8')
 
   const kakao = buildRequest('kakao', { ...base, count: 60, keys: ['k9'] })
   assert.equal(kakao.url, 'https://dapi.kakao.com/v2/search/web?query=q&size=50')
@@ -203,6 +229,21 @@ test('engines that need a key fail fast without one and never call out', async (
   assert.equal(calls.length, 0)
 })
 
+test('a Naver key the HUB rejects is tried once on the old host', async (t) => {
+  const keys = { NAVER_CLIENT_ID: 'id8', NAVER_CLIENT_SECRET: 'secret8' }
+  const body = json({ items: [{ title: '<b>서울</b>', link: 'https://n.example', description: 'd' }] })
+  let hubStatus = 401
+  const calls = stubFetch(t, (url) => (url.includes('naverapihub') ? new Response('denied', { status: hubStatus }) : body.clone()))
+  const result = await provider('naver', {}, keys).search({ query: '서울' })
+  assert.equal(result.sources[0].url, 'https://n.example')
+  assert.deepEqual(calls.map((call) => new URL(call.url).host), ['naverapihub.apigw.ntruss.com', 'openapi.naver.com'])
+
+  // Any other HUB failure is reported as it is, without a second request.
+  hubStatus = 429
+  await assert.rejects(provider('naver', {}, keys).search({ query: '서울' }), (error) => error.quota === true)
+  assert.equal(calls.length, 3)
+})
+
 test('HTTP errors are reported without the key; Firecrawl keyless 403 says why', async (t) => {
   const tavily = provider('tavily', {}, { TAVILY_API_KEY: 'secret-tavily' })
   const you = provider('you')
@@ -273,17 +314,23 @@ const fails = (message, extra = {}) => () => { throw Object.assign(new Error(mes
 
 function auto(map, { now = () => 0, order } = {}) {
   const providers = new Map(Object.entries(map).map(([id, behaviour]) => [id, fake(id, behaviour)]))
-  const settings = normalizeSettings({ freeOrder: order })
+  const settings = normalizeSettings({ autoOrder: order })
   return { auto: new FreeAutoProvider({ providers, settings, now }), providers }
 }
 
-test('the automatic order starts with Naver for Korean queries and with You.com otherwise', async () => {
-  assert.equal(isKoreanQuery('서울 날씨'), true)
-  assert.equal(isKoreanQuery('Seoul weather'), false)
-  const { auto: a, providers } = auto({ naver: found('https://n.example'), you: found('https://y.example') })
-  assert.deepEqual(await a.search({ query: '서울 날씨' }), { sources: [{ url: 'https://n.example' }], truncated: false, answeredBy: 'NAVER' })
-  assert.equal((await a.search({ query: 'Seoul weather' })).sources[0].url, 'https://y.example')
-  assert.equal(providers.get('naver').calls, 1)
+test('the automatic order is the one the user set, whatever the query language', async () => {
+  const both = { naver: found('https://n.example'), you: found('https://y.example') }
+  const { auto: a, providers } = auto(both)
+  assert.deepEqual(await a.search({ query: '서울 날씨' }), { sources: [{ url: 'https://y.example' }], truncated: false, answeredBy: 'YOU' })
+  assert.equal(providers.get('naver').calls, 0)
+  const { auto: b } = auto(both, { order: ['naver', 'you'] })
+  assert.equal((await b.search({ query: 'Seoul weather' })).sources[0].url, 'https://n.example')
+  // An engine left out of the order is never used by auto.
+  const { auto: c, providers: cp } = auto({ ...both, bing: found('https://b.example') }, { order: ['bing'] })
+  assert.equal((await c.search({ query: 'q' })).answeredBy, 'BING')
+  assert.equal(cp.get('you').calls, 0)
+  const { auto: d } = auto(both, { order: [] })
+  await assert.rejects(d.search({ query: 'q' }), /no engine checked/)
 })
 
 test('the automatic order moves on after a failure, a missing key or no results', async () => {
