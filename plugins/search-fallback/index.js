@@ -76,6 +76,24 @@ const DEFAULT_ORDERS = [
       en: 'Searches Exa first, which suits research and long questions. If Exa fails (credits, key, network) or finds nothing, the same query runs on Brave.',
       ko: '먼저 Exa로 검색해요. 자료 조사나 긴 질문에 잘 맞아요. Exa가 실패하거나(크레딧·키·네트워크) 결과가 없으면 같은 검색어로 Brave를 써요.'
     }
+  },
+  {
+    id: 'exa-brave-free',
+    title: 'Exa → Brave → 무료 검색',
+    providers: ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing'],
+    description: {
+      en: 'Searches Exa first, then Brave. If both fail or find nothing, the keyless providers from Free Search run in turn: You.com, Parallel, Keenable, Tavily, Bing. Steps whose bundle is not installed are skipped.',
+      ko: '먼저 Exa, 다음 Brave로 검색해요. 둘 다 실패하거나 결과가 없으면 무료 검색의 키 없는 공급자(You.com·Parallel·Keenable·Tavily·Bing)를 차례로 써요. 설치되지 않은 공급자는 건너뛰어요.'
+    }
+  },
+  {
+    id: 'free-only',
+    title: '무료 검색만',
+    providers: ['you', 'parallel', 'keenable', 'tavily', 'bing'],
+    description: {
+      en: 'Uses only the keyless providers from Free Search, in turn: You.com, Parallel, Keenable, Tavily, Bing. No API key or paid quota is used.',
+      ko: '무료 검색의 키 없는 공급자(You.com·Parallel·Keenable·Tavily·Bing)만 차례로 써요. API 키나 유료 한도를 쓰지 않아요.'
+    }
   }
 ]
 

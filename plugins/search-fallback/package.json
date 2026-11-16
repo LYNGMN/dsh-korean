@@ -1,6 +1,6 @@
 {
   "name": "@lyngmn/dsh-search-fallback",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "When a web search provider fails or finds nothing, the same query runs on the next one. Pick the order in the web search settings. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
