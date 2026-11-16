@@ -54,3 +54,4 @@ DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭(`채팅 · 실행 흐�
 - 대화 보기 칸(`conversation.view`)에 등록할 때 `inject(sessionId)`가 돌려준 `hooks: { 이름: 관찰값 }`은 컴포넌트에 `use이름(선택자)`로 들어옵니다. 세션 범위 자리라 `useProjection`·`sessionId`도 함께 받습니다. — 처음 2026-11-14 — 지키는 방법: `src/client.template.js`의 `PlanView`
 - DSH 플러그인 안내(앱 안 문서)는 플러그인이 `@deepseek-ai/dsh-client-ui-primitives` 등 Harness Client 패키지를 `require`하지 말라고 합니다. 실제로 `MarkdownText`를 받지 못해 계획 본문이 원문 마크다운으로 보였습니다. 필요한 부품은 직접 만듭니다. — 처음 2026-11-15 — 지키는 방법: `test/client.test.mjs`(공용 부품을 require하면 실패)
 - 투영 `todos`는 `turn/start`에서 null이 됩니다. 목록을 유지하려면 `todo/write` 이벤트를 직접 접어 기록해야 합니다. — 처음 2026-11-14 — 지키는 방법: `src/todo-history.js`
+- 계획 문서의 줄과 할 일 문구는 길이·모양이 달라 글자 유사도(0.5)로는 거의 붙지 않습니다(실측: 계획 26개 중 24개가 짝 0). 실행 여부는 "계획 뒤 할 일" 집계로 보여 주고, 단계 체크는 문구가 거의 같은 줄에만 붙입니다. — 처음 2026-11-16 — 지키는 방법: `test/client.test.mjs`(짝 0에서도 완료 배지)
