@@ -4,11 +4,13 @@
 import { EventEmitter } from 'node:events'
 import { SessionFeed } from './feed.js'
 import { createGitReader } from './git-read.js'
+import { stagesOf } from './stages.js'
 
 const SESSION_REFRESH_MS = 300
 const MAX_IDLE_FEEDS = 30
 const MAX_WATCHES_PER_CONN = 4
 const NOTIFIED_MEMORY = 200
+const TURN_END_STAGE_MS = 4000
 
 // Subagent conversations are read through the gateway but never written to.
 const isSubagent = (sessionId) => typeof sessionId === 'string' && sessionId.startsWith('sub~')
@@ -277,7 +279,24 @@ export class Hub extends EventEmitter {
     const wasRunning = new Set(before.filter((r) => r.running).map((r) => r.id))
     for (const row of after) {
       if (!wasRunning.has(row.id) || row.running) continue
-      this.emit('notify', { kind: 'turnEnd', sessionId: row.id, session: row.title })
+      void this.#notifyTurnEnd(row)
     }
+  }
+
+  // The turn-end note says when the work stage now waits for a person's approval (share, merge, deploy).
+  // Git is read once here, when the turn ends; a slow or failed read sends the note without it.
+  async #notifyTurnEnd(row) {
+    let approval = null
+    try {
+      approval = await Promise.race([this.#approvalStage(row.id), new Promise((resolve) => setTimeout(resolve, TURN_END_STAGE_MS, null).unref?.())])
+    } catch { /* the note goes out without the stage */ }
+    this.emit('notify', { kind: 'turnEnd', sessionId: row.id, session: row.title, ...(approval ? { approval } : {}) })
+  }
+
+  async #approvalStage(sessionId) {
+    const { facts, todos } = await this.stages(sessionId)
+    const snapshot = stagesOf(facts, { todos })
+    const stage = snapshot.current === null ? null : snapshot.stages[snapshot.current]
+    return stage?.approval ? stage.key : null
   }
 }

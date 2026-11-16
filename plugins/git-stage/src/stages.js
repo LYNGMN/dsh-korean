@@ -1,5 +1,5 @@
 // Git 사실 + 할 일 → 작업 단계 6개. 화면·Node 어디서나 도는 순수 함수다.
-// 휴대폰 앱(plugins/handheld/web/src/lib/stages.js)이 같은 파일을 복사해 쓴다. 키트 test/git-stage-copies.test.mjs가 둘이 같은지 본다.
+// 휴대폰 앱이 화면(web/src/lib/stages.js)과 알림 서버(server/gateway/stages.js)에 복사해 쓴다. 고친 뒤 루트에서 npm run sync를 돌린다.
 
 export const STAGE_KEYS = ['branch', 'commit', 'verify', 'share', 'merge', 'deploy']
 
