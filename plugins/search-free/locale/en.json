@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Search",
-    "description": "Ten free web_search providers (You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Naver, Kakao, Bing), an automatic order, and the /search command. Enter optional keys on this page for higher limits. Not an official DeepSeek plugin."
+    "description": "Adds ten web_search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (auto) and the /search command. Each provider takes an API key on this page; leave it empty to search without a key on a small quota. Naver, Kakao, TinyFish and Jina need a key. Not an official DeepSeek plugin."
   }
 }
