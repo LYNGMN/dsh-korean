@@ -2,6 +2,11 @@
 
 키트 전체의 판입니다. 플러그인마다의 자세한 내용은 `plugins/<폴더>/CHANGELOG.md`에 있습니다.
 
+## 다음 판 (미정)
+
+- 플러그인 14번째: 무료 검색(`@lyngmn/dsh-search-free`). API 키 없이 쓰는 웹검색 공급자 5개(You.com·Parallel·Keenable·Tavily·Bing)를 더합니다. 요청 형식은 dsh-free-search(MIT)의 엔진 코드를 분석해 새로 썼고, DuckDuckGo는 첫 요청부터 사람 확인 페이지가 나와 넣지 않았습니다.
+- 검색 자동 전환 1.0.1: 순서 "Exa → Brave → 무료 검색"과 "무료 검색만"을 더했습니다. 무료 검색이 설치되지 않았으면 그 단계는 건너뜁니다.
+
 ## 1.0.0 (2026-11-15)
 
 첫 공개판입니다. DeepSeek Harness 0.2.2-rc.3에서 확인했습니다.

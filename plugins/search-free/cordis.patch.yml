@@ -1,0 +1,28 @@
+# Free Search bundle for DSH.
+# It registers five web_search providers that work without an API key:
+#   you       You.com (keyless tier, 100 searches a day)
+#   parallel  Parallel (keyless MCP, only a few searches in a row)
+#   keenable  Keenable (keyless MCP)
+#   tavily    Tavily (keyless tier with a very small daily cap; a free key is worth it)
+#   bing      Bing result page (no key or quota)
+# It does not pick web.searchProvider. Use them through a Search Fallback order
+# such as "Exa → Brave → Free search", or pick one on the Web search settings page.
+# Keys are optional and never stored here: each provider looks its key name up
+# in the DSH credential store, then the launch environment, and searches on the
+# keyless tier when there is none.
+- insert:
+    - id: search-free
+      name: '@lyngmn/dsh-search-free'
+      config:
+        # Providers to register, in their usual fallback order.
+        providers: [you, parallel, keenable, tavily, bing]
+        count: 8
+        timeoutMs: 20000
+        # Bing market (mkt) and Accept-Language.
+        bingMarket: ko-KR
+        safeSearch: moderate
+        keys:
+          tavily: TAVILY_API_KEY
+          you: YDC_API_KEY
+          parallel: PARALLEL_API_KEY
+          keenable: KEENABLE_API_KEY
