@@ -20,19 +20,20 @@ window.__ModuleLoader__.load({
 
     /**
      * Engines in the order the card lists them. `mode`: 'optional' works without
-     * a key, 'required' is skipped without one, 'none' takes no key.
+     * a key, 'required' is skipped without one, 'none' takes no key. `country`
+     * is where the company is based (ISO 3166 code), checked 2026-11-17.
      */
     const ENGINES = [
-      { id: 'naver', name: 'Naver', mode: 'required', refs: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], link: 'https://developers.naver.com/apps/#/register' },
-      { id: 'kakao', name: 'Kakao (Daum)', mode: 'required', refs: ['KAKAO_REST_API_KEY'], link: 'https://developers.kakao.com/console/app' },
-      { id: 'you', name: 'You.com', mode: 'optional', refs: ['YDC_API_KEY'], link: 'https://you.com/platform/api-keys' },
-      { id: 'parallel', name: 'Parallel', mode: 'optional', refs: ['PARALLEL_API_KEY'], link: 'https://platform.parallel.ai' },
-      { id: 'keenable', name: 'Keenable', mode: 'optional', refs: ['KEENABLE_API_KEY'], link: 'https://keenable.ai/login' },
-      { id: 'tavily', name: 'Tavily', mode: 'optional', refs: ['TAVILY_API_KEY'], link: 'https://app.tavily.com/home' },
-      { id: 'tinyfish', name: 'TinyFish', mode: 'required', refs: ['TINYFISH_API_KEY'], link: 'https://tinyfish.ai' },
-      { id: 'jina', name: 'Jina', mode: 'required', refs: ['JINA_API_KEY'], link: 'https://jina.ai/api-dashboard' },
-      { id: 'firecrawl', name: 'Firecrawl', mode: 'optional', refs: ['FIRECRAWL_API_KEY'], link: 'https://www.firecrawl.dev/app/api-keys' },
-      { id: 'bing', name: 'Bing', mode: 'none', refs: [], link: '' }
+      { id: 'naver', country: 'KR', name: 'Naver', mode: 'required', refs: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], link: 'https://developers.naver.com/apps/#/register' },
+      { id: 'kakao', country: 'KR', name: 'Kakao (Daum)', mode: 'required', refs: ['KAKAO_REST_API_KEY'], link: 'https://developers.kakao.com/console/app' },
+      { id: 'you', country: 'US', name: 'You.com', mode: 'optional', refs: ['YDC_API_KEY'], link: 'https://you.com/platform/api-keys' },
+      { id: 'parallel', country: 'US', name: 'Parallel', mode: 'optional', refs: ['PARALLEL_API_KEY'], link: 'https://platform.parallel.ai' },
+      { id: 'keenable', country: 'US', name: 'Keenable', mode: 'optional', refs: ['KEENABLE_API_KEY'], link: 'https://keenable.ai/login' },
+      { id: 'tavily', country: 'IL', owner: true, name: 'Tavily', mode: 'optional', refs: ['TAVILY_API_KEY'], link: 'https://app.tavily.com/home' },
+      { id: 'tinyfish', country: 'US', name: 'TinyFish', mode: 'required', refs: ['TINYFISH_API_KEY'], link: 'https://tinyfish.ai' },
+      { id: 'jina', country: 'DE', owner: true, name: 'Jina', mode: 'required', refs: ['JINA_API_KEY'], link: 'https://jina.ai/api-dashboard' },
+      { id: 'firecrawl', country: 'US', name: 'Firecrawl', mode: 'optional', refs: ['FIRECRAWL_API_KEY'], link: 'https://www.firecrawl.dev/app/api-keys' },
+      { id: 'bing', country: 'US', name: 'Bing', mode: 'none', refs: [], link: '' }
     ]
     const ALL_REFS = ENGINES.flatMap((engine) => engine.refs)
 
@@ -72,7 +73,24 @@ window.__ModuleLoader__.load({
       'note.tinyfish': 'Free plan with a key.',
       'note.jina': 'Free tokens when you sign up.',
       'note.firecrawl': 'Without a key it may be refused behind a VPN or proxy.',
-      'note.bing': 'Reads the Bing result page. No key or quota.'
+      'note.bing': 'Reads the Bing result page. No key or quota.',
+      'country.KR': 'Korea',
+      'country.US': 'United States',
+      'country.IL': 'Israel',
+      'country.DE': 'Germany',
+      'owner.tavily': 'acquired by Nebius, Netherlands',
+      'owner.jina': 'acquired by Elastic',
+      'signup.optional': 'Signing up for a key raises the limit',
+      'signup.required': 'Needs a sign-up and a key',
+      'signup.none': 'No sign-up',
+      'pick.auto': 'Auto',
+      'pick.autoDetail': 'Tries the engines in turn, Korean queries from Naver and Kakao',
+      'pick.placeholder': 'Find an engine',
+      'pick.empty': 'No engines',
+      'pick.noResults': 'No matching engine',
+      'group.auto': 'Automatic',
+      'group.kr': 'Korean engines',
+      'group.global': 'Global engines'
     }
 
     // The Web client ships English and Chinese dictionaries. Keep Chinese as an
@@ -115,7 +133,24 @@ window.__ModuleLoader__.load({
       'note.tinyfish': '키를 넣으면 무료 요금제로 써요.',
       'note.jina': '가입하면 무료 토큰을 줘요.',
       'note.firecrawl': '키 없이 쓰지만 VPN·프록시에서는 막힐 수 있어요.',
-      'note.bing': 'Bing 검색 결과 페이지를 읽어요. 키와 한도가 없어요.'
+      'note.bing': 'Bing 검색 결과 페이지를 읽어요. 키와 한도가 없어요.',
+      'country.KR': '한국',
+      'country.US': '미국',
+      'country.IL': '이스라엘',
+      'country.DE': '독일',
+      'owner.tavily': '네덜란드 Nebius가 인수',
+      'owner.jina': 'Elastic이 인수',
+      'signup.optional': '가입하고 키를 넣으면 한도가 늘어요',
+      'signup.required': '가입하고 키를 넣어야 써요',
+      'signup.none': '가입하지 않아도 돼요',
+      'pick.auto': '자동',
+      'pick.autoDetail': '엔진을 차례로 써요. 한국어 검색어는 네이버·카카오부터 써요',
+      'pick.placeholder': '엔진 찾기',
+      'pick.empty': '엔진이 없어요',
+      'pick.noResults': '맞는 엔진이 없어요',
+      'group.auto': '자동',
+      'group.kr': '한국 엔진',
+      'group.global': '해외 엔진'
     }
 
     const color = {
@@ -135,6 +170,7 @@ window.__ModuleLoader__.load({
       card: { display: 'grid', gap: 12, maxWidth: 640, wordBreak: 'keep-all', overflowWrap: 'anywhere' },
       intro: { margin: 0, fontSize: 13, lineHeight: 1.6, color: color.secondary },
       hint: { margin: 0, fontSize: 12, lineHeight: 1.5, color: color.tertiary, textWrap: 'pretty' },
+      meta: { margin: 0, fontSize: 12, lineHeight: 1.5, fontWeight: 500, color: color.secondary, textWrap: 'balance' },
       row: { display: 'grid', gap: 8, paddingTop: 12, borderTop: `1px solid ${color.divider}` },
       head: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 24 },
       name: { margin: 0, fontSize: 14, fontWeight: 600, lineHeight: '24px', color: color.primary, whiteSpace: 'nowrap' },
@@ -200,6 +236,16 @@ window.__ModuleLoader__.load({
       if (set === engine.refs.length) return { key: 'stateKeyed', tone: 'success' }
       if (set > 0) return { key: 'statePartial', tone: 'danger' }
       return engine.mode === 'required' ? { key: 'stateNeeded', tone: 'danger' } : { key: 'stateKeyless', tone: 'muted' }
+    }
+
+    /** "Korea" or "Israel (acquired by …)", from the engine's country and owner note. */
+    function originText(engine, t) {
+      const country = t(`country.${engine.country}`)
+      return engine.owner ? `${country}(${t(`owner.${engine.id}`)})` : country
+    }
+
+    function signupText(engine, t) {
+      return t(`signup.${engine.mode}`)
     }
 
     function fieldLabel(engine, index, t) {
@@ -272,6 +318,7 @@ window.__ModuleLoader__.load({
           h('h3', { id: headingId, style: styles.name }, engine.name),
           state === null ? null : h('span', { style: chipStyle(state.tone) }, t(state.key))
         ),
+        h('p', { style: styles.meta }, `${originText(engine, t)} · ${signupText(engine, t)}`),
         h('p', { style: styles.hint }, t(`note.${engine.id}`)),
         ...engine.refs.map((ref, index) => {
           const inputId = `free-search-${ref.toLowerCase()}`
@@ -380,10 +427,71 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** The host command this bundle registers; a bare `/search` opens the engine picker. */
+    const COMMAND = 'search'
+    const AUTO = 'auto'
+
+    /**
+     * Options of the bare `/search` picker: the automatic engine, then the
+     * Korean and the global engines with their country and key state.
+     */
+    async function pickerOptions(credentials, t) {
+      let info = null
+      try {
+        const response = await credentials?.describe?.(ALL_REFS)
+        if (response?.ok) info = response.value ?? {}
+      } catch {}
+      const auto = { name: 'auto', label: t('group.auto') }
+      const kr = { name: 'kr', label: t('group.kr') }
+      const global = { name: 'global', label: t('group.global') }
+      return [
+        { id: AUTO, label: t('pick.auto'), detail: t('pick.autoDetail'), group: auto, active: true },
+        ...ENGINES.map((engine) => {
+          const state = engineState(engine, info)
+          return {
+            id: engine.id,
+            label: engine.name,
+            detail: `${originText(engine, t)} · ${state === null ? signupText(engine, t) : t(state.key)}`,
+            group: engine.country === 'KR' ? kr : global
+          }
+        })
+      ]
+    }
+
+    /**
+     * Put `/search <engine> ` in the composer of the session that opened the
+     * picker, so the user only types the question. The composer then submits it
+     * as an ordinary `/search` line.
+     */
+    function fillDraft(ctx, sessionId, engineId) {
+      if (typeof ctx.get !== 'function') return
+      const actx = ctx.get('sessions')?.scope?.(sessionId)
+      const input = actx === undefined ? undefined : ctx.get('conversation')?.input?.for?.(actx)
+      if (input === undefined || typeof input.setDraft !== 'function') return
+      input.setDraft(`/${COMMAND} ${engineId} `)
+      input.focus?.()
+    }
+
     return {
       inject: ['slots', 'locale', 'remote', 'remote.credentials'],
       apply(ctx) {
         const t = ctx.locale.bind(NS)
+        // The Host keeps `/search <engine> <question>`; a bare `/search` from the
+        // menu or the composer opens an engine picker instead, so the engine names
+        // need not be remembered.
+        // Older Hosts without the command UI service keep the typed form only.
+        if (typeof ctx.inject === 'function') ctx.inject(['commandUi'], (scope) => {
+          scope.effect(() => scope.commandUi.decorate({
+            name: COMMAND,
+            available: () => true,
+            ui: {
+              kind: 'popupSelect',
+              searchLabels: () => ({ placeholder: t('pick.placeholder'), empty: t('pick.empty'), noResults: t('pick.noResults') }),
+              options: () => pickerOptions(ctx.remote.credentials, t),
+              onSelect: (option, session) => { fillDraft(ctx, session.sessionId, option.id) }
+            }
+          }), 'search-free: /search engine picker')
+        })
         ctx.effect(() => ctx.locale.register(NS, { en, zh, ko }), 'free-search-settings: dictionaries')
         // The bundle's own detail page renders this keyed config section.
         ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({

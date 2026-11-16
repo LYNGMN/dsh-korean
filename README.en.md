@@ -89,7 +89,7 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 </tr>
 <tr>
 <td align="center"><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
-<td>Adds ten web search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine that tries them in a language-aware order, and the <code>/search</code> command. Keys entered on the plugin page raise the limits.</td>
+<td>Adds ten web search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (<code>auto</code>) that tries them in a language-aware order, and the <code>/search</code> command with an engine picker. The plugin page shows each provider's country and whether it needs a sign-up, and takes the keys.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>

@@ -24,7 +24,7 @@ test('normalizeSettings uses the three default orders and drops invalid ones', (
   assert.deepEqual(defaults.orders.map((o) => [o.id, o.providers]), [
     ['brave-exa', ['brave', 'exa']],
     ['exa-brave', ['exa', 'brave']],
-    ['exa-brave-free', ['exa', 'brave', 'free']]
+    ['exa-brave-auto', ['exa', 'brave', 'auto']]
   ])
   assert.equal(defaults.fallbackOnEmpty, true)
   const s = normalizeSettings({
@@ -122,7 +122,7 @@ test('apply registers one provider per order and reads the registry at search ti
   assert.deepEqual(registered.map((p) => [p.id, p.title]), [
     ['brave-exa', 'Brave → Exa'],
     ['exa-brave', 'Exa → Brave'],
-    ['exa-brave-free', 'Exa → Brave → 무료 검색']
+    ['exa-brave-auto', 'Exa → Brave → Auto']
   ])
   assert.equal(registered[0].description.ko.startsWith('먼저 Brave로'), true)
   // Providers registered after this bundle are still found.
@@ -214,19 +214,19 @@ test('the patch file declares the same orders as the built-in defaults', async (
   assert.deepEqual(ids, normalizeSettings({}).orders.map((o) => o.id))
 })
 
-test('Exa → Brave → Free search: paid steps fail or find nothing and the free engine answers', async () => {
+test('Exa → Brave → Auto: paid steps fail or find nothing and the free engine answers', async () => {
   const searchProviders = new Map()
   const registered = []
   const web = { searchProviders, registerSearchProvider: (p) => { registered.push(p); searchProviders.set(p.id, p) } }
   apply({ web }, {})
-  const order = registered.find((p) => p.id === 'exa-brave-free')
+  const order = registered.find((p) => p.id === 'exa-brave-auto')
   searchProviders.set('exa', failing('credits exhausted'))
   searchProviders.set('brave', empty())
   const free = ok('https://free.example')
-  searchProviders.set('free', free)
+  searchProviders.set('auto', free)
   assert.equal((await order.search({ query: 'q' })).sources[0].url, 'https://free.example')
   assert.equal(free.calls, 1)
   // Without the Search plugin the order still answers with the empty Brave result.
-  searchProviders.delete('free')
+  searchProviders.delete('auto')
   assert.deepEqual((await order.search({ query: 'q' })).sources, [])
 })

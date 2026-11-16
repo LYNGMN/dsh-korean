@@ -2,7 +2,7 @@ import { REQUIRES_KEY, ProviderResponseError, buildRequest, isKoreanQuery, norma
 import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './search-tool.js'
 
 /**
- * Search for DSH (@lyngmn/dsh-search-free): free web_search providers, the automatic `free`
+ * Search for DSH (@lyngmn/dsh-search-free): free web_search providers, the automatic `auto`
  * provider, the `free_search` tool and the `/search <engine> <question>` command.
  *
  *   you        You.com (keyless, 100 searches a day; YDC_API_KEY raises it)
@@ -15,7 +15,7 @@ import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './s
  *   naver      Naver web documents (NAVER_CLIENT_ID + NAVER_CLIENT_SECRET required)
  *   kakao      Kakao Daum web search (KAKAO_REST_API_KEY required)
  *   bing       Bing result page (no key)
- *   free       tries the above in turn; Korean queries start with Naver and Kakao
+ *   auto       tries the above in turn; Korean queries start with Naver and Kakao
  *
  * Every provider is registered on its own so Search Fallback can put them in
  * any order. Nothing here selects web.searchProvider. Keys are entered on the
@@ -109,8 +109,8 @@ export const PROVIDER_TEXT = Object.freeze({
       ko: 'Bing 검색 결과 페이지를 읽어요. 키와 한도는 없지만, 네트워크에 따라 빈 결과나 사람 확인 페이지가 나올 수 있어요.'
     }
   },
-  free: {
-    title: 'Free search (auto)',
+  auto: {
+    title: 'Auto search',
     description: {
       en: 'Tries the free engines in turn and moves on when one fails or finds nothing. Korean queries start with Naver and Kakao; engines without a needed key are skipped.',
       ko: '무료 검색 엔진을 차례로 써요. 하나가 실패하거나 결과가 없으면 다음으로 넘어가요. 한국어 검색어는 네이버·카카오부터 쓰고, 키가 필요한데 없는 엔진은 건너뛰어요.'
@@ -220,8 +220,8 @@ export class FreeSearchProvider {
 export class FreeAutoProvider {
   constructor({ providers, settings, now = () => Date.now(), log }) {
     this.id = DEFAULT_ENGINE
-    this.title = PROVIDER_TEXT.free.title
-    this.description = PROVIDER_TEXT.free.description
+    this.title = PROVIDER_TEXT.auto.title
+    this.description = PROVIDER_TEXT.auto.description
     this.providers = providers
     this.settings = settings
     this.now = now

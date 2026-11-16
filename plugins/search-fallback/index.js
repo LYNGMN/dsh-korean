@@ -78,9 +78,9 @@ const DEFAULT_ORDERS = [
     }
   },
   {
-    id: 'exa-brave-free',
-    title: 'Exa → Brave → 무료 검색',
-    providers: ['exa', 'brave', 'free'],
+    id: 'exa-brave-auto',
+    title: 'Exa → Brave → Auto',
+    providers: ['exa', 'brave', 'auto'],
     description: {
       en: "Searches Exa first, then Brave. If both fail or find nothing, the Search plugin's automatic engine takes over: Korean queries start with Naver and Kakao, others with You.com and Parallel. Skipped when the Search plugin is not installed.",
       ko: '먼저 Exa, 다음 Brave로 검색해요. 둘 다 실패하거나 결과가 없으면 검색 플러그인의 자동 엔진이 받아요. 한국어 검색어는 네이버·카카오부터, 그 밖은 You.com·Parallel부터 써요. 검색 플러그인이 설치되지 않았으면 건너뛰어요.'

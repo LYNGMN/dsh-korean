@@ -2,12 +2,12 @@
 # It registers:
 #   web_search providers  you, parallel, keenable, tavily, tinyfish, jina,
 #                         firecrawl, naver, kakao, bing
-#   free                  a web_search provider that tries them in turn
+#   auto                  a web_search provider that tries them in turn
 #                         (Korean queries start with Naver and Kakao)
-#   free_search           a tool that searches one engine, or "free"
+#   free_search           a tool that searches one engine, or "auto"
 #   /search <engine> <question>
 #                         a command that uses that engine for one request
-# It does not pick web.searchProvider. Pick "free" or a Search Fallback order
+# It does not pick web.searchProvider. Pick "auto" or a Search Fallback order
 # such as "Exa → Brave → Free search" on the Web search settings page.
 # Keys are entered on this plugin's page and kept in the DSH credential store;
 # they are never stored here. Without a key, You.com, Parallel, Keenable,
@@ -18,7 +18,7 @@
       name: '@lyngmn/dsh-search-free'
       config:
         providers: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
-        # Order of the automatic "free" provider: ko for queries with Hangul, en for the rest.
+        # Order of the automatic "auto" provider: ko for queries with Hangul, en for the rest.
         freeOrder:
           ko: [naver, kakao, you, parallel, keenable, tavily, tinyfish, jina, firecrawl, bing]
           en: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
