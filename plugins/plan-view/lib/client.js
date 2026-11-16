@@ -7,8 +7,8 @@ window.__ModuleLoader__.load({
     const ReactDOM = require('react-dom')
     const h = React.createElement
     const { useState, useEffect, useRef, useId } = React
-    const VERSION = "1.1.0"
-    const STYLE_TEXT = ".dpv-root {\n  box-sizing: border-box;\n  width: 100%;\n  max-width: calc(var(--dsh-chat-content-width, 760px) + 32px);\n  margin: 0 auto;\n  padding: 20px 16px 32px;\n  display: flex;\n  flex-direction: column;\n  gap: 28px;\n  color: var(--dsw-alias-label-primary, #1f2329);\n  word-break: keep-all;\n  overflow-wrap: break-word;\n}\n.dpv-section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }\n.dpv-head { display: flex; align-items: center; gap: 10px; min-width: 0; }\n.dpv-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }\n.dpv-meta { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }\n.dpv-empty, .dpv-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dpv-note { font-size: 13px; line-height: 20px; }\n.dpv-badge { flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); color: var(--dsw-alias-label-secondary, #646a73); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); white-space: nowrap; }\n.dpv-badge[data-done] { color: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dpv-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }\n.dpv-card {\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-card-fill, transparent);\n}\n.dpv-card-head { padding: 12px 12px 4px; }\n\n/* 진행 막대 */\n.dpv-progress { position: relative; height: 4px; border-radius: 2px; overflow: hidden; background: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-progress-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--dsw-alias-state-business-primary, #3d7be0); transition: width 0.4s ease; }\n\n/* 할 일 줄 */\n.dpv-todos { list-style: none; margin: 0; padding: 4px 4px; display: flex; flex-direction: column; }\n.dpv-todo { border-radius: 8px; }\n.dpv-todo-btn, .dpv-todo-compact {\n  box-sizing: border-box; width: 100%; display: flex; align-items: flex-start; gap: 10px;\n  padding: 7px 8px; font: inherit; font-size: 14px; line-height: 22px; color: inherit; text-align: left;\n}\n.dpv-todo-btn { min-height: 36px; margin: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }\n@media (hover: hover) { .dpv-todo-btn:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-todo-btn:focus-visible, .dpv-link:focus-visible, .dpv-fold > summary:focus-visible, .dpv-chip:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: -2px;\n}\n.dpv-todo-text { flex: 1 1 auto; min-width: 0; text-wrap: pretty; }\n.dpv-todo[data-status='completed'] .dpv-todo-text { color: var(--dsw-alias-label-secondary, #646a73); text-decoration: line-through; text-decoration-thickness: 1px; }\n.dpv-todo[data-status='in_progress'] .dpv-todo-text { font-weight: 500; }\n.dpv-todo-meta { flex: none; font-size: 12px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; font-variant-numeric: tabular-nums; }\n.dpv-todo[data-status='in_progress'] .dpv-todo-meta { color: var(--dsw-alias-state-business-primary, #3d7be0); }\n\n/* 상태 아이콘 */\n.dpv-icon { flex: none; width: 16px; height: 16px; margin-top: 3px; overflow: visible; }\n.dpv-icon-ring { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-icon-track { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-icon-arc { stroke: var(--dsw-alias-state-business-primary, #3d7be0); transform-origin: 8px 8px; }\n.dpv-icon-fill { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dpv-icon-check { stroke: #fff; stroke-dasharray: 12; stroke-dashoffset: 0; }\n.dpv-spin { animation: dpv-spin 0.9s linear infinite; }\n@keyframes dpv-spin { to { transform: rotate(360deg); } }\n\n/* 실시간 변화: 방금 완료된 줄은 체크를 그리고 잠깐 밝힌다, 새 줄은 서서히 나타난다 */\n.dpv-todo[data-just] { animation: dpv-flash 2.5s ease-out; }\n.dpv-todo[data-just] .dpv-icon-fill { animation: dpv-pop 0.35s ease-out; transform-origin: 8px 8px; }\n.dpv-todo[data-just] .dpv-icon-check { animation: dpv-draw 0.45s 0.15s ease-out both; }\n.dpv-todo[data-added] { animation: dpv-enter 0.4s ease-out; }\n@keyframes dpv-flash { 0%, 30% { background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.12)); } 100% { background: transparent; } }\n@keyframes dpv-pop { 0% { transform: scale(0.4); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }\n@keyframes dpv-draw { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }\n@keyframes dpv-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }\n\n/* 펼친 자세히 */\n.dpv-detail { margin: 0 8px 8px 34px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-detail-list { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }\n.dpv-detail-row { display: flex; gap: 6px; white-space: nowrap; }\n.dpv-detail-row dt { color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-detail-row dd { margin: 0; color: var(--dsw-alias-label-primary, #1f2329); font-variant-numeric: tabular-nums; }\n.dpv-detail-empty { margin: 0; }\n.dpv-link { min-height: 28px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }\n@media (hover: hover) { .dpv-link:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n\n/* 접는 카드(지난 턴·계획) */\n.dpv-plans { display: flex; flex-direction: column; gap: 10px; }\n.dpv-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; cursor: pointer; list-style: none; border-radius: var(--dsw-radius-lg, 12px); }\n.dpv-fold > summary::-webkit-details-marker { display: none; }\n@media (hover: hover) { .dpv-fold > summary:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-chevron { flex: none; width: 14px; height: 14px; color: var(--dsw-alias-label-tertiary, #8f959e); transition: transform 0.12s; }\n.dpv-fold[open] > summary .dpv-chevron { transform: rotate(90deg); }\n.dpv-fold-title { flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 22px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.dpv-fold > summary .dpv-meta { flex: none; }\n.dpv-fold-body { border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); padding: 4px 4px 8px; }\n.dpv-doc { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 0; }\n\n/* 계획 문서 마크다운 */\n.dpv-md { min-width: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary, #1f2329); }\n.dpv-note + .dpv-md { margin-top: 4px; }\n.dpv-md > :first-child { margin-top: 0; }\n.dpv-md > :last-child { margin-bottom: 0; }\n.dpv-md-h { margin: 20px 0 8px; font-weight: 600; color: var(--dsw-alias-label-primary, #1f2329); text-wrap: balance; }\n.dpv-md-h1 { font-size: 17px; line-height: 26px; }\n.dpv-md-h2 { font-size: 15px; line-height: 24px; padding-bottom: 6px; border-bottom: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-md-h3 { font-size: 14px; line-height: 22px; }\n.dpv-md-h4 { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-md-p { margin: 8px 0; text-wrap: pretty; }\n.dpv-md-list { margin: 8px 0; padding-left: 22px; }\n.dpv-md-list .dpv-md-list { margin: 4px 0; }\n.dpv-md-li { margin: 4px 0; padding-left: 2px; }\n.dpv-md-li::marker { color: var(--dsw-alias-label-secondary, #646a73); font-variant-numeric: tabular-nums; }\n.dpv-md-li > .dpv-md-p, .dpv-md-task-body > .dpv-md-p { margin: 0; }\n.dpv-md-li > :first-child, .dpv-md-task-body > :first-child { margin-top: 0; }\n.dpv-md-li > :last-child, .dpv-md-task-body > :last-child { margin-bottom: 0; }\n.dpv-md-tasks { padding-left: 0; list-style: none; }\n.dpv-md-tasks > .dpv-md-li:not(.dpv-md-task) { padding-left: 26px; }\n.dpv-md-task { display: flex; align-items: flex-start; gap: 10px; padding-left: 0; }\n.dpv-md-task::marker { content: none; }\n.dpv-md-task-body { flex: 1 1 auto; min-width: 0; }\n.dpv-md-task[data-status='completed'] > .dpv-md-task-body > .dpv-md-p { color: var(--dsw-alias-label-secondary, #646a73); text-decoration: line-through; text-decoration-thickness: 1px; }\n.dpv-md-code {\n  padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;\n  background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.05)); overflow-wrap: anywhere; word-break: normal;\n}\n.dpv-md-pre {\n  margin: 10px 0; padding: 10px 12px; overflow-x: auto; border-radius: 8px; white-space: pre; word-break: normal;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 20px;\n  background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.05)); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-md-pre > code { font: inherit; }\n.dpv-md-quote { margin: 10px 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-md-rule { margin: 16px 0; border: 0; border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-md-link { color: var(--dsw-alias-state-business-primary, #3d7be0); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }\n.dpv-md-table-wrap {\n  margin: 10px 0; overflow-x: auto; border-radius: 8px; border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-md-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 20px; }\n.dpv-md-table th, .dpv-md-table td { padding: 6px 10px; text-align: left; vertical-align: top; border-bottom: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 64px; }\n.dpv-md-table th { font-weight: 600; background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); white-space: nowrap; }\n.dpv-md-table tr:last-child td { border-bottom: 0; }\n.dpv-md-pre:focus-visible, .dpv-md-table-wrap:focus-visible, .dpv-md-link:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 2px;\n}\n\n/* 채팅 머리 진행 칩 */\n.dpv-chip {\n  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; margin: 0;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 14px; background: transparent;\n  font: inherit; font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); cursor: pointer; white-space: nowrap;\n  font-variant-numeric: tabular-nums;\n}\n@media (hover: hover) { .dpv-chip:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-chip[aria-expanded='true'] { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); }\n.dpv-ring { flex: none; width: 16px; height: 16px; }\n.dpv-ring-track { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-ring-fill { stroke: var(--dsw-alias-state-business-primary, #3d7be0); transition: stroke-dashoffset 0.4s ease; }\n.dpv-ring[data-live] .dpv-ring-fill { animation: dpv-pulse 1.6s ease-in-out infinite; }\n@keyframes dpv-pulse { 50% { opacity: 0.45; } }\n\n/* 칩을 누르면 뜨는 창 */\n.dpv-panel {\n  position: fixed; z-index: 1000; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;\n  padding: 12px; overflow-y: auto; overscroll-behavior: contain;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-specific-menu, var(--dsw-alias-card-fill, #fff)); box-shadow: var(--dsw-elevation-panel, 0 8px 24px rgba(0, 0, 0, 0.16));\n  backdrop-filter: var(--dsw-menu-backdrop-filter, none);\n  color: var(--dsw-alias-label-primary, #1f2329); word-break: keep-all; overflow-wrap: break-word;\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-panel:focus { outline: none; }\n.dpv-panel:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); }\n.dpv-panel-list { padding: 0; }\n.dpv-panel .dpv-todo-compact { padding: 5px 2px; }\n\n@media (prefers-reduced-motion: reduce) {\n  .dpv-spin, .dpv-ring[data-live] .dpv-ring-fill, .dpv-todo[data-just], .dpv-todo[data-added],\n  .dpv-todo[data-just] .dpv-icon-fill, .dpv-todo[data-just] .dpv-icon-check { animation: none; }\n  .dpv-progress-fill, .dpv-ring-fill, .dpv-chevron { transition: none; }\n}"
+    const VERSION = "1.2.0"
+    const STYLE_TEXT = ".dpv-root {\n  box-sizing: border-box;\n  width: 100%;\n  max-width: calc(var(--dsh-chat-content-width, 760px) + 32px);\n  margin: 0 auto;\n  padding: 20px 16px 32px;\n  display: flex;\n  flex-direction: column;\n  gap: 28px;\n  color: var(--dsw-alias-label-primary, #1f2329);\n  word-break: keep-all;\n  overflow-wrap: break-word;\n}\n.dpv-section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }\n.dpv-head { display: flex; align-items: center; gap: 10px; min-width: 0; }\n.dpv-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }\n.dpv-meta { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }\n.dpv-empty, .dpv-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dpv-note { font-size: 13px; line-height: 20px; }\n.dpv-badge { flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); color: var(--dsw-alias-label-secondary, #646a73); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); white-space: nowrap; }\n.dpv-badge[data-done] { color: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dpv-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }\n.dpv-card {\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-card-fill, transparent);\n}\n.dpv-card-head { padding: 12px 12px 4px; }\n\n/* 진행 막대 */\n.dpv-progress { position: relative; height: 4px; border-radius: 2px; overflow: hidden; background: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-progress-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--dsw-alias-state-business-primary, #3d7be0); transition: width 0.4s ease; }\n\n/* 할 일 줄 */\n.dpv-todos { list-style: none; margin: 0; padding: 4px 4px; display: flex; flex-direction: column; }\n.dpv-todo { border-radius: 8px; }\n.dpv-todo-btn, .dpv-todo-compact {\n  box-sizing: border-box; width: 100%; display: flex; align-items: flex-start; gap: 10px;\n  padding: 7px 8px; font: inherit; font-size: 14px; line-height: 22px; color: inherit; text-align: left;\n}\n.dpv-todo-btn { min-height: 36px; margin: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }\n@media (hover: hover) { .dpv-todo-btn:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-todo-btn:focus-visible, .dpv-link:focus-visible, .dpv-fold > summary:focus-visible, .dpv-chip:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: -2px;\n}\n.dpv-todo-text { flex: 1 1 auto; min-width: 0; text-wrap: pretty; }\n.dpv-todo[data-status='completed'] .dpv-todo-text { color: var(--dsw-alias-label-secondary, #646a73); text-decoration: line-through; text-decoration-thickness: 1px; }\n.dpv-todo[data-status='in_progress'] .dpv-todo-text { font-weight: 500; }\n.dpv-todo-meta { flex: none; font-size: 12px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; font-variant-numeric: tabular-nums; }\n.dpv-todo[data-status='in_progress'] .dpv-todo-meta { color: var(--dsw-alias-state-business-primary, #3d7be0); }\n\n/* 상태 아이콘 */\n.dpv-icon { flex: none; width: 16px; height: 16px; margin-top: 3px; overflow: visible; }\n.dpv-icon-ring { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-icon-track { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-icon-arc { stroke: var(--dsw-alias-state-business-primary, #3d7be0); transform-origin: 8px 8px; }\n.dpv-icon-fill { fill: var(--dsw-alias-state-business-primary, #3d7be0); }\n.dpv-icon-check { stroke: #fff; stroke-dasharray: 12; stroke-dashoffset: 0; }\n.dpv-spin { animation: dpv-spin 0.9s linear infinite; }\n@keyframes dpv-spin { to { transform: rotate(360deg); } }\n\n/* 실시간 변화: 방금 완료된 줄은 체크를 그리고 잠깐 밝힌다, 새 줄은 서서히 나타난다 */\n.dpv-todo[data-just] { animation: dpv-flash 2.5s ease-out; }\n.dpv-todo[data-just] .dpv-icon-fill { animation: dpv-pop 0.35s ease-out; transform-origin: 8px 8px; }\n.dpv-todo[data-just] .dpv-icon-check { animation: dpv-draw 0.45s 0.15s ease-out both; }\n.dpv-todo[data-added] { animation: dpv-enter 0.4s ease-out; }\n@keyframes dpv-flash { 0%, 30% { background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.12)); } 100% { background: transparent; } }\n@keyframes dpv-pop { 0% { transform: scale(0.4); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }\n@keyframes dpv-draw { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }\n@keyframes dpv-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }\n\n/* 펼친 자세히 */\n.dpv-detail { margin: 0 8px 8px 34px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-detail-list { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }\n.dpv-detail-row { display: flex; gap: 6px; white-space: nowrap; }\n.dpv-detail-row dt { color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-detail-row dd { margin: 0; color: var(--dsw-alias-label-primary, #1f2329); font-variant-numeric: tabular-nums; }\n.dpv-detail-empty { margin: 0; }\n.dpv-link { min-height: 28px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }\n@media (hover: hover) { .dpv-link:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n\n/* 접는 카드(지난 턴·계획) */\n.dpv-plans { display: flex; flex-direction: column; gap: 10px; }\n.dpv-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; cursor: pointer; list-style: none; border-radius: var(--dsw-radius-lg, 12px); }\n.dpv-fold > summary::-webkit-details-marker { display: none; }\n@media (hover: hover) { .dpv-fold > summary:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-chevron { flex: none; width: 14px; height: 14px; color: var(--dsw-alias-label-tertiary, #8f959e); transition: transform 0.12s; }\n.dpv-fold[open] > summary .dpv-chevron { transform: rotate(90deg); }\n.dpv-fold-title { flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 22px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.dpv-fold > summary .dpv-meta { flex: none; }\n.dpv-fold-body { border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); padding: 4px 4px 8px; }\n.dpv-doc { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 0; }\n\n/* 계획 문서 마크다운 */\n.dpv-md { min-width: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-primary, #1f2329); }\n.dpv-note + .dpv-md { margin-top: 4px; }\n.dpv-md > :first-child { margin-top: 0; }\n.dpv-md > :last-child { margin-bottom: 0; }\n.dpv-md-h { margin: 20px 0 8px; font-weight: 600; color: var(--dsw-alias-label-primary, #1f2329); text-wrap: balance; }\n.dpv-md-h1 { font-size: 17px; line-height: 26px; }\n.dpv-md-h2 { font-size: 15px; line-height: 24px; padding-bottom: 6px; border-bottom: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-md-h3 { font-size: 14px; line-height: 22px; }\n.dpv-md-h4 { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-md-p { margin: 8px 0; text-wrap: pretty; }\n.dpv-md-list { margin: 8px 0; padding-left: 22px; }\n.dpv-md-list .dpv-md-list { margin: 4px 0; }\n.dpv-md-li { margin: 4px 0; padding-left: 2px; }\n.dpv-md-li::marker { color: var(--dsw-alias-label-secondary, #646a73); font-variant-numeric: tabular-nums; }\n.dpv-md-li > .dpv-md-p, .dpv-md-task-body > .dpv-md-p { margin: 0; }\n.dpv-md-li > :first-child, .dpv-md-task-body > :first-child { margin-top: 0; }\n.dpv-md-li > :last-child, .dpv-md-task-body > :last-child { margin-bottom: 0; }\n.dpv-md-tasks { padding-left: 0; list-style: none; }\n.dpv-md-tasks > .dpv-md-li:not(.dpv-md-task) { padding-left: 26px; }\n.dpv-md-task { display: flex; align-items: flex-start; gap: 10px; padding-left: 0; }\n.dpv-md-task::marker { content: none; }\n.dpv-md-task-body { flex: 1 1 auto; min-width: 0; }\n.dpv-md-task[data-status='completed'] > .dpv-md-task-body > .dpv-md-p { color: var(--dsw-alias-label-secondary, #646a73); text-decoration: line-through; text-decoration-thickness: 1px; }\n.dpv-md-code {\n  padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;\n  background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.05)); overflow-wrap: anywhere; word-break: normal;\n}\n.dpv-md-pre {\n  margin: 10px 0; padding: 10px 12px; overflow-x: auto; border-radius: 8px; white-space: pre; word-break: normal;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 20px;\n  background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.05)); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-md-pre > code { font: inherit; }\n.dpv-md-quote { margin: 10px 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); color: var(--dsw-alias-label-secondary, #646a73); }\n.dpv-md-rule { margin: 16px 0; border: 0; border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }\n.dpv-md-link { color: var(--dsw-alias-state-business-primary, #3d7be0); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }\n.dpv-md-table-wrap {\n  margin: 10px 0; overflow-x: auto; border-radius: 8px; border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-md-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 20px; }\n.dpv-md-table th, .dpv-md-table td { padding: 6px 10px; text-align: left; vertical-align: top; border-bottom: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 64px; }\n.dpv-md-table th { font-weight: 600; background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); white-space: nowrap; }\n.dpv-md-table tr:last-child td { border-bottom: 0; }\n.dpv-md-pre:focus-visible, .dpv-md-table-wrap:focus-visible, .dpv-md-link:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 2px;\n}\n\n/* 채팅 머리 진행 칩 */\n.dpv-chip {\n  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; margin: 0;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 14px; background: transparent;\n  font: inherit; font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary, #646a73); cursor: pointer; white-space: nowrap;\n  font-variant-numeric: tabular-nums;\n}\n@media (hover: hover) { .dpv-chip:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-chip[aria-expanded='true'] { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); }\n.dpv-ring { flex: none; width: 16px; height: 16px; }\n.dpv-ring-track { stroke: var(--dsw-alias-label-tertiary, #8f959e); }\n.dpv-ring-fill { stroke: var(--dsw-alias-state-business-primary, #3d7be0); transition: stroke-dashoffset 0.4s ease; }\n.dpv-ring[data-live] .dpv-ring-fill { animation: dpv-pulse 1.6s ease-in-out infinite; }\n@keyframes dpv-pulse { 50% { opacity: 0.45; } }\n\n/* 칩을 누르면 뜨는 창 */\n.dpv-panel {\n  position: fixed; z-index: 1000; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;\n  padding: 12px; overflow-y: auto; overscroll-behavior: contain;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-specific-menu, var(--dsw-alias-card-fill, #fff)); box-shadow: var(--dsw-elevation-panel, 0 8px 24px rgba(0, 0, 0, 0.16));\n  backdrop-filter: var(--dsw-menu-backdrop-filter, none);\n  color: var(--dsw-alias-label-primary, #1f2329); word-break: keep-all; overflow-wrap: break-word;\n  scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb, var(--dsw-alias-scrollbar-bg-l2, rgba(0, 0, 0, 0.2))) transparent;\n}\n.dpv-panel:focus { outline: none; }\n.dpv-panel:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); }\n.dpv-panel-list { padding: 0; }\n.dpv-panel .dpv-todo-compact { padding: 5px 2px; }\n\n/* 멈춘 할 일 이어서 진행. 단추는 테마 색 글자 + 카드 바탕이라 밝음·어두움 모두 대비가 남는다. */\n.dpv-resume { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 8px 12px; border-radius: var(--dsw-radius-lg, 12px); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.1)); }\n.dpv-resume-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }\n.dpv-resume-text { flex: 1 1 12em; min-width: 0; margin: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }\n.dpv-resume[data-compact] .dpv-resume-text { font-size: 13px; line-height: 20px; }\n.dpv-resume-btn {\n  flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;\n  box-sizing: border-box; min-height: 44px; padding: 0 14px; margin: 0;\n  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 10px;\n  background: var(--dsw-alias-card-fill, #fff); color: var(--dsw-alias-state-business-primary, #3d7be0);\n  font: inherit; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; cursor: pointer;\n}\n@media (hover: hover) { .dpv-resume-btn:not(:disabled):hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }\n.dpv-resume-btn:disabled { opacity: 0.55; cursor: default; }\n.dpv-resume-btn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 2px; }\n.dpv-play { flex: none; width: 16px; height: 16px; }\n.dpv-resume-note { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }\n.dpv-resume-note:empty { display: none; }\n.dpv-chip-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary, #3d7be0); }\n\n@media (prefers-reduced-motion: reduce) {\n  .dpv-spin, .dpv-ring[data-live] .dpv-ring-fill, .dpv-todo[data-just], .dpv-todo[data-added],\n  .dpv-todo[data-just] .dpv-icon-fill, .dpv-todo[data-just] .dpv-icon-check { animation: none; }\n  .dpv-progress-fill, .dpv-ring-fill, .dpv-chevron { transition: none; }\n}"
 
     const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})\s*([^`\s]*)/
     const HEADING = /^ {0,3}(#{1,6})(?:\s+(.*?))?\s*#*\s*$/
@@ -622,6 +622,52 @@ window.__ModuleLoader__.load({
         },
       }
     }
+    
+    const RESUME_LIST_MAX = 5
+    
+    function remainingTodos(list) {
+      return (list?.items ?? []).filter(item => item.status !== 'completed')
+    }
+    
+    function resumeStateOf({ list, running, phase, pending, subagent, lastError, canSend }) {
+      if (!canSend || running || subagent) return null
+      if (phase !== undefined && phase !== 'plain') return null
+      if (pending > 0) return null
+      const remaining = remainingTodos(list)
+      if (remaining.length === 0) return null
+      return { remaining, reason: typeof lastError === 'string' && lastError.trim() !== '' ? 'error' : 'stopped' }
+    }
+    
+    function resumePromptOf(remaining) {
+      const ordered = [
+        ...remaining.filter(item => item.status === 'in_progress'),
+        ...remaining.filter(item => item.status !== 'in_progress'),
+      ]
+      const shown = ordered.slice(0, RESUME_LIST_MAX)
+      const lines = shown.map(item => `- ${item.content}${item.status === 'in_progress' ? ' (진행 중에 멈춤)' : ''}`)
+      if (ordered.length > shown.length) lines.push(`- 외 ${ordered.length - shown.length}개`)
+      return ['멈춘 곳부터 남은 할 일을 이어서 진행해 주세요.', ...lines].join('\n')
+    }
+    
+    function sendResume(actions, hasDraft, text) {
+      if (!actions) return 'failed'
+      try {
+        if (!hasDraft) {
+          actions.setDraft(text)
+          actions.submit()
+          return 'sent'
+        }
+        return actions.insertText(`\n${text}`, actions.captureInsertion()) ? 'inserted' : 'failed'
+      } catch (_error) {
+        return 'failed'
+      }
+    }
+    
+    const RESUME_RESULT_TEXT = {
+      sent: '이어서 진행해 달라고 보냈어요.',
+      inserted: '입력창에 쓰던 글이 있어 요청을 덧붙이기만 했어요. 확인하고 직접 보내 주세요.',
+      failed: '지금은 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.',
+    }
 
     const NO_KEYS = new Set()
     const HIGHLIGHT_MS = 2500
@@ -696,6 +742,11 @@ window.__ModuleLoader__.load({
     function Chevron() {
       return svg({ className: 'dpv-chevron', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
         h('path', { d: 'M6 4l4 4-4 4' }))
+    }
+
+    function PlayIcon() {
+      return svg({ className: 'dpv-play', stroke: 'currentColor', strokeWidth: 1.5, strokeLinejoin: 'round' },
+        h('path', { d: 'M5 3.25v9.5L12.75 8z' }))
     }
 
     function ProgressBar({ done, total }) {
@@ -829,9 +880,56 @@ window.__ModuleLoader__.load({
         meta ? h('span', { className: 'dpv-todo-meta' }, meta) : null)
     }
 
+    // ── 이어서 진행 ───────────────────────────────────────────
+    // 남은 할 일이 있는데 세션이 멈췄으면 단추를 보인다. 사람이 누를 때만 보내고,
+    // 입력창에 쓰던 글이 있으면 지우지 않고 덧붙이기만 한다(src/resume.js).
+
+    function useResume({ list, running, useSession, useInput, inputActions }) {
+      const pending = useSession(s => s?.pendingSubmissions?.length ?? 0)
+      const subagent = useSession(s => s?.subagent != null)
+      const lastError = useSession(s => s?.lastAgentError ?? null)
+      // useInput은 DSH 세션 자리의 표준 속성이다. 없는 틀(미리보기·시험)에서는 빈 입력창으로 본다.
+      const phase = typeof useInput === 'function' ? useInput(s => s?.phase) : undefined
+      const hasDraft = typeof useInput === 'function'
+        ? useInput(s => String(s?.draft ?? '').trim() !== '' || (s?.attachmentIds?.length ?? 0) > 0)
+        : false
+      const [note, setNote] = useState('')
+      const [busy, setBusy] = useState(false)
+      const state = resumeStateOf({ list, running, phase, pending, subagent, lastError, canSend: inputActions != null })
+      const signature = state === null ? '' : state.remaining.map(item => `${item.status}\u0000${item.content}`).join('\u0001')
+      useEffect(() => {
+        setBusy(false)
+        if (running) setNote('')
+      }, [running, signature])
+      const send = () => {
+        if (state === null || busy) return
+        const result = sendResume(inputActions, hasDraft, resumePromptOf(state.remaining))
+        setNote(RESUME_RESULT_TEXT[result])
+        if (result === 'sent') setBusy(true)
+      }
+      return { state, note, busy, send }
+    }
+
+    function ResumeBar({ resume, compact }) {
+      const { state, note, busy, send } = resume
+      if (state === null) return null
+      const count = state.remaining.length
+      const message = state.reason === 'error'
+        ? `오류로 멈췄어요. 남은 할 일 ${count}개를 이어서 할 수 있어요.`
+        : `남은 할 일 ${count}개가 있는데 멈췄어요.`
+      return h('div', { className: 'dpv-resume', 'data-compact': compact ? '' : undefined, 'data-reason': state.reason },
+        h('div', { className: 'dpv-resume-row' },
+          h('p', { className: 'dpv-resume-text' }, message),
+          h('button', {
+            type: 'button', className: 'dpv-resume-btn', onClick: send, disabled: busy,
+            title: '남은 할 일을 이어서 진행해 달라고 보내요. 입력창에 쓰던 글이 있으면 덧붙이기만 해요.',
+          }, h(PlayIcon), h('span', null, '이어서 진행'))),
+        h('p', { className: 'dpv-resume-note', role: 'status' }, note))
+    }
+
     // ── 계획 탭 ───────────────────────────────────────────────
 
-    function TodoSection({ list, running, inspectCall }) {
+    function TodoSection({ list, running, inspectCall, resume }) {
       const items = list?.items ?? []
       const hasActive = items.some(item => item.status === 'in_progress')
       const now = useNow(running && hasActive)
@@ -852,7 +950,8 @@ window.__ModuleLoader__.load({
               just: transitions.done.has(item.content), added: transitions.added.has(item.content),
               open: openKey === item.content,
               onToggle: () => setOpenKey(key => (key === item.content ? null : item.content)),
-            })))))
+            })))),
+        items.length === 0 ? null : h(ResumeBar, { resume }))
     }
 
     function PastSection({ past }) {
@@ -923,13 +1022,14 @@ window.__ModuleLoader__.load({
             }))))
     }
 
-    function PlanView({ useProjection, usePlanState, useSession, inspectCall }) {
+    function PlanView({ useProjection, usePlanState, useSession, useInput, inputActions, inspectCall }) {
       const state = usePlanState(s => s)
       const projection = useProjection('todos')
       const running = useSession(s => s?.running === true)
       const list = currentTodos(state.history, projection)
+      const resume = useResume({ list, running, useSession, useInput, inputActions })
       return h('div', { className: 'dpv-root', 'data-plugin': 'dsh-plan-view' },
-        h(TodoSection, { list, running, inspectCall }),
+        h(TodoSection, { list, running, inspectCall, resume }),
         h(PastSection, { past: state.history.past }),
         h(PlanSection, { plans: state.plans, writes: state.writes }))
     }
@@ -958,11 +1058,12 @@ window.__ModuleLoader__.load({
       return { top, left, width, maxHeight: Math.max(120, window.innerHeight - top - EDGE) }
     }
 
-    function ProgressChip({ useProjection, usePlanState, useSession }) {
+    function ProgressChip({ useProjection, usePlanState, useSession, useInput, inputActions }) {
       const state = usePlanState(s => s)
       const projection = useProjection('todos')
       const running = useSession(s => s?.running === true)
       const list = currentTodos(state.history, projection)
+      const resume = useResume({ list, running, useSession, useInput, inputActions })
       const [open, setOpen] = useState(false)
       const [place, setPlace] = useState(null)
       const button = useRef(null)
@@ -1001,20 +1102,30 @@ window.__ModuleLoader__.load({
 
       if (list === null || list.total === 0) return null
       const live = running && hasActive
-      const label = `계획 진행 ${list.done}/${list.total}${live ? ', 진행 중' : ''}`
+      const stopped = resume.state !== null
+      const label = `계획 진행 ${list.done}/${list.total}${live ? ', 진행 중' : stopped ? ', 멈춤 · 이어서 진행할 수 있어요' : ''}`
       return h(React.Fragment, null,
         h('button', {
           type: 'button', ref: button, className: 'dpv-chip', 'aria-expanded': open, 'aria-controls': panelId,
           'aria-label': label, title: label, onClick: () => setOpen(value => !value),
+          'data-stopped': stopped ? '' : undefined,
         },
         h(ProgressRing, { done: list.done, total: list.total, live }),
-        h('span', { className: 'dpv-chip-text' }, `${list.done}/${list.total}`)),
+        h('span', { className: 'dpv-chip-text' }, `${list.done}/${list.total}`),
+        stopped ? h('span', { className: 'dpv-chip-dot', 'aria-hidden': true }) : null),
         open && place !== null
           ? ReactDOM.createPortal(h('div', {
             ref: panel, id: panelId, className: 'dpv-panel', role: 'dialog', 'aria-modal': false,
             'aria-labelledby': `${panelId}-title`, tabIndex: -1,
             style: { top: `${place.top}px`, left: `${place.left}px`, width: `${place.width}px`, maxHeight: `${place.maxHeight}px` },
-            onKeyDown: (event) => { if (event.key === 'Tab') { event.preventDefault(); close(true) } },
+            // 창 안 단추 사이는 Tab으로 옮기고, 처음·끝을 넘어가면 창을 닫고 칩으로 돌아간다.
+            onKeyDown: (event) => {
+              if (event.key !== 'Tab') return
+              const items = [...panel.current.querySelectorAll('button:not([disabled])')]
+              const at = document.activeElement
+              const out = items.length === 0 || (event.shiftKey ? at === items[0] || at === panel.current : at === items[items.length - 1])
+              if (out) { event.preventDefault(); close(true) }
+            },
           },
           h('div', { className: 'dpv-head' },
             h('h2', { className: 'dpv-title', id: `${panelId}-title` }, '계획 진행'),
@@ -1023,6 +1134,7 @@ window.__ModuleLoader__.load({
           h(ProgressBar, { done: list.done, total: list.total }),
           h('ul', { className: 'dpv-todos dpv-panel-list' }, items.map(item =>
             h(CompactRow, { key: item.content, item, now, running }))),
+          h(ResumeBar, { resume, compact: true }),
           h('p', { className: 'dpv-note' }, '시각·지난 턴·계획 문서는 … 메뉴의 ‘계획’ 탭에서 볼 수 있어요.')), document.body)
           : null)
     }

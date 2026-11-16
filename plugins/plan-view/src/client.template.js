@@ -87,6 +87,11 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M6 4l4 4-4 4' }))
     }
 
+    function PlayIcon() {
+      return svg({ className: 'dpv-play', stroke: 'currentColor', strokeWidth: 1.5, strokeLinejoin: 'round' },
+        h('path', { d: 'M5 3.25v9.5L12.75 8z' }))
+    }
+
     function ProgressBar({ done, total }) {
       const ratio = total === 0 ? 0 : done / total
       return h('div', {
@@ -218,9 +223,56 @@ window.__ModuleLoader__.load({
         meta ? h('span', { className: 'dpv-todo-meta' }, meta) : null)
     }
 
+    // ── 이어서 진행 ───────────────────────────────────────────
+    // 남은 할 일이 있는데 세션이 멈췄으면 단추를 보인다. 사람이 누를 때만 보내고,
+    // 입력창에 쓰던 글이 있으면 지우지 않고 덧붙이기만 한다(src/resume.js).
+
+    function useResume({ list, running, useSession, useInput, inputActions }) {
+      const pending = useSession(s => s?.pendingSubmissions?.length ?? 0)
+      const subagent = useSession(s => s?.subagent != null)
+      const lastError = useSession(s => s?.lastAgentError ?? null)
+      // useInput은 DSH 세션 자리의 표준 속성이다. 없는 틀(미리보기·시험)에서는 빈 입력창으로 본다.
+      const phase = typeof useInput === 'function' ? useInput(s => s?.phase) : undefined
+      const hasDraft = typeof useInput === 'function'
+        ? useInput(s => String(s?.draft ?? '').trim() !== '' || (s?.attachmentIds?.length ?? 0) > 0)
+        : false
+      const [note, setNote] = useState('')
+      const [busy, setBusy] = useState(false)
+      const state = resumeStateOf({ list, running, phase, pending, subagent, lastError, canSend: inputActions != null })
+      const signature = state === null ? '' : state.remaining.map(item => `${item.status}\u0000${item.content}`).join('\u0001')
+      useEffect(() => {
+        setBusy(false)
+        if (running) setNote('')
+      }, [running, signature])
+      const send = () => {
+        if (state === null || busy) return
+        const result = sendResume(inputActions, hasDraft, resumePromptOf(state.remaining))
+        setNote(RESUME_RESULT_TEXT[result])
+        if (result === 'sent') setBusy(true)
+      }
+      return { state, note, busy, send }
+    }
+
+    function ResumeBar({ resume, compact }) {
+      const { state, note, busy, send } = resume
+      if (state === null) return null
+      const count = state.remaining.length
+      const message = state.reason === 'error'
+        ? `오류로 멈췄어요. 남은 할 일 ${count}개를 이어서 할 수 있어요.`
+        : `남은 할 일 ${count}개가 있는데 멈췄어요.`
+      return h('div', { className: 'dpv-resume', 'data-compact': compact ? '' : undefined, 'data-reason': state.reason },
+        h('div', { className: 'dpv-resume-row' },
+          h('p', { className: 'dpv-resume-text' }, message),
+          h('button', {
+            type: 'button', className: 'dpv-resume-btn', onClick: send, disabled: busy,
+            title: '남은 할 일을 이어서 진행해 달라고 보내요. 입력창에 쓰던 글이 있으면 덧붙이기만 해요.',
+          }, h(PlayIcon), h('span', null, '이어서 진행'))),
+        h('p', { className: 'dpv-resume-note', role: 'status' }, note))
+    }
+
     // ── 계획 탭 ───────────────────────────────────────────────
 
-    function TodoSection({ list, running, inspectCall }) {
+    function TodoSection({ list, running, inspectCall, resume }) {
       const items = list?.items ?? []
       const hasActive = items.some(item => item.status === 'in_progress')
       const now = useNow(running && hasActive)
@@ -241,7 +293,8 @@ window.__ModuleLoader__.load({
               just: transitions.done.has(item.content), added: transitions.added.has(item.content),
               open: openKey === item.content,
               onToggle: () => setOpenKey(key => (key === item.content ? null : item.content)),
-            })))))
+            })))),
+        items.length === 0 ? null : h(ResumeBar, { resume }))
     }
 
     function PastSection({ past }) {
@@ -312,13 +365,14 @@ window.__ModuleLoader__.load({
             }))))
     }
 
-    function PlanView({ useProjection, usePlanState, useSession, inspectCall }) {
+    function PlanView({ useProjection, usePlanState, useSession, useInput, inputActions, inspectCall }) {
       const state = usePlanState(s => s)
       const projection = useProjection('todos')
       const running = useSession(s => s?.running === true)
       const list = currentTodos(state.history, projection)
+      const resume = useResume({ list, running, useSession, useInput, inputActions })
       return h('div', { className: 'dpv-root', 'data-plugin': 'dsh-plan-view' },
-        h(TodoSection, { list, running, inspectCall }),
+        h(TodoSection, { list, running, inspectCall, resume }),
         h(PastSection, { past: state.history.past }),
         h(PlanSection, { plans: state.plans, writes: state.writes }))
     }
@@ -347,11 +401,12 @@ window.__ModuleLoader__.load({
       return { top, left, width, maxHeight: Math.max(120, window.innerHeight - top - EDGE) }
     }
 
-    function ProgressChip({ useProjection, usePlanState, useSession }) {
+    function ProgressChip({ useProjection, usePlanState, useSession, useInput, inputActions }) {
       const state = usePlanState(s => s)
       const projection = useProjection('todos')
       const running = useSession(s => s?.running === true)
       const list = currentTodos(state.history, projection)
+      const resume = useResume({ list, running, useSession, useInput, inputActions })
       const [open, setOpen] = useState(false)
       const [place, setPlace] = useState(null)
       const button = useRef(null)
@@ -390,20 +445,30 @@ window.__ModuleLoader__.load({
 
       if (list === null || list.total === 0) return null
       const live = running && hasActive
-      const label = `계획 진행 ${list.done}/${list.total}${live ? ', 진행 중' : ''}`
+      const stopped = resume.state !== null
+      const label = `계획 진행 ${list.done}/${list.total}${live ? ', 진행 중' : stopped ? ', 멈춤 · 이어서 진행할 수 있어요' : ''}`
       return h(React.Fragment, null,
         h('button', {
           type: 'button', ref: button, className: 'dpv-chip', 'aria-expanded': open, 'aria-controls': panelId,
           'aria-label': label, title: label, onClick: () => setOpen(value => !value),
+          'data-stopped': stopped ? '' : undefined,
         },
         h(ProgressRing, { done: list.done, total: list.total, live }),
-        h('span', { className: 'dpv-chip-text' }, `${list.done}/${list.total}`)),
+        h('span', { className: 'dpv-chip-text' }, `${list.done}/${list.total}`),
+        stopped ? h('span', { className: 'dpv-chip-dot', 'aria-hidden': true }) : null),
         open && place !== null
           ? ReactDOM.createPortal(h('div', {
             ref: panel, id: panelId, className: 'dpv-panel', role: 'dialog', 'aria-modal': false,
             'aria-labelledby': `${panelId}-title`, tabIndex: -1,
             style: { top: `${place.top}px`, left: `${place.left}px`, width: `${place.width}px`, maxHeight: `${place.maxHeight}px` },
-            onKeyDown: (event) => { if (event.key === 'Tab') { event.preventDefault(); close(true) } },
+            // 창 안 단추 사이는 Tab으로 옮기고, 처음·끝을 넘어가면 창을 닫고 칩으로 돌아간다.
+            onKeyDown: (event) => {
+              if (event.key !== 'Tab') return
+              const items = [...panel.current.querySelectorAll('button:not([disabled])')]
+              const at = document.activeElement
+              const out = items.length === 0 || (event.shiftKey ? at === items[0] || at === panel.current : at === items[items.length - 1])
+              if (out) { event.preventDefault(); close(true) }
+            },
           },
           h('div', { className: 'dpv-head' },
             h('h2', { className: 'dpv-title', id: `${panelId}-title` }, '계획 진행'),
@@ -412,6 +477,7 @@ window.__ModuleLoader__.load({
           h(ProgressBar, { done: list.done, total: list.total }),
           h('ul', { className: 'dpv-todos dpv-panel-list' }, items.map(item =>
             h(CompactRow, { key: item.content, item, now, running }))),
+          h(ResumeBar, { resume, compact: true }),
           h('p', { className: 'dpv-note' }, '시각·지난 턴·계획 문서는 … 메뉴의 ‘계획’ 탭에서 볼 수 있어요.')), document.body)
           : null)
     }
