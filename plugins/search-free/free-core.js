@@ -3,12 +3,23 @@
  *
  * This module has no DSH imports so it can be unit-tested with plain Node.
  * Endpoints and request shapes were worked out from dsh-free-search v0.9.54
- * (https://github.com/DDDMUC/dsh-free-search, MIT, lib/engines/*.js) and
- * checked against the live services on 2026-11-17; the code here is new.
+ * (https://github.com/DDDMUC/dsh-free-search, MIT, lib/engines/*.js) and the
+ * services' own API documents (Naver Search API webkr, Kakao Daum search
+ * v2/search/web), and checked against the live services on 2026-11-17 where no
+ * key was needed; the code here is new.
  */
 
-/** Provider ids in their default fallback order. */
-export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'bing'])
+/** Provider ids, in the order the automatic "free" provider uses for non-Korean queries. */
+export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
+
+/** The automatic order: Korean queries try the Korean indexes first. */
+export const DEFAULT_FREE_ORDER = Object.freeze({
+  ko: Object.freeze(['naver', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'bing']),
+  en: PROVIDER_IDS
+})
+
+/** Providers that return nothing without a key; they fail fast instead of calling out. */
+export const REQUIRES_KEY = Object.freeze(['tinyfish', 'jina', 'naver', 'kakao'])
 
 export const ENDPOINTS = Object.freeze({
   tavily: 'https://api.tavily.com/search',
@@ -18,15 +29,30 @@ export const ENDPOINTS = Object.freeze({
   parallelRest: 'https://api.parallel.ai/v1/search',
   keenableMcp: 'https://api.keenable.ai/mcp',
   keenableRest: 'https://api.keenable.ai/v1/search',
-  bing: 'https://www.bing.com/search'
+  bing: 'https://www.bing.com/search',
+  firecrawl: 'https://api.firecrawl.dev/v2/search',
+  tinyfish: 'https://api.search.tinyfish.ai',
+  jina: 'https://s.jina.ai/',
+  naver: 'https://openapi.naver.com/v1/search/webkr.json',
+  kakao: 'https://dapi.kakao.com/v2/search/web'
 })
 
-/** Credential names a key is looked up under. A missing key means the keyless tier. */
+/**
+ * Credential names each provider looks up. Naver needs two (client id and
+ * secret); every other provider needs one. A missing optional key means the
+ * keyless tier.
+ */
 export const DEFAULT_KEY_NAMES = Object.freeze({
-  tavily: 'TAVILY_API_KEY',
-  you: 'YDC_API_KEY',
-  parallel: 'PARALLEL_API_KEY',
-  keenable: 'KEENABLE_API_KEY'
+  you: Object.freeze(['YDC_API_KEY']),
+  parallel: Object.freeze(['PARALLEL_API_KEY']),
+  keenable: Object.freeze(['KEENABLE_API_KEY']),
+  tavily: Object.freeze(['TAVILY_API_KEY']),
+  tinyfish: Object.freeze(['TINYFISH_API_KEY']),
+  jina: Object.freeze(['JINA_API_KEY']),
+  firecrawl: Object.freeze(['FIRECRAWL_API_KEY']),
+  naver: Object.freeze(['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET']),
+  kakao: Object.freeze(['KAKAO_REST_API_KEY']),
+  bing: Object.freeze([])
 })
 
 const DEFAULT_COUNT = 8
@@ -46,16 +72,24 @@ export function normalizeSettings(config = {}) {
   const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000 ? Math.min(rawTimeout, 60000) : DEFAULT_TIMEOUT_MS
   const listed = Array.isArray(config.providers) ? config.providers.map((p) => String(p).trim()) : PROVIDER_IDS
   const providers = PROVIDER_IDS.filter((id) => listed.includes(id))
-  const keyNames = { ...DEFAULT_KEY_NAMES }
-  for (const id of Object.keys(DEFAULT_KEY_NAMES)) {
-    const name = text(config.keys?.[id])
-    if (name !== undefined) keyNames[id] = name
+  const keyNames = {}
+  for (const [id, names] of Object.entries(DEFAULT_KEY_NAMES)) {
+    const raw = config.keys?.[id]
+    const given = (Array.isArray(raw) ? raw : [raw]).map(text)
+    keyNames[id] = names.map((name, index) => given[index] ?? name)
+  }
+  const freeOrder = {}
+  for (const language of ['ko', 'en']) {
+    const raw = config.freeOrder?.[language]
+    const wanted = Array.isArray(raw) ? raw.map((p) => String(p).trim()) : DEFAULT_FREE_ORDER[language]
+    freeOrder[language] = [...new Set(wanted)].filter((id) => providers.includes(id))
   }
   return {
     count,
     timeoutMs,
     providers,
     keyNames,
+    freeOrder,
     bingMarket: text(config.bingMarket),
     safeSearch: ['off', 'moderate', 'strict'].includes(config.safeSearch) ? config.safeSearch : 'moderate'
   }
@@ -88,7 +122,8 @@ function mcpCall(url, name, args) {
  * Build the HTTP request for one provider.
  * @returns {{ url: string, init: { method: string, headers: Record<string,string>, body?: string } }}
  */
-export function buildRequest(id, { query, count, apiKey, settings }) {
+export function buildRequest(id, { query, count, keys = [], settings }) {
+  const apiKey = keys[0] ?? ''
   switch (id) {
     case 'tavily':
       return jsonPost(
@@ -122,9 +157,41 @@ export function buildRequest(id, { query, count, apiKey, settings }) {
       const language = settings.bingMarket ? `${settings.bingMarket},${settings.bingMarket.split('-')[0]};q=0.9,en;q=0.5` : 'en;q=0.9'
       return { url: url.toString(), init: { method: 'GET', headers: { accept: 'text/html', 'accept-language': language } } }
     }
+    case 'firecrawl':
+      return jsonPost(ENDPOINTS.firecrawl, { query, limit: Math.min(count, 10) }, apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+    case 'tinyfish': {
+      const url = new URL(ENDPOINTS.tinyfish)
+      url.searchParams.set('query', query)
+      return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', 'x-api-key': apiKey } } }
+    }
+    case 'jina': {
+      const url = new URL(ENDPOINTS.jina)
+      url.searchParams.set('q', query)
+      return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', authorization: `Bearer ${apiKey}` } } }
+    }
+    case 'naver': {
+      const url = new URL(ENDPOINTS.naver)
+      url.searchParams.set('query', query)
+      url.searchParams.set('display', String(count))
+      return {
+        url: url.toString(),
+        init: { method: 'GET', headers: { accept: 'application/json', 'x-naver-client-id': keys[0] ?? '', 'x-naver-client-secret': keys[1] ?? '' } }
+      }
+    }
+    case 'kakao': {
+      const url = new URL(ENDPOINTS.kakao)
+      url.searchParams.set('query', query)
+      url.searchParams.set('size', String(Math.min(count, 50)))
+      return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', authorization: `KakaoAK ${apiKey}` } } }
+    }
     default:
       throw new Error(`unknown provider "${id}"`)
   }
+}
+
+/** Whether a query is Korean enough to try the Korean indexes first. */
+export function isKoreanQuery(query) {
+  return /\p{Script=Hangul}/u.test(String(query))
 }
 
 /** A response that arrived but carries the service's own error. */
@@ -167,6 +234,23 @@ export function parseResponse(id, body, { query, count, keyed }) {
       break
     case 'bing':
       sources = parseBingHtml(body)
+      break
+    case 'firecrawl': {
+      const data = parseJson(body)?.data
+      sources = (Array.isArray(data) ? data : data?.web ?? []).map((r) => source(r?.url, r?.title, r?.description))
+      break
+    }
+    case 'tinyfish':
+      sources = (parseJson(body)?.results ?? []).map((r) => source(r?.url, r?.title, r?.snippet))
+      break
+    case 'jina':
+      sources = (parseJson(body)?.data ?? []).map((r) => source(r?.url, r?.title, r?.description ?? r?.content))
+      break
+    case 'naver':
+      sources = (parseJson(body)?.items ?? []).map((r) => source(r?.link, r?.title, r?.description))
+      break
+    case 'kakao':
+      sources = (parseJson(body)?.documents ?? []).map((r) => source(r?.url, r?.title, r?.contents, r?.datetime))
       break
     default:
       throw new Error(`unknown provider "${id}"`)
@@ -298,7 +382,9 @@ function source(url, title, snippet, publishedAt) {
 
 /** Plain text for the model: no tags, entities, empty markdown links or heading marks. */
 export function cleanText(value) {
-  return decodeEntities(String(value).replace(/<[^>]*>/g, ' '))
+  // Inline emphasis (Naver and Kakao mark query words with <b>) joins its text;
+  // any other tag separates words.
+  return decodeEntities(String(value).replace(/<\/?(?:b|strong|em|i|mark)\b[^>]*>/gi, '').replace(/<[^>]*>/g, ' '))
     .replace(/\[\]\([^)]*\)/g, ' ')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\s+/g, ' ')

@@ -88,8 +88,8 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>검색 공급자가 실패하면 다음 공급자로 다시 찾아요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>무료 검색</strong></td>
-<td>API 키 없이 쓰는 검색 공급자 5개(You.com·Parallel·Keenable·Tavily·Bing)를 더해요. 검색 자동 전환의 "Exa → Brave → 무료 검색" 순서로 써요.</td>
+<td align="center" nowrap><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>검색</strong></td>
+<td>웹검색 공급자 10개(네이버·카카오·You.com·Parallel·Keenable·Tavily·TinyFish·Jina·Firecrawl·Bing)와 언어에 맞춰 차례로 쓰는 자동 엔진, <code>/search</code> 명령을 더해요. 플러그인 페이지에서 키를 넣으면 한도가 늘어요.</td>
 </tr>
 <tr>
 <td align="center" nowrap><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>자동 검토 복구</strong></td>
