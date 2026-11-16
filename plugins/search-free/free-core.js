@@ -9,7 +9,7 @@
  * key was needed; the code here is new.
  */
 
-/** Provider ids, in the order the automatic "free" provider uses for non-Korean queries. */
+/** Provider ids, in the order the automatic "auto" provider uses for non-Korean queries. */
 export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
 
 /** The automatic order: Korean queries try the Korean indexes first. */

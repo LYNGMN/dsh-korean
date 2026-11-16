@@ -51,7 +51,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 
 test('apply registers ten engines plus the automatic one, the free_search tool and /search', () => {
   const { providers, tools, commands } = register()
-  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'free'])
+  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto'])
   for (const p of providers) {
     assert.equal(p.available(), true)
     assert.ok(p.title)
@@ -59,13 +59,13 @@ test('apply registers ten engines plus the automatic one, the free_search tool a
     assert.ok(p.description.en)
   }
   assert.deepEqual(tools.map((tool) => tool.name), ['free_search'])
-  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['free', ...PROVIDER_IDS])
+  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', ...PROVIDER_IDS])
   assert.deepEqual(commands.map((command) => command.name), ['search'])
 })
 
 test('the providers list in the config limits what is registered and the automatic order follows it', () => {
   const { providers } = register({ providers: ['bing', 'tavily', 'nope'] })
-  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'free'])
+  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto'])
   const settings = normalizeSettings({ providers: ['bing', 'naver'], freeOrder: { ko: ['bing', 'naver', 'naver', 'x'] } })
   assert.deepEqual(settings.freeOrder, { ko: ['bing', 'naver'], en: ['naver', 'bing'] })
 })
