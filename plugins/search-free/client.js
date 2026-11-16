@@ -40,18 +40,20 @@ window.__ModuleLoader__.load({
     const en = {
       title: 'Search',
       summary: 'Keys for the search engines. A key raises the limit, and some engines need one.',
-      description: 'Engines marked "works without a key" search on their free tier; a key raises the limit. Engines marked "key needed" are skipped until you add one. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
+      description: 'Each provider takes an API key. Leave it empty to search without a key on a small quota; a key raises the limit. Providers that need a sign-up are skipped by the automatic engine until you add a key. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
       checking: 'Checking which keys are set…',
       stillChecking: 'The key status is not available yet. Saving still works, and this line disappears once the status loads.',
       stateKeyed: 'Key set',
       statePartial: 'Partly set',
-      stateKeyless: 'Works without a key',
+      stateKeyless: 'Keyless, small quota',
       stateNeeded: 'Key needed',
       stateNone: 'No key used',
       apiKey: 'API key',
+      apiKeyOptional: 'API key (optional)',
       clientId: 'Client ID',
       clientSecret: 'Client Secret',
       placeholder: 'Paste the key',
+      placeholderOptional: 'Empty: search without a key',
       save: 'Save',
       saving: 'Saving…',
       clear: 'Clear',
@@ -100,18 +102,20 @@ window.__ModuleLoader__.load({
     const ko = {
       title: '검색',
       summary: '검색 엔진의 키예요. 키를 넣으면 한도가 늘고, 일부 엔진은 키가 있어야 써요.',
-      description: '"키 없이 써요"인 엔진은 무료 등급으로 검색하고, 키를 넣으면 한도가 늘어요. "키 필요"인 엔진은 키를 넣기 전까지 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
+      description: '공급자마다 API 키를 넣을 수 있어요. 비워 두면 키 없이 적은 한도로 검색하고, 키를 넣으면 한도가 늘어요. 가입해야 쓰는 공급자는 키를 넣기 전까지 자동 엔진이 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
       checking: '어떤 키가 설정됐는지 확인하는 중이에요…',
       stillChecking: '아직 키 상태를 불러오지 못했어요. 저장은 그대로 할 수 있고, 상태를 읽으면 이 안내는 사라져요.',
       stateKeyed: '키 설정됨',
       statePartial: '일부만 설정됨',
-      stateKeyless: '키 없이 써요',
+      stateKeyless: '키 없이 쓰는 중',
       stateNeeded: '키 필요',
       stateNone: '키를 쓰지 않아요',
       apiKey: 'API 키',
+      apiKeyOptional: 'API 키(선택)',
       clientId: 'Client ID',
       clientSecret: 'Client Secret',
       placeholder: '키 붙여넣기',
+      placeholderOptional: '비워 두면 키 없이 써요',
       save: '저장',
       saving: '저장하는 중…',
       clear: '지우기',
@@ -250,7 +254,7 @@ window.__ModuleLoader__.load({
 
     function fieldLabel(engine, index, t) {
       if (engine.id === 'naver') return index === 0 ? t('clientId') : t('clientSecret')
-      return t('apiKey')
+      return engine.mode === 'optional' ? t('apiKeyOptional') : t('apiKey')
     }
 
     function EngineRow({ engine, info, writable, credentials, t, onChanged }) {
@@ -332,7 +336,7 @@ window.__ModuleLoader__.load({
               autoComplete: 'new-password',
               spellCheck: false,
               value: drafts[index],
-              placeholder: t('placeholder'),
+              placeholder: engine.mode === 'optional' ? t('placeholderOptional') : t('placeholder'),
               disabled: busy !== null || !writable,
               onChange: (event) => {
                 const next = drafts.slice()

@@ -65,7 +65,7 @@ test('a bare /search opens an engine picker: auto first, Korean engines, then gl
   const detail = Object.fromEntries(options.map((o) => [o.id, o.detail]))
   assert.equal(detail.naver, '한국 · 키 필요')
   assert.equal(detail.you, '미국 · 키 설정됨')
-  assert.equal(detail.tavily, '이스라엘(네덜란드 Nebius가 인수) · 키 없이 써요')
+  assert.equal(detail.tavily, '이스라엘(네덜란드 Nebius가 인수) · 키 없이 쓰는 중')
   assert.equal(detail.jina, '독일(Elastic이 인수) · 키 필요')
   assert.equal(detail.bing, '미국 · 키를 쓰지 않아요')
 })
