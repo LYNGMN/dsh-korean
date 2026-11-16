@@ -87,7 +87,7 @@ sequenceDiagram
 - Git·GitHub 상태를 바꾸지 않습니다. 네트워크를 타는 `git` 명령도 없습니다(원격 정보는 마지막으로 받아 둔 로컬 참조만 봄).
 - DSH 공식 자리·서비스만 씁니다. DSH가 만든 DOM을 건드리지 않습니다.
 - 입력창에는 `insertText`로 글을 넣기만 합니다. 보내기(`submit`)는 부르지 않습니다. 사람이 읽고 고쳐서 보냅니다.
-- 단계 규칙은 `src/stages.js`에만 있습니다. 휴대폰 앱 사본과 Claude Code 모드(`~/.claude/dev-mods/…/work-stage`, TypeScript로 옮김)는 이 규칙을 따릅니다.
+- 단계 규칙은 `src/stages.js`에만 있습니다. 휴대폰 앱 사본(키트 루트 `npm run sync`로 맞춤)이 이 규칙을 따릅니다. 작업 단계 보기는 DSH 안(Desktop 탭, 휴대폰 띠)에만 둡니다.
 
 ## 7. 고치는 때
 
