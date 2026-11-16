@@ -69,7 +69,8 @@
 /* 바닥 줄: 읽은 시각·다시 읽기 */
 .dgs-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; min-width: 0; }
 .dgs-foot-text { flex: 1 1 240px; margin: 0; min-width: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; font-variant-numeric: tabular-nums; }
-.dgs-foot .dgs-link { margin-left: -8px; font-size: 13px; }
+/* 단추 안쪽 여백만큼 양쪽을 당겨, 글자 끝이 위 카드·단계 줄 끝과 맞게 한다. */
+.dgs-foot .dgs-link { margin: 0 -8px; font-size: 13px; }
 
 /* 단계 줄: 넓으면 6칸, 좁으면 3칸 두 줄. 칸 폭은 모두 같다. */
 .dgs-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
