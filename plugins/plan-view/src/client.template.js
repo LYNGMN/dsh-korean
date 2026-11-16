@@ -262,18 +262,38 @@ window.__ModuleLoader__.load({
         })))
     }
 
-    function PlanItem({ plan, writes, latest }) {
-      const checked = checkPlanMarkdown(plan.markdown, todosAfter(writes, plan.seq))
+    // 계획 뒤 할 일 기록으로 실행 상태를 한 줄로 알린다. 문서 줄과 할 일 문구는 길이·모양이 달라
+    // 짝이 드물기 때문에, 단계 체크가 적은 이유도 함께 밝힌다.
+    function planNote(todos, done) {
+      if (todos.length === 0) return '이 계획 뒤에 남긴 할 일 기록이 없어 실행 여부를 알 수 없어요.'
+      if (done === todos.length) return `계획 뒤 할 일 ${todos.length}개를 모두 끝냈어요. 단계 체크는 문구가 거의 같은 줄에만 붙어요.`
+      return `계획 뒤 할 일 ${done}/${todos.length} 완료 · 단계 체크는 문구가 거의 같은 줄에만 붙어요.`
+    }
+
+    // 계획을 실행한 턴(제출한 턴, 또는 승인 뒤 이어지는 다음 턴)의 할 일만 센다.
+    // 그 뒤 턴은 새 요청이라 이 계획의 실행 기록이 아니다. 턴을 모르는 옛 기록은 거르지 않는다.
+    function planWritesOf(plan, writes) {
+      const list = writes ?? []
+      if (plan.turn === undefined || plan.turn === null) return list
+      return list.filter(write => write.turn === plan.turn || write.turn === plan.turn + 1)
+    }
+
+    function PlanItem({ plan, writes, latest, until }) {
+      const todos = todosAfter(planWritesOf(plan, writes), plan.seq, until)
+      const checked = checkPlanMarkdown(plan.markdown, todos)
+      const done = todos.filter(todo => todo.status === 'completed').length
+      const allDone = todos.length > 0 && done === todos.length
       return h('details', { className: 'dpv-card dpv-fold dpv-plan', open: latest },
         h('summary', null,
           h(Chevron),
           h('span', { className: 'dpv-fold-title', title: plan.title }, plan.title),
-          checked.matched > 0 ? h('span', { className: 'dpv-meta' }, `단계 ${checked.done}/${checked.matched}`) : null,
+          !allDone && todos.length > 0
+            ? h('span', { className: 'dpv-meta' }, `할 일 ${done}/${todos.length}`)
+            : null,
+          allDone ? h('span', { className: 'dpv-badge', 'data-done': '' }, '모두 완료') : null,
           latest ? h('span', { className: 'dpv-badge' }, '최신') : null),
         h('div', { className: 'dpv-doc' },
-          checked.matched > 0
-            ? h('p', { className: 'dpv-note' }, `단계 ${checked.done}/${checked.matched} 완료 · 할 일과 문구가 비슷한 단계만 체크해요`)
-            : null,
+          h('p', { className: 'dpv-note' }, planNote(todos, done)),
           h(Markdown, { text: checked.markdown, title: plan.title })))
     }
 
@@ -285,7 +305,11 @@ window.__ModuleLoader__.load({
         plans.length === 0
           ? h('p', { className: 'dpv-empty' }, '/plan으로 계획을 만들면 여기에 보여요.')
           : h('div', { className: 'dpv-plans' }, plans.map((plan, i) =>
-            h(PlanItem, { key: plan.callId, plan, writes, latest: i === 0 }))))
+            h(PlanItem, {
+              key: plan.callId, plan, writes, latest: i === 0,
+              // 최신순이라 바로 앞 항목이 이 계획 다음에 제출된 계획이다. 그 앞까지만 실행 기록으로 본다.
+              until: i === 0 ? undefined : plans[i - 1].seq,
+            }))))
     }
 
     function PlanView({ useProjection, usePlanState, useSession, inspectCall }) {
@@ -413,7 +437,11 @@ window.__ModuleLoader__.load({
           kind: PLAN_KIND,
           target: VIEW_ID,
           match: matchPlanEvent,
-          start: (_context, match) => submittedPlanOf(match.event),
+          // 실행 기록을 계획이 속한 턴과 견주려고, 제출된 턴도 함께 남긴다.
+          start: (_context, match) => {
+            const plan = submittedPlanOf(match.event)
+            return plan === undefined ? undefined : { ...plan, turn: turnOf(match.location) }
+          },
           update: context => context.state,
           buildViewNode: planNodeOf,
         }), 'dsh-plan-view: plan events')

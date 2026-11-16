@@ -70,6 +70,13 @@ test('계획 제출 뒤 쓰기의 최신 상태만 고른다', () => {
   assert.deepEqual(todosAfter(state.writes, 3), [{ content: '가', status: 'completed' }, { content: '나', status: 'pending' }])
 })
 
+test('다음 계획이 제출되면 그 앞까지만 계획의 할 일로 본다', () => {
+  const state = fold([write(5, 0, 1, [['가', 'completed']]), write(6, 0, 1, [['가', 'completed'], ['나', 'pending']]), write(12, 0, 2, [['다', 'completed']])])
+  assert.deepEqual(todosAfter(state.writes, 3, 10), [{ content: '가', status: 'completed' }, { content: '나', status: 'pending' }])
+  assert.deepEqual(todosAfter(state.writes, 3, 6), [{ content: '가', status: 'completed' }], 'until과 같은 seq의 쓰기는 빼고 본다')
+  assert.deepEqual(todosAfter(state.writes, 10), [{ content: '다', status: 'completed' }])
+})
+
 test('시간 표시', () => {
   assert.equal(formatDuration(59_000), '59초')
   assert.equal(formatDuration(125_000), '2분 5초')

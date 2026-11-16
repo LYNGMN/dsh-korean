@@ -46,7 +46,7 @@
   const { foldTodoEvent, createViewBuilder, historyNodeOf, planNodeOf } = mod.internals
 
   const t0 = Date.now() - 6 * 60_000
-  const PLAN = { callId: 'p1', seq: 1, title: '계획 탭에 실시간 체크 넣기', markdown: [
+  const PLAN = { callId: 'p1', seq: 1, turn: 1, title: '계획 탭에 실시간 체크 넣기', markdown: [
     '# 계획 탭에 실시간 체크 넣기', '',
     '## 배경', '',
     '대화가 길어지면 **지금 어디까지 했는지** 보기 어렵습니다. 투영 `todos`는 다음 턴에 비워져서 목록이 사라집니다.', '',
@@ -71,7 +71,8 @@
 
   function eventsUpTo(last) {
     const matches = [
-      { event: { type: 'todo/write', seq: 2, time: t0, data: { todos: [{ content: '구조 문서 읽기', status: 'completed' }, { content: '설치 확인', status: 'completed' }] } }, location: turn(1) },
+      // 계획(seq 1)보다 앞선 턴의 목록: 이 계획의 실행 기록으로 세지 않는다.
+      { event: { type: 'todo/write', seq: 0, time: t0, data: { todos: [{ content: '구조 문서 읽기', status: 'completed' }, { content: '설치 확인', status: 'completed' }] } }, location: turn(1) },
     ]
     for (let s = 0; s <= last; s++) {
       matches.push({ event: { type: 'tool/call', seq: 10 + s * 2, data: { name: 'todo_write', callId: `c${s}`, arguments: '{}' } }, location: turn(2) })
