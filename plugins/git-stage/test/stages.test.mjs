@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { stagesOf, STAGE_KEYS } from '../src/stages.js'
-import { askOf, factsOf, nextOf, outgoingOf, summaryOf } from '../src/stage-text.js'
+import { askOf, factsOf, nextOf, outgoingOf, readAtOf, summaryOf } from '../src/stage-text.js'
 
 const base = {
   repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false,
@@ -111,7 +111,7 @@ test('공유·합치기 전에는 올라가는 저장 기록·파일 수와 올�
   const snap = at(facts, { todos: [{ content: 'npm test', status: 'completed' }] })
   const share = outgoingOf(snap.stages[3])
   assert.deepEqual(share, {
-    title: '이번에 GitHub에 올라가는 것', commits: ['로그인 버튼 키우기', '오류 문구 고치기'], more: '외 저장 1개',
+    title: '이번에 GitHub에 올라가는 것', summary: '저장 3개 · 파일 4개 · 30줄 더함 · 5줄 뺌', commits: ['로그인 버튼 키우기', '오류 문구 고치기'], more: '외 저장 1개',
     files: '파일 4개 · 30줄 더함 · 5줄 뺌', left: '저장 안 된 변경 2개는 올라가지 않아요.', pending: ['새 파일 · notes.md', '고침 · a.js'],
   })
   assert.equal(outgoingOf(snap.stages[4]).title, '원본(main)에 합쳐지는 것')
@@ -141,4 +141,23 @@ test('다음 요청 문장은 지금 단계에만 있고, 로그인이 막히면
   // 묶음 폴더에서는 저장소 이름을 앞에 밝힌다.
   assert.equal(askOf(current(snap), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
   assert.equal(askOf(snap.stages[0], 'app'), null)
+})
+
+test('저장 단계 사실은 0을 늘어놓지 않고, 고칠 것이 없을 때 다음 할 일을 말한다', () => {
+  const empty = at({})
+  assert.deepEqual(factsOf(empty.stages[1]), ['아직 바뀐 파일이 없어요.'])
+  assert.equal(nextOf(empty.stages[1]), '고칠 것을 말하면, 고친 뒤 커밋으로 저장해요.')
+  assert.deepEqual(factsOf(at({ ahead: 2, hadCommits: true }).stages[1]), ['저장 2개 · 저장 안 된 변경 없음'])
+  assert.deepEqual(factsOf(at({ changes: 3 }).stages[1]), ['저장 안 된 변경 3개', '원본보다 앞선 저장 0개'])
+})
+
+test('에이전트가 일하는 중이면 작업실·저장·검증 단계의 다음 할 일은 기다리기다', () => {
+  assert.match(nextOf(at({ changes: 3 }).stages[1], { running: true }), /^에이전트가 고치는 중이에요\. 기다렸다가/)
+  const share = at({ ahead: 1, hadCommits: true }, { todos: [{ content: 'npm test', status: 'completed' }] })
+  assert.match(nextOf(share.stages[3], { running: true }), /^승인하면/, '승인 차례 단계는 그대로 말한다')
+})
+
+test('읽은 시각은 시:분으로, 아직 못 읽었으면 그렇게 쓴다', () => {
+  assert.equal(readAtOf(0), '아직 읽지 않았어요')
+  assert.equal(readAtOf(new Date(2026, 10, 16, 9, 5).getTime()), '09:05에 읽음')
 })

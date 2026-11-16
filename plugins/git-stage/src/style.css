@@ -13,18 +13,19 @@
 .dgs-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dgs-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }
 .dgs-meta { min-width: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-.dgs-where { margin: -6px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; text-wrap: balance; }
-.dgs-repo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
-.dgs-repo-label { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
+.dgs-context { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin-top: -6px; }
+.dgs-panel .dgs-context { margin-top: -4px; }
+.dgs-context-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+.dgs-where { flex: 1 1 160px; min-width: 0; margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; text-wrap: balance; }
+.dgs-repo { flex: none; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.dgs-repo-label { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
 .dgs-repo-select {
-  box-sizing: border-box; flex: 1 1 220px; min-width: 0; max-width: 100%; min-height: 36px; margin: 0; padding: 6px 10px;
+  box-sizing: border-box; width: auto; min-width: 0; max-width: 240px; min-height: 32px; margin: 0; padding: 4px 8px;
   border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); border-radius: 8px;
-  background: transparent; color: inherit; font: inherit; font-size: 14px; line-height: 20px; cursor: pointer;
+  background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 20px; cursor: pointer;
 }
 .dgs-repo-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; }
-.dgs-panel .dgs-where { margin: 0; }
-.dgs-why { margin: -8px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
-.dgs-panel .dgs-why { margin: -6px 0 0; }
+.dgs-why { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 .dgs-empty, .dgs-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 .dgs-note { font-size: 13px; line-height: 20px; }
 .dgs-card, .dgs-detail {
@@ -35,13 +36,34 @@
 .dgs-message { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; font-size: 14px; line-height: 22px; }
 .dgs-message p { margin: 0; }
 
-/* 지금 하는 일 · 다음 */
-.dgs-doing, .dgs-next { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 22px; text-wrap: pretty; }
-.dgs-next-label {
-  flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); white-space: nowrap; font-weight: 500;
-  color: var(--dsw-alias-label-primary, #1f2329); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.1));
+/* 지금 카드: 지금 단계의 상태·다음·요청을 한 곳에. 승인 차례면 경고색 테두리(배지 글자가 먼저, 색은 보조). */
+.dgs-now {
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; min-width: 0;
+  border: 1px solid var(--dsw-alias-state-business-primary, #3d7be0); border-radius: var(--dsw-radius-lg, 12px);
+  background: var(--dsw-alias-card-fill, transparent);
 }
-.dgs-next-text { min-width: 0; text-wrap: balance; }
+.dgs-now[data-tone='approval'] { border-color: var(--dsw-alias-state-warning-primary, #b26a00); }
+.dgs-now[data-tone='done'] { border-color: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); }
+.dgs-now-done { margin: 0; font-size: 14px; line-height: 22px; }
+.dgs-now-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.dgs-now-kicker { flex: none; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--dsw-alias-state-business-primary, #3d7be0); white-space: nowrap; }
+.dgs-now[data-tone='approval'] .dgs-now-kicker { color: var(--dsw-alias-state-warning-primary, #b26a00); }
+.dgs-now-title { margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; white-space: nowrap; }
+.dgs-now-badges { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
+.dgs-rows { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dgs-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 10px; align-items: baseline; }
+@container (max-width: 420px) { .dgs-row { grid-template-columns: minmax(0, 1fr); } }
+.dgs-panel .dgs-row { grid-template-columns: minmax(0, 1fr); }
+.dgs-row-label { font-size: 12px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
+.dgs-row-text { margin: 0; min-width: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }
+.dgs-now-out > summary { cursor: pointer; min-height: 24px; }
+.dgs-now-out > summary:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; border-radius: 4px; }
+.dgs-now-out[open] > summary { margin-bottom: 6px; }
+
+/* 바닥 줄: 읽은 시각·다시 읽기 */
+.dgs-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; min-width: 0; }
+.dgs-foot-text { flex: 1 1 240px; margin: 0; min-width: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; font-variant-numeric: tabular-nums; }
+.dgs-foot .dgs-link { margin-left: -8px; font-size: 13px; }
 
 /* 단계 줄: 넓으면 6칸, 좁으면 3칸 두 줄. 칸 폭은 모두 같다. */
 .dgs-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
@@ -87,6 +109,7 @@
 }
 .dgs-status[data-status='current'] { color: var(--dsw-alias-state-business-primary, #3d7be0); border-color: currentColor; }
 .dgs-badge[data-tone='approval'] { color: var(--dsw-alias-state-warning-primary, #b26a00); border-color: currentColor; }
+.dgs-badge[data-tone='running'] { color: var(--dsw-alias-state-business-primary, #3d7be0); border-color: currentColor; }
 .dgs-badge[data-tone='blocked'] { color: var(--dsw-alias-state-danger-primary, #d83931); border-color: currentColor; }
 .dgs-link { min-height: 44px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 14px; color: var(--dsw-alias-state-business-primary, #3d7be0); cursor: pointer; white-space: nowrap; }
 
@@ -97,7 +120,7 @@
 .dgs-out-more { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); }
 .dgs-out-left > summary { cursor: pointer; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); min-height: 24px; }
 .dgs-out-left > summary:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; border-radius: 4px; }
-.dgs-out-files { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 18px; font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; }
+.dgs-out-files { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 18px; font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); overflow-wrap: anywhere; word-break: normal; text-wrap: balance; }
 
 /* 다음에 할 요청: 입력창에 넣기만 한다 */
 .dgs-ask { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); min-width: 0; }
@@ -121,12 +144,17 @@
 }
 @media (hover: hover) { .dgs-chip:hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }
 .dgs-chip[aria-expanded='true'] { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); }
-.dgs-chip[data-approval] .dgs-chip-text { color: var(--dsw-alias-state-warning-primary, #b26a00); }
-.dgs-dots { display: inline-flex; align-items: center; gap: 3px; }
-.dgs-dot { width: 6px; height: 6px; border-radius: 50%; box-sizing: border-box; border: 1px solid var(--dsw-alias-label-tertiary, #8f959e); }
+.dgs-chip-text { color: var(--dsw-alias-label-primary, #1f2329); }
+/* 승인 차례는 색만이 아니라 글자 배지로도 보인다. */
+.dgs-chip-badge {
+  font-size: 11px; line-height: 16px; padding: 0 5px; border-radius: 8px; font-weight: 600;
+  color: var(--dsw-alias-state-warning-primary, #b26a00); border: 1px solid currentColor;
+}
+/* 점: 끝남 = 채움, 지금 = 굵은 고리, 남음·기록 없음 = 빈 점(칩에서는 점선을 쓰지 않는다). */
+.dgs-dots { display: inline-flex; align-items: center; gap: 4px; }
+.dgs-dot { width: 7px; height: 7px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--dsw-alias-label-tertiary, #8f959e); }
 .dgs-dot[data-status='done'] { border-color: var(--dsw-alias-state-business-primary, #3d7be0); background: var(--dsw-alias-state-business-primary, #3d7be0); }
-.dgs-dot[data-status='current'] { width: 8px; height: 8px; border: 2px solid var(--dsw-alias-state-business-primary, #3d7be0); }
-.dgs-dot[data-status='unknown'] { border-style: dashed; }
+.dgs-dot[data-status='current'] { width: 9px; height: 9px; border: 2.5px solid var(--dsw-alias-state-business-primary, #3d7be0); }
 
 /* 칩을 누르면 뜨는 창 */
 .dgs-panel {

@@ -176,7 +176,7 @@ function StageAsk({ stage, facts, onAsk }) {
   )
 }
 
-function StageSheet({ snapshot, facts, choose, onAsk, onClose }) {
+function StageSheet({ snapshot, facts, running, choose, onAsk, onClose }) {
   return (
     <Sheet title={t('stage.title')} onClose={onClose} labelId="stage-sheet-title">
       {facts?.within ? <RepoPicker within={facts.within} choose={choose} /> : null}
@@ -185,7 +185,7 @@ function StageSheet({ snapshot, facts, choose, onAsk, onClose }) {
       {snapshot.doing ? <p class="stage-doing"><span class="stage-label">{t('stage.doing')}</span><span>{snapshot.doing}</span></p> : null}
       <ol class="stage-list">
         {snapshot.stages.map((stage, i) => {
-          const next = stageNext(stage)
+          const next = stageNext(stage, { running })
           return (
             <li key={stage.key} class="stage-item" data-status={stage.status} aria-current={stage.status === 'current' ? 'step' : undefined}>
               <details open={stage.status === 'current'}>
@@ -402,7 +402,7 @@ export function Chat({ sessionId }) {
       <p class="visually-hidden" role="status">{announcement}</p>
       {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} fill={fill} />}
       {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
-      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} choose={stages.choose} onAsk={parentId ? null : askInBox} onClose={() => setShowStages(false)} /> : null}
+      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} running={running} choose={stages.choose} onAsk={parentId ? null : askInBox} onClose={() => setShowStages(false)} /> : null}
     </div>
   )
 }

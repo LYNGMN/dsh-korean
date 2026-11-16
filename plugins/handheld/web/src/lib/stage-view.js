@@ -25,7 +25,8 @@ export function stageFacts(stage) {
       if (i.isBase) return [t('stage.f.onBase', { branch: i.branch })]
       return [t('stage.f.branch', { branch: i.branch }), ...(i.nameOk ? [] : [t('stage.f.badName')])]
     case 'commit':
-      return [i.changes > 0 ? t('stage.f.changes', { n: i.changes }) : t('stage.f.clean'), t('stage.f.ahead', { n: i.ahead })]
+      if (i.changes > 0) return [t('stage.f.changes', { n: i.changes }), t('stage.f.ahead', { n: i.ahead })]
+      return [i.ahead > 0 ? t('stage.f.savedClean', { n: i.ahead }) : t('stage.f.nothing')]
     case 'verify':
       if (i.by === 'todo') return [t('stage.f.verifyTodo', { item: i.item })]
       return [i.by === 'run' ? t('stage.f.verifyRun') : t('stage.f.verifyNone')]
@@ -48,10 +49,14 @@ export function stageFacts(stage) {
   }
 }
 
+// While the agent works there is nothing for the person to do at these stages but wait.
+const WAIT_STAGES = new Set(['branch', 'commit', 'verify'])
+
 /** What to do next at the current stage; null for any other stage. */
-export function stageNext(stage) {
+export function stageNext(stage, { running = false } = {}) {
   if (stage.status !== 'current') return null
   if (stage.blocked === 'gh-auth') return t('stage.n.ghAuth')
+  if (running && WAIT_STAGES.has(stage.key)) return t(`stage.n.wait.${stage.key}`)
   const i = stage.info
   switch (stage.key) {
     case 'branch': return t('stage.n.branch')
