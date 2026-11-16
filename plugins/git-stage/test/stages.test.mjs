@@ -148,7 +148,7 @@ test('저장 단계 사실은 0을 늘어놓지 않고, 고칠 것이 없을 때
   assert.deepEqual(factsOf(empty.stages[1]), ['아직 바뀐 파일이 없어요.'])
   assert.equal(nextOf(empty.stages[1]), '고칠 것을 말하면, 고친 뒤 커밋으로 저장해요.')
   assert.deepEqual(factsOf(at({ ahead: 2, hadCommits: true }).stages[1]), ['저장 2개 · 저장 안 된 변경 없음'])
-  assert.deepEqual(factsOf(at({ changes: 3 }).stages[1]), ['저장 안 된 변경 3개', '원본보다 앞선 저장 0개'])
+  assert.deepEqual(factsOf(at({ changes: 3 }).stages[1]), ['저장 안 된 변경 3개'])
 })
 
 test('에이전트가 일하는 중이면 작업실·저장·검증 단계의 다음 할 일은 기다리기다', () => {

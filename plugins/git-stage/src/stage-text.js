@@ -22,7 +22,7 @@ export function factsOf(stage) {
       if (i.isBase) return [`지금 원본 브랜치(${i.branch})에 있어요.`]
       return [`작업 브랜치: ${i.branch}`, ...(i.nameOk ? [] : ['이름이 "도구/종류/목적" 형식과 달라요.'])]
     case 'commit':
-      if (i.changes > 0) return [`저장 안 된 변경 ${count(i.changes, '개')}`, `원본보다 앞선 저장 ${count(i.ahead, '개')}`]
+      if (i.changes > 0) return [`저장 안 된 변경 ${count(i.changes, '개')}`, ...(i.ahead > 0 ? [`원본보다 앞선 저장 ${count(i.ahead, '개')}`] : [])]
       return i.ahead > 0 ? [`저장 ${count(i.ahead, '개')} · 저장 안 된 변경 없음`] : ['아직 바뀐 파일이 없어요.']
     case 'verify':
       if (i.run) return [`${clockOf(i.run.at)} ${i.run.command} 통과`, i.run.editedAfter ? '그 뒤에 파일을 고쳤어요. 다시 돌려야 해요.' : '그 뒤로 고친 파일 없음']

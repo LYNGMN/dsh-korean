@@ -156,6 +156,7 @@ window.__ModuleLoader__.load({
           h('p', { className: 'dgs-ask-note', role: 'status' }, note)))
     }
 
+    // 줄 묶음은 dl 하나의 두 칸 격자다. 이름 칸은 가장 긴 이름만큼만 넓다.
     function Row({ label, value }) {
       return h('div', { className: 'dgs-row' },
         h('dt', { className: 'dgs-row-label' }, label),
@@ -163,23 +164,24 @@ window.__ModuleLoader__.load({
     }
 
     // 지금 카드: 지금 단계에서 사람이 알아야 할 것과 할 일을 맨 위에 한 번만 모은다.
-    function NowCard({ snapshot, facts, running, inputActions }) {
+    function NowCard({ snapshot, facts, running, inputActions, id }) {
       const titleId = useId()
       const index = snapshot.current
       if (index === null) {
-        return h('section', { className: 'dgs-now', 'data-tone': 'done', 'aria-label': '지금' },
+        return h('section', { className: 'dgs-now', id, 'data-tone': 'done', 'aria-label': '지금' },
           h('p', { className: 'dgs-now-done' }, '모든 단계를 마쳤어요.'))
       }
       const stage = snapshot.stages[index]
       const out = outgoingOf(stage)
       const next = nextOf(stage, { running })
-      return h('section', { className: 'dgs-now', 'data-tone': stage.approval || stage.blocked ? 'approval' : 'info', 'aria-labelledby': titleId },
+      return h('section', { className: 'dgs-now', id, 'data-tone': stage.approval || stage.blocked ? 'approval' : 'info', 'aria-labelledby': titleId },
         h('div', { className: 'dgs-now-head' },
           h('span', { className: 'dgs-now-kicker' }, '지금'),
           h('h3', { className: 'dgs-now-title', id: titleId }, `${index + 1}. ${STAGE_TEXT[stage.key].step}`),
           h('span', { className: 'dgs-now-badges' }, h(Badges, { stage, running }))),
+        h('p', { className: 'dgs-plain' }, STAGE_TEXT[stage.key].plain),
         h('dl', { className: 'dgs-rows' },
-          snapshot.doing ? h(Row, { label: '에이전트가 하는 일', value: snapshot.doing }) : null,
+          snapshot.doing ? h(Row, { label: '하는 일', value: snapshot.doing }) : null,
           h(Row, { label: '상태', value: factsOf(stage).map(line => h('span', { key: line, className: 'dgs-row-line' }, line)) }),
           out ? h(Row, {
             label: '올라가는 것',
@@ -189,7 +191,7 @@ window.__ModuleLoader__.load({
         h(Ask, { stage, facts, inputActions }))
     }
 
-    function StageDetail({ stage, index, id, isCurrent }) {
+    function StageDetail({ stage, index, id }) {
       const text = STAGE_TEXT[stage.key]
       return h('div', { className: 'dgs-detail', id, role: 'region', 'aria-label': `${index + 1}단계 ${text.step} 자세히` },
         h('div', { className: 'dgs-detail-head' },
@@ -197,9 +199,8 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dgs-status', 'data-status': stage.status }, STATUS_TEXT[stage.status]),
           h(Badges, { stage })),
         h('p', { className: 'dgs-plain' }, text.plain),
-        // 지금 단계의 사실·다음·요청은 위 지금 카드에 있다. 같은 말을 두 번 하지 않는다.
-        isCurrent ? null : h('ul', { className: 'dgs-facts' }, factsOf(stage).map(line => h('li', { key: line }, line))),
-        isCurrent ? null : h(Outgoing, { stage }))
+        h('ul', { className: 'dgs-facts' }, factsOf(stage).map(line => h('li', { key: line }, line))),
+        h(Outgoing, { stage }))
     }
 
     // 6칸 단계 줄. 화살표 키로 칸을 옮기고, 누르면 아래 설명이 그 단계로 바뀐다.
@@ -223,8 +224,8 @@ window.__ModuleLoader__.load({
             tabIndex: selected === i ? 0 : -1,
             onClick: () => onSelect(i), onKeyDown: event => onKey(event, i),
           },
-          h(StageIcon, { status: stage.status }),
           h('span', { className: 'dgs-step-text' },
+            h(StageIcon, { status: stage.status }),
             h('span', { className: 'dgs-step-num' }, `${i + 1}`),
             h('span', { className: 'dgs-step-title' }, STAGE_TEXT[stage.key].title)),
           h('span', { className: 'dgs-step-status' }, stage.approval ? '승인 필요' : STATUS_TEXT[stage.status])))))
@@ -244,7 +245,7 @@ window.__ModuleLoader__.load({
       const failed = source.error ? ` · 마지막 읽기 실패(${source.error})` : ''
       return h('div', { className: 'dgs-foot' },
         h('p', { className: 'dgs-foot-text', role: 'status' },
-          `${readAtOf(source.at)}${failed} · 10초마다 다시 읽어요 · 보기 전용 — 푸시·합치기·배포는 사람이 승인해요`),
+          `${readAtOf(source.at)}${failed} · 10초마다 새로 읽음 · 보기 전용`),
         h('button', { type: 'button', className: 'dgs-link', onClick: () => void refresh() }, '지금 다시 읽기'))
     }
 
@@ -257,16 +258,18 @@ window.__ModuleLoader__.load({
       const facts = source.facts
       return h('div', { className: 'dgs-root', 'data-plugin': VIEW_ID },
         h('section', { className: 'dgs-section', 'aria-labelledby': 'dgs-title' },
-          h('div', { className: 'dgs-head' },
+          // 탭 이름이 이미 "작업 단계"이고 요약은 지금 카드가 보여 준다. 제목과 요약은 화면 읽기 프로그램에만 남긴다.
+          h('div', { className: 'dgs-head dgs-sr' },
             h('h2', { className: 'dgs-title', id: 'dgs-title' }, '작업 단계'),
             snapshot.kind === 'ok' ? h('span', { className: 'dgs-meta', role: 'status' }, summaryOf(snapshot)) : null),
           h(Context, { facts, choose }),
           snapshot.kind !== 'ok'
             ? h(Message, { snapshot, source, onRetry: () => void refresh() })
             : h(React.Fragment, null,
-              h(NowCard, { snapshot, facts, running, inputActions: props.inputActions }),
+              // 지금 단계를 고르면 지금 카드가 그 설명이다. 다른 단계를 고를 때만 아래 설명이 붙는다.
+              h(NowCard, { snapshot, facts, running, inputActions: props.inputActions, id: selected === snapshot.current ? detailId : undefined }),
               h(Stepper, { snapshot, selected, onSelect: setPicked, detailId }),
-              h(StageDetail, { stage: snapshot.stages[selected], index: selected, id: detailId, isCurrent: selected === snapshot.current })),
+              selected === snapshot.current ? null : h(StageDetail, { stage: snapshot.stages[selected], index: selected, id: detailId })),
           snapshot.kind === 'ok' ? h(Foot, { source, refresh }) : null))
     }
 

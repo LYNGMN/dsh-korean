@@ -47,7 +47,7 @@ export function stageFacts(stage) {
       if (i.isBase) return [t('stage.f.onBase', { branch: i.branch })]
       return [t('stage.f.branch', { branch: i.branch }), ...(i.nameOk ? [] : [t('stage.f.badName')])]
     case 'commit':
-      if (i.changes > 0) return [t('stage.f.changes', { n: i.changes }), t('stage.f.ahead', { n: i.ahead })]
+      if (i.changes > 0) return [t('stage.f.changes', { n: i.changes }), ...(i.ahead > 0 ? [t('stage.f.ahead', { n: i.ahead })] : [])]
       return [i.ahead > 0 ? t('stage.f.savedClean', { n: i.ahead }) : t('stage.f.nothing')]
     case 'verify':
       if (i.run) return [t('stage.f.ranOk', { time: clockOf(i.run.at), command: i.run.command }), t(i.run.editedAfter ? 'stage.f.editedAfter' : 'stage.f.noEditAfter')]

@@ -94,10 +94,12 @@ test('사실이 오면 단계 줄·지금 단계 설명·다음 할 일·지금 
   const todos = [{ content: 'npm test 돌리기', status: 'completed' }, { content: 'PR 열기', status: 'in_progress' }]
   const out = text(render(slots['conversation.view'], mod, FACTS, todos))
   assert.match(out, /공유 단계 · 3\/6 · 승인 필요/)
-  assert.match(out, /4단계 공유\(푸시·PR\) 자세히/)
+  // 지금 단계를 고른 동안에는 지금 카드가 설명이라 아래 설명 칸을 또 그리지 않는다.
+  assert.doesNotMatch(out, /자세히/)
+  assert.match(out, /4\. 공유\(푸시·PR\)\s+승인 필요\s+GitHub에 올리고\(푸시\)/)
   assert.match(out, /4\s+공유\s+승인 필요/)
   assert.match(out, /승인하면 GitHub에 올리고/)
-  assert.match(out, /에이전트가 하는 일\s+PR 열기/)
+  assert.match(out, /하는 일\s+PR 열기/)
   assert.match(out, /app · claude\/feat\/x/)
   const chip = text(slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos }))
   assert.match(chip, /작업 단계 공유 단계 · 3\/6 · 승인 필요/)
@@ -212,7 +214,7 @@ test('지금 카드가 맨 위에 상태·다음·요청을 한 번만 보이고
   assert.match(text(now), /올라가는 것\s+저장 2개/)
   const out = text(tree)
   assert.equal(out.match(/승인하면 GitHub에 올리고/g).length, 1, '다음 할 일은 지금 카드에만')
-  assert.match(out, /에 읽음 · 10초마다 다시 읽어요 · 보기 전용/)
+  assert.match(out, /에 읽음 · 10초마다 새로 읽음 · 보기 전용/)
   assert.ok(find(tree, node => node.type === 'button' && node.children.join('') === '지금 다시 읽기'))
 
   const chip = slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos })
