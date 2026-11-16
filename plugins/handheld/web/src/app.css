@@ -434,6 +434,8 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .stage-dot[data-status='done'] { border-color: var(--brand); background: var(--brand); }
 .stage-dot[data-status='current'] { width: 10px; height: 10px; border: 2.5px solid var(--brand); }
 .stage-dot[data-status='unknown'] { border-style: dashed; }
+/* 좁은 폭에서는 점 대신 요약 글(지금 단계 · n/6 · 승인 필요)을 끝까지 보입니다. */
+@media (max-width: 359px) { .stage-btn .stage-dots { display: none; } }
 .mono-line { margin: 0 0 8px; font-family: var(--mono); overflow-wrap: anywhere; word-break: normal; }
 .stage-doing, .stage-next { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
 .stage-next { margin: 4px 0 0; }
@@ -452,6 +454,7 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .stage-detail { padding: 0 12px 12px 44px; }
 .stage-detail p { margin: 0; }
 .stage-facts { margin: 6px 0 0; padding-left: 18px; font-size: 15px; line-height: 1.5; }
+.stage-facts li, .stage-next > span:last-child, .stage-out li { text-wrap: pretty; }
 .stage-out { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2, var(--bg)); border: 1px solid var(--line, transparent); }
 .stage-out-title { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
 .stage-out-list { margin: 0 0 4px; padding-left: 20px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }

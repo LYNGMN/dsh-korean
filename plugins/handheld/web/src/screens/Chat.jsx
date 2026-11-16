@@ -149,7 +149,7 @@ function StageOutgoing({ stage }) {
   if (!out) return null
   return (
     <div class="stage-out">
-      <h4 class="stage-out-title">{out.title}</h4>
+      <h3 class="stage-out-title">{out.title}</h3>
       <ol class="stage-out-list">{out.commits.map((subject, i) => <li key={i}>{subject}</li>)}</ol>
       {out.more ? <p class="muted small">{out.more}</p> : null}
       {out.files ? <p class="muted small">{out.files}</p> : null}
