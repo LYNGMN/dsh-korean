@@ -25,30 +25,31 @@ flowchart LR
 | `package.json`·`cordis.patch.yml` | DSH Host | `main`(서버)과 `dsh.client`(platform `web`) 선언 |
 | `lib/index.js` | DSH Host | `inject: ['connection', 'sessionQuery']`, `ctx.connection.fetch.register`로 GET 라우트 하나 |
 | `lib/client.js` | DSH 화면 | `window.__ModuleLoader__.load`로 등록, `inject: ['slots']`. 공용 모듈은 `react`·`react-dom`만 받음. 세션 자리의 표준 속성 `inputActions`(`captureInsertion`·`insertText`)로 입력창에 글을 넣음 |
-| 휴대폰 앱 | `plugins/handheld` | `src/stages.js`·`lib/git-read.js`의 복사본을 씀(키트 루트 테스트가 같은지 봄) |
+| 휴대폰 앱 | `plugins/handheld` | `src/stages.js`(화면·알림 서버 두 벌)·`lib/git-read.js`의 복사본을 씀. 루트 `npm run sync`로 맞추고 키트 루트 테스트가 같은지 봄 |
 
 ## 2. 책임 나누기
 
 | 부품 | 맡는 일 | 맡지 않는 일 |
 |---|---|---|
-| `src/stages.js` | Git 사실 + 할 일 → 여섯 단계 스냅샷(끝남·지금·남음·기록 없음, 승인 필요, 막힘), 지금 하는 일, 검증 완료 판단 | 문구, 화면, 명령 실행 |
-| `src/stage-text.js` | 단계 이름·쉬운 뜻·상태 글자, 사실 줄, 다음 할 일, 요약 한 줄, 올라가는 것(`outgoingOf`), 저장소를 고른 이유(`whyOf`), 요청 문장(`askOf`) | 단계 판단 |
+| `src/stages.js` | Git 사실 + 할 일 → 여섯 단계 스냅샷(끝남·지금·남음·기록 없음, 승인 필요, 막힘: 로그인 만료 `gh-auth`·PR 검사 실패 `checks`), 지금 하는 일, 검증 완료 판단(실행 기록 `verify` 우선, 없으면 할 일) | 문구, 화면, 명령 실행 |
+| `src/stage-text.js` | 단계 이름·쉬운 뜻·상태 글자, 사실 줄(검증 시각·PR 검사·배포 방식 포함), 다음 할 일(일하는 중이면 기다리기), 요약 한 줄, 올라가는 것(`outgoingOf`, 요약 한 줄 포함), 저장소를 고른 이유(`whyOf`), 묶은 요청 문장(`askOf`), 읽은 시각(`readAtOf`) | 단계 판단 |
 | `src/source.js` | 라우트 부르기, 구독 중에만 10초마다 다시 읽기, 겹친 요청 합치기, 실패 때 직전 사실 유지 | 화면 |
-| `lib/git-read.js` | 읽기 전용 `git`·`gh` 명령 → Git 사실, `gh` 오류 분류, PR 30초 캐시. 작업 폴더가 저장소가 아니면 `findRepos`로 안의 저장소를 최근 활동 순으로 찾아(파일만 봄, 세 단계까지) 고른 것 → 세션 명령이 가리킨 것(`repoOfCommands`) → 가장 최근 것 순으로 읽음. 올라갈 저장 기록(최대 20개)·바뀐 파일 수·저장 안 된 변경 목록 | 단계 판단 |
-| `lib/index.js` | 세션 id 확인 → 작업 폴더와 최근 명령(`commandsOf`: `bash`·`pwsh`·`terminal_open`과 결과의 `meta.cwd`, 마지막 600개 이벤트) 찾기 → 사실 JSON. 400·404·500 응답 | Git 해석 |
-| `StageView`·`Stepper`·`StageDetail` | 탭 그리기, 단계 고르기(키보드 포함), 설명 칸, 올라가는 것(`Outgoing`) | 데이터 모으기 |
+| `lib/git-read.js` | 읽기 전용 `git`·`gh` 명령 → Git 사실, `gh` 오류 분류, PR 30초 캐시. 작업 폴더가 저장소가 아니면 `findRepos`로 안의 저장소를 최근 활동 순으로 찾아(파일만 봄, 세 단계까지) 고른 것 → 세션 명령이 가리킨 것(`repoOfCommands`) → 가장 최근 것 순으로 읽음. 올라갈 저장 기록(최대 20개)·바뀐 파일 수·저장 안 된 변경 목록. PR 검사·검토 상태(`checksOf`). 이 저장소에서 마지막으로 통과한 검증 명령과 그 뒤 파일 고침(`verifyRunOf`). 맨 위 파일로 배포 방식(`deployKindOf`) | 단계 판단 |
+| `lib/index.js` | 세션 id 확인 → 작업 폴더와 최근 명령(`commandsOf`: `bash`·`pwsh`·`terminal_open`과 결과의 `meta.cwd`·성공 여부·시각, 마지막 600개 이벤트)·파일 고침(`editsOf`: `edit`·`write`) 찾기 → 사실 JSON. 성공 여부는 결과의 오류 표시와 끝의 `[exit code: N]`으로 봄(`resultOkOf`). 400·404·500 응답 | Git 해석 |
+| `StageView`·`Stepper`·`StageDetail`·`Foot` | 탭 그리기(머리 → 저장소 줄 → 지금 카드 → 단계 줄 → 고른 단계 설명 → 바닥 줄), 단계 고르기(키보드 포함), 바닥 줄의 읽은 시각·다시 읽기 | 데이터 모으기 |
+| `NowCard` | 지금 단계 한곳 모으기: 배지(에이전트 작업 중·승인 필요·검사 실패·로그인 필요), 에이전트가 하는 일·상태·올라가는 것(펼침)·다음, 요청 문장. 탭과 칩 창이 같이 씀. 고른 단계 설명은 지금 단계면 쉬운 뜻만 보여 같은 말을 두 번 하지 않음 | 데이터 모으기 |
 | `Ask` | 지금 단계 요청 문장, "입력창에 넣기"(`insertText`만, 보내기 없음). `inputActions`가 없으면 숨음 | 보내기 |
-| `RepoPicker` | 저장소 묶음 폴더일 때 저장소 고르기, 고른 이름을 세션마다 localStorage에 기억 | 경로 만들기(이름만 보냄) |
-| `StageChip` | 칩과 단계 목록 창(포털), 창 열고 닫기·초점 | 탭 이동 |
+| `Context` | 폴더 · 브랜치 한 줄과, 저장소 묶음 폴더일 때 옆의 저장소 고르기(고른 이름을 세션마다 localStorage에 기억), 아래에 고른 이유 | 경로 만들기(이름만 보냄) |
+| `StageChip` | 칩(점 여섯 개·지금 단계·"승인" 배지)과 창(포털: 저장소 줄 → 지금 카드 → 단계 목록), 창 열고 닫기·초점 | 탭 이동 |
 | `scripts/build.mjs` | 템플릿 + 순수 모듈 + `style.css` → `lib/client.js` | |
 
 ## 3. 객체 관계
 
 | 객체 | 갖는 것 | 관계 |
 |---|---|---|
-| Git 사실 | `repo`, `folder`, `branch`, `base`, `isBase`, `changes`, `ahead`, `upstream`, `unpushed`, `hadCommits`, `headTime`, `pr`, `prError`, `tag`, `pending`(저장 안 된 파일 최대 30개), `commits`(올라갈 저장 기록 최대 20개), `files`(바뀐 파일·줄 수) | 세션 작업 폴더 하나에 하나. 요청마다 새로 읽음 |
+| Git 사실 | `repo`, `folder`, `branch`, `base`, `isBase`, `changes`, `ahead`, `upstream`, `unpushed`, `hadCommits`, `headTime`, `pr`, `prError`, `tag`, `pending`(저장 안 된 파일 최대 30개), `commits`(올라갈 저장 기록 최대 20개), `files`(바뀐 파일·줄 수), `verify`(`at`·`command`·`editedAfter`, 없으면 null), `deploy`(`wrangler`·`script`·`tag`) | 세션 작업 폴더 하나에 하나. 요청마다 새로 읽음 |
 | 묶음 정보 `within` | `folder`(바깥 폴더 이름), `repos`(최근 활동 순 이름 최대 40개), `picked`, `auto`, `reason`(`picked`·`session`·`recent`) | 작업 폴더가 저장소가 아닐 때만. Git 사실의 `folder`는 고른 저장소 이름(상대 경로) |
-| PR | `number`, `state`, `draft`, `url`(https만), `mergeCommit` | 브랜치 이름으로 `gh pr view`. 없으면 null |
+| PR | `number`, `state`, `draft`, `url`(https만), `mergeCommit`, `checks`(`passing`·`failing`·`pending`·`failed` 이름 최대 3개, 검사가 없으면 null), `review`(`approved`·`changes`·`required`·null) | 브랜치 이름으로 `gh pr view`. 없으면 null |
 | 단계 스냅샷 | `kind`(`loading`·`no-repo`·`ok`), `stages[6]`, `current`, `done`, `total`, `doing` | Git 사실 + 투영 `todos`에서 렌더 때마다 다시 만듦 |
 | 단계 | `key`, `status`, `approval`, `blocked`, `info` | 단계 여섯 개는 순서가 고정 |
 
