@@ -119,7 +119,7 @@ window.__ModuleLoader__.load({
       return h(React.Fragment, null,
         running ? h('span', { className: 'dgs-badge', 'data-tone': 'running' }, '에이전트 작업 중') : null,
         stage.approval ? h('span', { className: 'dgs-badge', 'data-tone': 'approval' }, '승인 필요') : null,
-        stage.blocked ? h('span', { className: 'dgs-badge', 'data-tone': 'blocked' }, '로그인 필요') : null)
+        stage.blocked ? h('span', { className: 'dgs-badge', 'data-tone': 'blocked' }, stage.blocked === 'checks' ? '검사 실패' : '로그인 필요') : null)
     }
 
     // 승인 전에 보는 목록: 올라갈 저장 기록 제목, 바뀐 파일 수, 올라가지 않는 저장 안 된 변경(펼쳐 봄).
@@ -180,7 +180,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dgs-now-badges' }, h(Badges, { stage, running }))),
         h('dl', { className: 'dgs-rows' },
           snapshot.doing ? h(Row, { label: '에이전트가 하는 일', value: snapshot.doing }) : null,
-          h(Row, { label: '상태', value: factsOf(stage).join(' · ') }),
+          h(Row, { label: '상태', value: factsOf(stage).map(line => h('span', { key: line, className: 'dgs-row-line' }, line)) }),
           out ? h(Row, {
             label: '올라가는 것',
             value: h('details', { className: 'dgs-now-out' }, h('summary', null, out.summary), h(Outgoing, { stage })),

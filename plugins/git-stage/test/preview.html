@@ -56,7 +56,10 @@
     files: { changed: 4, added: 38, removed: 6 }, pending: [{ path: 'notes/할 일.md', kind: 'new' }, { path: 'src/components/LoginForm.tsx', kind: 'modified' }],
     ...FACTS[Math.min(Math.max(stage, 0), FACTS.length - 1)],
     ...(params.get('left') === '1' ? { changes: 2 } : {}),
+    ...(params.get('verified') ? { verify: { at: Date.now() - 120000, command: 'npm test', editedAfter: params.get('verified') === 'stale' } } : {}),
   }
+  // ?checks=fail: 열린 PR의 검사 하나가 실패하고 검토를 기다린다.
+  if (params.get('checks') === 'fail' && facts.pr) facts.pr = { ...facts.pr, draft: false, review: 'required', checks: { passing: 3, failing: 1, pending: 1, failed: ['lint'] } }
   const REPOS = ['DiscordActions', 'dsh-korean', 'worktrees/summarize-feed/claude-fix-localized-search-all-languages', 'summarize-meta']
   window.fetch = async url => {
     if (params.get('fail') === '1') return new Response('{}', { status: 500 })

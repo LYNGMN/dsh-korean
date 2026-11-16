@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from './support/fake-dsh.js'
 import { DshClient } from '../server/dsh/client.js'
 import { DshApi } from '../server/dsh/api.js'
-import { commandsOf, workStateOf } from '../server/dsh/normalize.js'
+import { commandsOf, editsOf, workStateOf } from '../server/dsh/normalize.js'
 import { Hub } from '../server/gateway/hub.js'
 import { stagesOf } from '../web/src/lib/stages.js'
 import { stageAsk, stageFacts, stageNext, stageOutgoing, stageSummary } from '../web/src/lib/stage-view.js'
@@ -140,7 +140,14 @@ test('commandsOf pairs shell commands with the folder DSH resolved for them', ()
     { event: { type: 'tool/result', data: { message: { toolCallId: 'c1' }, meta: { cwd: '/w' } } } },
     { event: { type: 'tool/call', data: { callId: 'c2', name: 'read', arguments: '{}' } } },
   ]
-  assert.deepEqual(commandsOf(records), [{ command: 'cd a && git status', cwd: '/w' }])
+  assert.deepEqual(commandsOf(records), [{ command: 'cd a && git status', cwd: '/w', ok: null, at: null }])
+  const ran = [
+    { event: { type: 'tool/call', time: 1, data: { callId: 't1', name: 'bash', arguments: '{"command":"npm test"}' } } },
+    { event: { type: 'tool/result', time: 9, data: { message: { toolCallId: 't1', content: [{ type: 'text', text: 'fail\n[exit code: 1]' }] }, meta: { cwd: '/w' } } } },
+    { event: { type: 'tool/call', time: 10, data: { callId: 't2', name: 'edit', arguments: '{"file_path":"/w/a.js"}' } } },
+  ]
+  assert.deepEqual(commandsOf(ran), [{ command: 'npm test', cwd: '/w', ok: false, at: 9 }])
+  assert.deepEqual(editsOf(ran), [{ path: '/w/a.js', at: 10 }])
   assert.deepEqual(commandsOf(undefined), [])
 })
 
@@ -197,4 +204,20 @@ test('the sheet offers one request for the current stage, naming the repository 
   assert.equal(stageAsk(stagesOf(base).stages[0]), null)
   setLang('en')
   assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please push and open a draft pull request.')
+})
+
+test('the sheet shows the real test run and failed PR checks in the language chosen', (t) => {
+  t.after(() => setLang('ko'))
+  setLang('ko')
+  const base = { repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: 'origin/claude/feat/x', unpushed: 0, hadCommits: true, headTime: 1, prError: null, tag: null }
+  const verify = { at: new Date(2026, 10, 16, 14, 2).getTime(), command: 'npm test', editedAfter: false }
+  const pr = { number: 7, state: 'OPEN', draft: false, url: null, mergeCommit: null, review: 'required', checks: { passing: 3, failing: 1, pending: 0, failed: ['lint'] } }
+  const snap = stagesOf({ ...base, verify, pr })
+  assert.deepEqual(stageFacts(snap.stages[2]), ['14:02 npm test 통과', '그 뒤로 고친 파일 없음'])
+  const merge = snap.stages[4]
+  assert.equal(merge.blocked, 'checks')
+  assert.deepEqual(stageFacts(merge).slice(1), ['검사 3개 통과 · 1개 실패 · 검토 기다림', '실패한 검사: lint'])
+  assert.match(stageAsk(merge), /^PR 검사 가운데 실패한 것/)
+  setLang('en')
+  assert.equal(stageNext(merge), 'Fix the failed checks before merging. Ask the agent to find and fix the cause.')
 })

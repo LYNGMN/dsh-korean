@@ -56,7 +56,8 @@
 .dgs-panel .dgs-row { grid-template-columns: minmax(0, 1fr); }
 .dgs-row-label { font-size: 12px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); white-space: nowrap; }
 .dgs-row-text { margin: 0; min-width: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }
-.dgs-now-out > summary { cursor: pointer; min-height: 24px; }
+.dgs-row-line { display: block; }
+.dgs-now-out > summary { cursor: pointer; min-height: 24px; line-height: 24px; }
 .dgs-now-out > summary:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 1px; border-radius: 4px; }
 .dgs-now-out[open] > summary { margin-bottom: 6px; }
 

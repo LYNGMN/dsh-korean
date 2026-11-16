@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createGitReader, findRepos, parseStatus, pathsOfCommand, prErrorOf, repoOfCommands, runCommand } from '../lib/git-read.js'
-import { commandsOf, createHandler, workingDirectoryOf } from '../lib/index.js'
+import { checksOf, createGitReader, findRepos, parseStatus, pathsOfCommand, prErrorOf, repoOfCommands, runCommand, verifyCommandOf, verifyRunOf } from '../lib/git-read.js'
+import { commandsOf, createHandler, editsOf, resultOkOf, workingDirectoryOf } from '../lib/index.js'
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, env, stdio: 'pipe' }).toString()
@@ -129,9 +129,9 @@ test('PR 답은 30초 동안 다시 묻지 않고, 로그인 만료는 prError�
 test('PR JSON을 읽고 https 주소만 남긴다', async t => {
   const dir = repo(t)
   sh(dir, 'switch', '-q', '-c', 'claude/feat/v')
-  const out = JSON.stringify({ number: 12, state: 'OPEN', isDraft: true, url: 'javascript:alert(1)', mergeCommit: null })
+  const out = JSON.stringify({ number: 12, state: 'OPEN', isDraft: true, url: 'javascript:alert(1)', mergeCommit: null, statusCheckRollup: [], reviewDecision: 'APPROVED' })
   const facts = await readerWith({ ok: true, out, err: '', code: 0, timedOut: false }).read(dir)
-  assert.deepEqual(facts.pr, { number: 12, state: 'OPEN', draft: true, url: null, mergeCommit: null })
+  assert.deepEqual(facts.pr, { number: 12, state: 'OPEN', draft: true, url: null, mergeCommit: null, checks: null, review: 'approved' })
 })
 
 test('주소 처리기는 세션 id를 검사하고 작업 폴더를 세션 기록에서 찾는다', async () => {
@@ -237,7 +237,7 @@ test('세션 기록에서 셸 명령과 DSH가 정한 폴더(meta.cwd)를 짝지
     { type: 'tool/ptc-dispatch-start', data: { subCallId: 's1', name: 'bash', arguments: { command: 'git status' } } },
     { type: 'tool/ptc-dispatch', data: { subCallId: 's1', meta: { cwd: '/w/app' } } },
   ]
-  assert.deepEqual(commandsOf(events), [{ command: 'cd app && ls', cwd: '/w' }, { command: 'cd "/w/old"', cwd: null }, { command: 'git status', cwd: '/w/app' }])
+  assert.deepEqual(commandsOf(events).map(({ command, cwd }) => ({ command, cwd })), [{ command: 'cd app && ls', cwd: '/w' }, { command: 'cd "/w/old"', cwd: null }, { command: 'git status', cwd: '/w/app' }])
   assert.deepEqual(commandsOf(undefined), [])
 })
 
@@ -250,4 +250,52 @@ test('묶음 폴더 세션은 고른 저장소가 없으면 그 세션이 명령
   assert.equal((await reader.read(root, { commands: [{ command: 'ls', cwd: root }] })).within.reason, 'recent')
   const pinned = await reader.read(root, { pick: 'app', commands: [{ command: 'cd old', cwd: root }] })
   assert.deepEqual({ folder: pinned.folder, reason: pinned.within.reason }, { folder: 'app', reason: 'picked' })
+})
+
+test('셸 결과 끝의 종료 코드 꼬리표로 성공·실패를 가르고, 백그라운드 실행은 모른다고 둔다', () => {
+  const result = (id, text, extra = {}) => ({ type: 'tool/result', time: 5000, data: { message: { toolCallId: id, content: [{ type: 'text', text }], ...extra }, meta: { cwd: '/w/app' } } })
+  const call = (id, args) => ({ type: 'tool/call', time: 1000, data: { callId: id, name: 'bash', arguments: JSON.stringify(args) } })
+  const events = [
+    call('a', { command: 'npm test' }), result('a', 'ok 12 tests'),
+    call('b', { command: 'npm test' }), result('b', 'not ok 1\n[exit code: 1]'),
+    call('c', { command: 'npm run build' }), result('c', 'Error: [sandbox: denied]', { isError: true }),
+    call('d', { command: 'npm test', run_in_background: true }), result('d', 'started job 3'),
+  ]
+  assert.deepEqual(commandsOf(events).map(({ ok, at }) => [ok, at]), [[true, 5000], [false, 5000], [false, 5000], [null, null]])
+  assert.equal(resultOkOf({ message: { content: [{ type: 'text', text: 'x\n[exit code: 0]' }] } }), true)
+  assert.equal(resultOkOf({}), null)
+  assert.deepEqual(editsOf([{ type: 'tool/call', time: 7, data: { name: 'edit', arguments: '{"file_path":"/w/app/a.js"}' } }, call('e', { command: 'ls' })]), [{ path: '/w/app/a.js', at: 7 }])
+})
+
+test('검증 명령은 && 로 이은 마지막 조각만 보고, 파이프가 있으면 세지 않는다', () => {
+  assert.equal(verifyCommandOf('cd app && npm test'), 'npm test')
+  assert.equal(verifyCommandOf('nice -n 15 node --test test/a.test.mjs'), 'node --test test/a.test.mjs')
+  assert.equal(verifyCommandOf('npm test && npm run build'), 'npm run build')
+  assert.equal(verifyCommandOf('npm test 2>&1 | tail -5'), null)
+  assert.equal(verifyCommandOf('npm test; echo done'), null)
+  assert.equal(verifyCommandOf('npm install'), null)
+})
+
+test('이 저장소에서 마지막으로 통과한 검증과, 그 뒤에 이 저장소 파일을 고쳤는지 본다', () => {
+  const commands = [
+    { command: 'npm test', cwd: '/w/app', ok: true, at: 100 },
+    { command: 'npm test', cwd: '/w/other', ok: true, at: 300 },
+    { command: 'npm run build', cwd: '/w/app', ok: false, at: 400 },
+  ]
+  assert.deepEqual(verifyRunOf(commands, [], '/w/app'), { at: 100, command: 'npm test', editedAfter: false })
+  assert.equal(verifyRunOf(commands, [{ path: '/w/app/src/a.js', at: 150 }], '/w/app').editedAfter, true)
+  assert.equal(verifyRunOf(commands, [{ path: '/w/other/a.js', at: 150 }], '/w/app').editedAfter, false)
+  assert.equal(verifyRunOf([{ command: 'cd app && npm test', cwd: '/w', ok: true, at: 9 }], [], '/w/app').at, 9)
+  assert.equal(verifyRunOf([], [], '/w/app'), null)
+})
+
+test('PR 검사 묶음을 통과·실패·진행 중으로 세고 실패한 이름을 남긴다', () => {
+  assert.equal(checksOf([]), null)
+  assert.deepEqual(checksOf([
+    { __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'SUCCESS' },
+    { __typename: 'CheckRun', name: 'lint', status: 'COMPLETED', conclusion: 'FAILURE' },
+    { __typename: 'CheckRun', name: 'e2e', status: 'IN_PROGRESS', conclusion: '' },
+    { __typename: 'StatusContext', context: 'deploy/preview', state: 'ERROR' },
+    { __typename: 'StatusContext', context: 'ci/legacy', state: 'SUCCESS' },
+  ]), { passing: 2, failing: 2, pending: 1, failed: ['lint', 'deploy/preview'] })
 })

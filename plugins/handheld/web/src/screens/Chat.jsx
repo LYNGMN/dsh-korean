@@ -193,7 +193,7 @@ function StageSheet({ snapshot, facts, running, choose, onAsk, onClose }) {
                   <span class="stage-mark" data-status={stage.status} aria-hidden="true">{stage.status === 'done' ? '✓' : String(i + 1)}</span>
                   <span class="stage-name one-line">{stageStep(stage.key)}</span>
                   {stage.approval ? <span class="badge badge-attn">{t('stage.approval')}</span> : null}
-                  {stage.blocked ? <span class="badge badge-danger">{t('stage.blocked')}</span> : null}
+                  {stage.blocked ? <span class="badge badge-danger">{t(stage.blocked === 'checks' ? 'stage.blockedChecks' : 'stage.blocked')}</span> : null}
                   <span class="badge badge-quiet">{statusText(stage.status)}</span>
                 </summary>
                 <div class="stage-detail">

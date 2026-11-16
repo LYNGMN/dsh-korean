@@ -161,3 +161,26 @@ test('읽은 시각은 시:분으로, 아직 못 읽었으면 그렇게 쓴다',
   assert.equal(readAtOf(0), '아직 읽지 않았어요')
   assert.equal(readAtOf(new Date(2026, 10, 16, 9, 5).getTime()), '09:05에 읽음')
 })
+
+test('세션이 실제로 돌린 시험 기록이 있으면 그것으로 검증을 보고, 그 뒤에 고쳤으면 다시 돌리라고 한다', () => {
+  const at9 = new Date(2026, 10, 16, 14, 2).getTime()
+  const fresh = at({ ahead: 1, hadCommits: true, verify: { at: at9, command: 'npm test', editedAfter: false } })
+  assert.equal(fresh.stages[2].status, 'done')
+  assert.deepEqual(factsOf(fresh.stages[2]), ['14:02 npm test 통과', '그 뒤로 고친 파일 없음'])
+  const stale = at({ ahead: 1, hadCommits: true, verify: { at: at9, command: 'npm test', editedAfter: true } }, { todos: [{ content: 'npm test', status: 'completed' }] })
+  assert.equal(stale.stages[2].status, 'current', '할 일이 끝났다고 해도 실제 기록이 우선')
+  assert.match(nextOf(stale.stages[2]), /다시 돌려/)
+})
+
+test('열린 PR의 검사가 실패하면 합치기 단계가 막히고, 검사·검토 상태를 한 줄로 보여 준다', () => {
+  const pr = { number: 7, state: 'OPEN', draft: false, url: null, mergeCommit: null, review: 'required', checks: { passing: 3, failing: 1, pending: 0, failed: ['lint'] } }
+  const snap = at({ ahead: 1, hadCommits: true, upstream: 'origin/claude/feat/x', pr }, { todos: [{ content: 'npm test', status: 'completed' }] })
+  const merge = snap.stages[4]
+  assert.equal(merge.status, 'current')
+  assert.equal(merge.blocked, 'checks')
+  assert.deepEqual(factsOf(merge).slice(1), ['검사 3개 통과 · 1개 실패 · 검토 기다림', '실패한 검사: lint'])
+  assert.match(nextOf(merge), /실패한 검사를 고쳐야/)
+  assert.match(askOf(merge), /^PR 검사 가운데 실패한 것/)
+  const green = at({ ahead: 1, hadCommits: true, upstream: 'origin/claude/feat/x', pr: { ...pr, checks: { passing: 3, failing: 0, pending: 0, failed: [] } } }, { todos: [{ content: 'npm test', status: 'completed' }] })
+  assert.equal(green.stages[4].blocked, null)
+})

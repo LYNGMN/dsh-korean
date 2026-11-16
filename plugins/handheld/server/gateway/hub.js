@@ -134,7 +134,7 @@ export class Hub extends EventEmitter {
   async stages(sessionId, pick = null) {
     const state = await this.api.workState(sessionId)
     const cwd = state.cwd ?? (await this.sessions()).find((r) => r.id === state.sessionId)?.cwd ?? null
-    return { facts: await this.gitReader.read(cwd, { pick, commands: state.commands ?? [] }), todos: state.todos }
+    return { facts: await this.gitReader.read(cwd, { pick, commands: state.commands ?? [], edits: state.edits ?? [] }), todos: state.todos }
   }
 
   history(sessionId, beforeSeq) {

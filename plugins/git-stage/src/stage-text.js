@@ -25,6 +25,7 @@ export function factsOf(stage) {
       if (i.changes > 0) return [`저장 안 된 변경 ${count(i.changes, '개')}`, `원본보다 앞선 저장 ${count(i.ahead, '개')}`]
       return i.ahead > 0 ? [`저장 ${count(i.ahead, '개')} · 저장 안 된 변경 없음`] : ['아직 바뀐 파일이 없어요.']
     case 'verify':
+      if (i.run) return [`${clockOf(i.run.at)} ${i.run.command} 통과`, i.run.editedAfter ? '그 뒤에 파일을 고쳤어요. 다시 돌려야 해요.' : '그 뒤로 고친 파일 없음']
       if (i.by === 'todo') return [`마친 할 일: ${i.item}`]
       if (i.by === 'run') return ['마지막 저장 뒤에 테스트·빌드가 통과했어요.']
       return ['아직 검증 기록이 없어요.']
@@ -37,17 +38,34 @@ export function factsOf(stage) {
       else if (i.prError === 'no-gh') lines.push('gh 명령이 없어 검토 요청을 확인하지 못했어요.')
       else if (i.prError) lines.push('검토 요청을 확인하지 못했어요.')
       else if (i.upstream) lines.push('검토 요청(PR)은 아직 없어요.')
-      return lines
+      return [...lines, ...prChecksOf(i.pr)]
     }
     case 'merge':
       if (i.by === 'pr') return [`검토 요청 #${i.pr.number} · 원본(${i.base})에 합쳐졌어요.`]
       if (i.by === 'local') return [`이 브랜치의 저장이 원본(${i.base})에 들어 있어요.`]
-      return [`아직 원본(${i.base})에 합치지 않았어요.`]
+      return [`아직 원본(${i.base})에 합치지 않았어요.`, ...prChecksOf(i.pr)]
     case 'deploy':
       return i.tag ? [`완성본 표시(태그) ${i.tag}에 들어 있어요.`] : ['아직 완성본 표시(태그)가 없어요.']
     default:
       return []
   }
+}
+
+const REVIEW_TEXT = { approved: '검토 승인됨', changes: '고칠 점 요청됨', required: '검토 기다림' }
+
+// 열린 PR의 검사·검토 상태 한 줄과, 실패한 검사 이름 한 줄.
+function prChecksOf(pr) {
+  if (!pr || pr.state !== 'OPEN') return []
+  const c = pr.checks
+  const parts = c ? [
+    ...(c.passing ? [`검사 ${c.passing}개 통과`] : []),
+    ...(c.failing ? [`${c.failing}개 실패`] : []),
+    ...(c.pending ? [`${c.pending}개 진행 중`] : []),
+  ] : []
+  if (pr.review) parts.push(REVIEW_TEXT[pr.review])
+  const lines = parts.length ? [parts.join(' · ')] : []
+  if (c?.failed?.length) lines.push(`실패한 검사: ${c.failed.join(', ')}`)
+  return lines
 }
 
 // 에이전트가 일하는 동안 사람이 할 일이 없는 단계: 기다리면 된다고 먼저 말한다.
@@ -62,11 +80,12 @@ export function nextOf(stage, { running = false } = {}) {
   if (stage.status !== 'current') return null
   const i = stage.info
   if (stage.blocked === 'gh-auth') return '먼저 GitHub 로그인을 다시 해야 해요. 터미널에서 gh auth login을 실행해요.'
+  if (stage.blocked === 'checks') return '실패한 검사를 고쳐야 합칠 수 있어요. 원인을 찾아 고쳐 달라고 해요.'
   if (running && WHILE_RUNNING[stage.key]) return WHILE_RUNNING[stage.key]
   switch (stage.key) {
     case 'branch': return '새 작업 브랜치를 만들어 달라고 하면 돼요.'
     case 'commit': return i.changes > 0 ? '바뀐 내용을 목적 하나씩 커밋으로 저장해요.' : '고칠 것을 말하면, 고친 뒤 커밋으로 저장해요.'
-    case 'verify': return '테스트를 돌리거나 화면을 확인해 달라고 해요.'
+    case 'verify': return i.run?.editedAfter ? '고친 뒤라 테스트·빌드를 다시 돌려 달라고 해요.' : '테스트를 돌리거나 화면을 확인해 달라고 해요.'
     case 'share': return i.upstream && i.unpushed === 0 ? '승인하면 검토 요청(PR)을 열어요.' : '승인하면 GitHub에 올리고(푸시) 검토 요청을 열어요.'
     case 'merge': return '검토가 끝났으면 승인하고 합쳐요(머지).'
     case 'deploy': return '배포는 합치기와 따로 승인해요. 승인하면 태그를 달거나 배포해요.'
@@ -122,7 +141,9 @@ export function askOf(stage, repo = null) {
 }
 
 function askTextOf(stage) {
-  if (stage.status !== 'current' || stage.blocked) return null
+  if (stage.status !== 'current') return null
+  if (stage.blocked === 'checks') return 'PR 검사 가운데 실패한 것의 원인을 찾아 고쳐 주세요. 고친 뒤 테스트와 빌드를 다시 돌려 주세요.'
+  if (stage.blocked) return null
   const i = stage.info
   switch (stage.key) {
     case 'branch': return '이번 일을 위한 새 작업 브랜치를 만들어 주세요.'
@@ -136,10 +157,14 @@ function askTextOf(stage) {
   }
 }
 
-/** 바닥 줄의 읽은 시각. 아직 못 읽었으면 그렇게 말한다. */
-export function readAtOf(at) {
-  if (!at) return '아직 읽지 않았어요'
+/** 시각(ms) → 이 기기 시간대의 "시:분". */
+export function clockOf(at) {
   const time = new Date(at)
   const pad = n => String(n).padStart(2, '0')
-  return `${pad(time.getHours())}:${pad(time.getMinutes())}에 읽음`
+  return `${pad(time.getHours())}:${pad(time.getMinutes())}`
+}
+
+/** 바닥 줄의 읽은 시각. 아직 못 읽었으면 그렇게 말한다. */
+export function readAtOf(at) {
+  return at ? `${clockOf(at)}에 읽음` : '아직 읽지 않았어요'
 }
