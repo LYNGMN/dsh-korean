@@ -1,19 +1,23 @@
 {
   "name": "@lyngmn/dsh-search-free",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Adds five web_search providers that work without an API key: You.com, Parallel, Keenable, Tavily and Bing. Put them in a Search Fallback order. Not an official DeepSeek plugin.",
+  "description": "Ten free web_search providers (You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Naver, Kakao, Bing), an automatic order, and the /search command. Enter optional keys on this page for higher limits. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
     "free-core.js",
+    "search-tool.js",
+    "host-locale.js",
+    "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"
@@ -27,6 +31,15 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
     }
   },
   "scripts": {

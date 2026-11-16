@@ -19,13 +19,12 @@ function provider(steps, registry, { fallbackOnEmpty = true } = {}) {
   return { p, warnings }
 }
 
-test('normalizeSettings uses the four default orders and drops invalid ones', () => {
+test('normalizeSettings uses the three default orders and drops invalid ones', () => {
   const defaults = normalizeSettings({})
   assert.deepEqual(defaults.orders.map((o) => [o.id, o.providers]), [
     ['brave-exa', ['brave', 'exa']],
     ['exa-brave', ['exa', 'brave']],
-    ['exa-brave-free', ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing']],
-    ['free-only', ['you', 'parallel', 'keenable', 'tavily', 'bing']]
+    ['exa-brave-free', ['exa', 'brave', 'free']]
   ])
   assert.equal(defaults.fallbackOnEmpty, true)
   const s = normalizeSettings({
@@ -123,8 +122,7 @@ test('apply registers one provider per order and reads the registry at search ti
   assert.deepEqual(registered.map((p) => [p.id, p.title]), [
     ['brave-exa', 'Brave → Exa'],
     ['exa-brave', 'Exa → Brave'],
-    ['exa-brave-free', 'Exa → Brave → 무료 검색'],
-    ['free-only', '무료 검색만']
+    ['exa-brave-free', 'Exa → Brave → 무료 검색']
   ])
   assert.equal(registered[0].description.ko.startsWith('먼저 Brave로'), true)
   // Providers registered after this bundle are still found.
@@ -216,7 +214,7 @@ test('the patch file declares the same orders as the built-in defaults', async (
   assert.deepEqual(ids, normalizeSettings({}).orders.map((o) => o.id))
 })
 
-test('Exa → Brave → Free search: paid steps fail, a missing free step is skipped and the next free one answers', async () => {
+test('Exa → Brave → Free search: paid steps fail or find nothing and the free engine answers', async () => {
   const searchProviders = new Map()
   const registered = []
   const web = { searchProviders, registerSearchProvider: (p) => { registered.push(p); searchProviders.set(p.id, p) } }
@@ -224,11 +222,11 @@ test('Exa → Brave → Free search: paid steps fail, a missing free step is ski
   const order = registered.find((p) => p.id === 'exa-brave-free')
   searchProviders.set('exa', failing('credits exhausted'))
   searchProviders.set('brave', empty())
-  // "you" is not registered (Free Search not installed or the provider turned off).
-  const parallel = ok('https://parallel.example')
-  searchProviders.set('parallel', parallel)
-  searchProviders.set('bing', ok('https://bing.example'))
-  assert.equal((await order.search({ query: 'q' })).sources[0].url, 'https://parallel.example')
-  assert.equal(parallel.calls, 1)
-  assert.equal(searchProviders.get('bing').calls, 0)
+  const free = ok('https://free.example')
+  searchProviders.set('free', free)
+  assert.equal((await order.search({ query: 'q' })).sources[0].url, 'https://free.example')
+  assert.equal(free.calls, 1)
+  // Without the Search plugin the order still answers with the empty Brave result.
+  searchProviders.delete('free')
+  assert.deepEqual((await order.search({ query: 'q' })).sources, [])
 })

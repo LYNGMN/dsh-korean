@@ -11,9 +11,9 @@ console.log(`검색어: ${query}`)
 for (const provider of providers) {
   const started = performance.now()
   try {
-    const { sources } = await provider.search({ query, maxResults: 5 })
+    const { sources, answeredBy } = await provider.search({ query, maxResults: 5 })
     const ms = Math.round(performance.now() - started)
-    console.log(`${provider.id.padEnd(9)} 성공 ${String(sources.length).padStart(2)}건 ${ms}ms  ${sources[0]?.url ?? ''}`)
+    console.log(`${provider.id.padEnd(9)} 성공 ${String(sources.length).padStart(2)}건 ${ms}ms  ${answeredBy ? `(${answeredBy}) ` : ''}${sources[0]?.url ?? ''}`)
   } catch (error) {
     const ms = Math.round(performance.now() - started)
     console.log(`${provider.id.padEnd(9)} 실패 ${ms}ms  ${error.message}`)

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Free Search",
-    "description": "Adds five web_search providers that work without an API key: You.com, Parallel, Keenable, Tavily and Bing. Put them in a Search Fallback order. Not an official DeepSeek plugin."
+    "title": "Search",
+    "description": "Ten free web_search providers (You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Naver, Kakao, Bing), an automatic order, and the /search command. Enter optional keys on this page for higher limits. Not an official DeepSeek plugin."
   }
 }

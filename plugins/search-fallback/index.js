@@ -80,19 +80,10 @@ const DEFAULT_ORDERS = [
   {
     id: 'exa-brave-free',
     title: 'Exa → Brave → 무료 검색',
-    providers: ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing'],
+    providers: ['exa', 'brave', 'free'],
     description: {
-      en: 'Searches Exa first, then Brave. If both fail or find nothing, the keyless providers from Free Search run in turn: You.com, Parallel, Keenable, Tavily, Bing. Steps whose bundle is not installed are skipped.',
-      ko: '먼저 Exa, 다음 Brave로 검색해요. 둘 다 실패하거나 결과가 없으면 무료 검색의 키 없는 공급자(You.com·Parallel·Keenable·Tavily·Bing)를 차례로 써요. 설치되지 않은 공급자는 건너뛰어요.'
-    }
-  },
-  {
-    id: 'free-only',
-    title: '무료 검색만',
-    providers: ['you', 'parallel', 'keenable', 'tavily', 'bing'],
-    description: {
-      en: 'Uses only the keyless providers from Free Search, in turn: You.com, Parallel, Keenable, Tavily, Bing. No API key or paid quota is used.',
-      ko: '무료 검색의 키 없는 공급자(You.com·Parallel·Keenable·Tavily·Bing)만 차례로 써요. API 키나 유료 한도를 쓰지 않아요.'
+      en: "Searches Exa first, then Brave. If both fail or find nothing, the Search plugin's automatic engine takes over: Korean queries start with Naver and Kakao, others with You.com and Parallel. Skipped when the Search plugin is not installed.",
+      ko: '먼저 Exa, 다음 Brave로 검색해요. 둘 다 실패하거나 결과가 없으면 검색 플러그인의 자동 엔진이 받아요. 한국어 검색어는 네이버·카카오부터, 그 밖은 You.com·Parallel부터 써요. 검색 플러그인이 설치되지 않았으면 건너뛰어요.'
     }
   }
 ]

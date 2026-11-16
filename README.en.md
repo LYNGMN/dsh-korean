@@ -88,8 +88,8 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>When a search provider fails, retries with the next one.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>Free search</strong></td>
-<td>Adds five search providers that need no API key (You.com, Parallel, Keenable, Tavily, Bing). Use them through the "Exa → Brave → Free search" fallback order.</td>
+<td align="center"><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
+<td>Adds ten web search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine that tries them in a language-aware order, and the <code>/search</code> command. Keys entered on the plugin page raise the limits.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>

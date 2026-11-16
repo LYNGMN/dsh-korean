@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "무료 검색",
-    "description": "API 키 없이 쓰는 웹검색 공급자 5개(You.com·Parallel·Keenable·Tavily·Bing)를 더해요. 검색 자동 전환 순서에 넣어 써요. DeepSeek 공식 플러그인이 아니에요."
+    "title": "검색",
+    "description": "무료 웹검색 공급자 10개(You.com·Parallel·Keenable·Tavily·TinyFish·Jina·Firecrawl·네이버·카카오·Bing)와 자동 순서, /search 명령을 더해요. 이 페이지에서 키를 넣으면 한도가 늘어나요. DeepSeek 공식 플러그인이 아니에요."
   }
 }

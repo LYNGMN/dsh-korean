@@ -1,28 +1,40 @@
-# Free Search bundle for DSH.
-# It registers five web_search providers that work without an API key:
-#   you       You.com (keyless tier, 100 searches a day)
-#   parallel  Parallel (keyless MCP, only a few searches in a row)
-#   keenable  Keenable (keyless MCP)
-#   tavily    Tavily (keyless tier with a very small daily cap; a free key is worth it)
-#   bing      Bing result page (no key or quota)
-# It does not pick web.searchProvider. Use them through a Search Fallback order
-# such as "Exa → Brave → Free search", or pick one on the Web search settings page.
-# Keys are optional and never stored here: each provider looks its key name up
-# in the DSH credential store, then the launch environment, and searches on the
-# keyless tier when there is none.
+# Search bundle for DSH (@lyngmn/dsh-search-free).
+# It registers:
+#   web_search providers  you, parallel, keenable, tavily, tinyfish, jina,
+#                         firecrawl, naver, kakao, bing
+#   free                  a web_search provider that tries them in turn
+#                         (Korean queries start with Naver and Kakao)
+#   free_search           a tool that searches one engine, or "free"
+#   /search <engine> <question>
+#                         a command that uses that engine for one request
+# It does not pick web.searchProvider. Pick "free" or a Search Fallback order
+# such as "Exa → Brave → Free search" on the Web search settings page.
+# Keys are entered on this plugin's page and kept in the DSH credential store;
+# they are never stored here. Without a key, You.com, Parallel, Keenable,
+# Tavily, Firecrawl and Bing use their keyless tier; TinyFish, Jina, Naver and
+# Kakao are skipped.
 - insert:
     - id: search-free
       name: '@lyngmn/dsh-search-free'
       config:
-        # Providers to register, in their usual fallback order.
-        providers: [you, parallel, keenable, tavily, bing]
+        providers: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
+        # Order of the automatic "free" provider: ko for queries with Hangul, en for the rest.
+        freeOrder:
+          ko: [naver, kakao, you, parallel, keenable, tavily, tinyfish, jina, firecrawl, bing]
+          en: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
         count: 8
         timeoutMs: 20000
         # Bing market (mkt) and Accept-Language.
         bingMarket: ko-KR
         safeSearch: moderate
+        # Credential names each engine looks up (Naver needs two).
         keys:
-          tavily: TAVILY_API_KEY
           you: YDC_API_KEY
           parallel: PARALLEL_API_KEY
           keenable: KEENABLE_API_KEY
+          tavily: TAVILY_API_KEY
+          tinyfish: TINYFISH_API_KEY
+          jina: JINA_API_KEY
+          firecrawl: FIRECRAWL_API_KEY
+          naver: [NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]
+          kakao: KAKAO_REST_API_KEY
