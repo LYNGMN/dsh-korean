@@ -317,3 +317,101 @@ test('계획 문서는 원문 표시 없이 제목·굵게·코드·목록 요�
   assert.doesNotMatch(out, /\*\*|^#|\n#|\|---/)
   assert.match(out, /배경/)
 })
+
+// 나무에서 조건에 맞는 요소를 모두 찾는다(함수 컴포넌트는 펼쳐 본다).
+function findAll(tree, pick) {
+  const found = []
+  const walk = node => {
+    if (node == null || typeof node !== 'object') return
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (typeof node.type === 'function') return walk(node.type(node.props))
+    if (node.portal) return walk(node.portal)
+    if (pick(node)) found.push(node)
+    ;(node.children ?? []).forEach(walk)
+  }
+  walk(tree)
+  return found
+}
+const hasClass = name => node => typeof node.props?.className === 'string' && node.props.className.split(' ').includes(name)
+
+function fakeInputActions() {
+  const calls = []
+  return {
+    calls,
+    setDraft: value => calls.push(['setDraft', value]),
+    submit: () => calls.push(['submit']),
+    captureInsertion: () => ({ draftRev: 3 }),
+    insertText: (value, span) => { calls.push(['insertText', value, span]); return true },
+  }
+}
+
+function renderWith(slot, { running, draft = '', inputActions, session = {} }) {
+  const injected = slot.opts.inject('s1')
+  return slot.Component({
+    useProjection: () => null,
+    usePlanState: select => select(injected.hooks.planState.getSnapshot()),
+    useSession: select => select({ running, pendingSubmissions: [], subagent: null, lastAgentError: null, ...session }),
+    useInput: select => select({ draft, phase: 'plain', attachmentIds: [] }),
+    inputActions,
+  })
+}
+
+test('남은 할 일이 있는데 멈췄으면 탭에 "이어서 진행" 단추를 보이고, 누르면 빈 입력창에 채워 보낸다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const actions = fakeInputActions()
+  const tree = renderWith(f.slots['conversation.view'], { running: false, inputActions: actions })
+  const [bar] = findAll(tree, hasClass('dpv-resume'))
+  assert.ok(bar, '단추 줄이 있어야 함')
+  assert.match(text(bar), /남은 할 일 1개가 있는데 멈췄어요/)
+  const [button] = findAll(bar, hasClass('dpv-resume-btn'))
+  assert.match(text(button), /이어서 진행/)
+  button.props.onClick()
+  assert.equal(actions.calls[0][0], 'setDraft')
+  assert.match(actions.calls[0][1], /^멈춘 곳부터 남은 할 일을 이어서 진행해 주세요\.\n- 탭 만들기 \(진행 중에 멈춤\)$/)
+  assert.deepEqual(actions.calls[1], ['submit'])
+})
+
+test('입력창에 쓰던 글이 있으면 보내지 않고 덧붙이기만 한다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const actions = fakeInputActions()
+  const tree = renderWith(f.slots['conversation.view'], { running: false, draft: '쓰던 글', inputActions: actions })
+  findAll(tree, hasClass('dpv-resume-btn'))[0].props.onClick()
+  assert.deepEqual(actions.calls.map(([name]) => name), ['insertText'])
+})
+
+test('세션이 돌고 있거나, 다 끝났거나, 입력 동작이 없으면 단추를 그리지 않는다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const view = f.slots['conversation.view']
+  assert.equal(findAll(renderWith(view, { running: true, inputActions: fakeInputActions() }), hasClass('dpv-resume')).length, 0)
+  assert.equal(findAll(renderWith(view, { running: false, inputActions: undefined }), hasClass('dpv-resume')).length, 0)
+  const done = fakeCtx(snapshotOf({ matches: [write(3, 2000, 2, [['구조 읽기', 'completed']])] }))
+  mod.apply(done.ctx)
+  assert.equal(findAll(renderWith(done.slots['conversation.view'], { running: false, inputActions: fakeInputActions() }), hasClass('dpv-resume')).length, 0)
+})
+
+test('오류로 멈췄으면 그 이유를 알린다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const tree = renderWith(f.slots['conversation.view'], { running: false, inputActions: fakeInputActions(), session: { lastAgentError: '요청 한도 초과' } })
+  assert.match(text(findAll(tree, hasClass('dpv-resume'))[0]), /오류로 멈췄어요/)
+})
+
+test('칩은 멈춤을 이름과 점으로 알린다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const chip = f.slots['conversation.session.header.utilities']
+  const tree = renderWith(chip, { running: false, inputActions: fakeInputActions() })
+  const [button] = findAll(tree, hasClass('dpv-chip'))
+  assert.match(button.props['aria-label'], /멈춤 · 이어서 진행할 수 있어요/)
+  assert.equal(findAll(button, hasClass('dpv-chip-dot')).length, 1)
+  const live = findAll(renderWith(chip, { running: true, inputActions: fakeInputActions() }), hasClass('dpv-chip'))[0]
+  assert.equal(findAll(live, hasClass('dpv-chip-dot')).length, 0)
+})
