@@ -56,7 +56,7 @@ export function stagesOf(facts, extra = {}) {
     verify,
     share: { pushed, upstream: facts.upstream, unpushed: facts.unpushed, pr, prError: facts.prError ?? null, outgoing },
     merge: { merged, by: prMerged ? 'pr' : merged ? 'local' : null, pr, base: facts.base, outgoing },
-    deploy: { tag: facts.tag ?? null },
+    deploy: { tag: facts.tag ?? null, kind: facts.deploy ?? 'tag' },
   }
   const reached = {
     branch: facts.branch !== null && !facts.isBase,

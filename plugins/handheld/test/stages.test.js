@@ -196,14 +196,14 @@ test('the sheet offers one request for the current stage, naming the repository 
   const current = (facts, extra) => { const snap = stagesOf(facts, extra); return snap.stages[snap.current] }
   const verified = { todos: [{ content: 'run tests', status: 'completed' }] }
   setLang('ko')
-  assert.equal(stageAsk(current(base)), '테스트와 빌드를 돌리고 결과를 알려 주세요.')
-  assert.equal(stageAsk(current(base), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
-  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x' }, verified)), '검토 요청(PR)을 초안으로 열어 주세요.')
-  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x', pr: { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null } }, verified)), '검토 요청(PR)을 스쿼시 머지해 주세요.')
+  assert.equal(stageAsk(current(base)), '테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
+  assert.equal(stageAsk(current(base), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x' }, verified)), '검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x', pr: { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null } }, verified)), 'PR 검사가 모두 통과했는지 확인하고, 통과했으면 스쿼시 머지해 주세요.')
   assert.equal(stageAsk(current({ ...base, prError: 'auth' }, verified)), null)
   assert.equal(stageAsk(stagesOf(base).stages[0]), null)
   setLang('en')
-  assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please push and open a draft pull request.')
+  assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please run the tests and the build, and if they pass, push and open a draft pull request. In its description, list what changes, what you checked and what you could not check.')
 })
 
 test('the sheet shows the real test run and failed PR checks in the language chosen', (t) => {
@@ -220,4 +220,15 @@ test('the sheet shows the real test run and failed PR checks in the language cho
   assert.match(stageAsk(merge), /^PR 검사 가운데 실패한 것/)
   setLang('en')
   assert.equal(stageNext(merge), 'Fix the failed checks before merging. Ask the agent to find and fix the cause.')
+})
+
+test('the deploy step follows how the project deploys', (t) => {
+  t.after(() => setLang('ko'))
+  setLang('ko')
+  const facts = { repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: 'origin/x', unpushed: 0, hadCommits: true, headTime: 1, prError: null, tag: null, pr: { number: 3, state: 'MERGED', draft: false, url: null, mergeCommit: 'm' } }
+  const deploy = stagesOf({ ...facts, deploy: 'wrangler' }).stages[5]
+  assert.deepEqual(stageFacts(deploy), ['배포 방식: Wrangler(Cloudflare Worker)', '아직 완성본 표시(태그)가 없습니다.', '배포 기록은 여기서 확인하지 못합니다.'])
+  assert.match(stageAsk(deploy), /Worker 코드가 바뀌는지/)
+  assert.match(stageNext(stagesOf({ ...facts, deploy: 'script' }).stages[5]), /npm run deploy/)
+  assert.deepEqual(stageFacts(stagesOf(facts).stages[5]), ['아직 완성본 표시(태그)가 없습니다.'])
 })

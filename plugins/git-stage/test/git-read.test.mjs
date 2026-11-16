@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { checksOf, createGitReader, findRepos, parseStatus, pathsOfCommand, prErrorOf, repoOfCommands, runCommand, verifyCommandOf, verifyRunOf } from '../lib/git-read.js'
+import { checksOf, createGitReader, deployKindOf, findRepos, parseStatus, pathsOfCommand, prErrorOf, repoOfCommands, runCommand, verifyCommandOf, verifyRunOf } from '../lib/git-read.js'
 import { commandsOf, createHandler, editsOf, resultOkOf, workingDirectoryOf } from '../lib/index.js'
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
@@ -298,4 +298,16 @@ test('PR 검사 묶음을 통과·실패·진행 중으로 세고 실패한 이�
     { __typename: 'StatusContext', context: 'deploy/preview', state: 'ERROR' },
     { __typename: 'StatusContext', context: 'ci/legacy', state: 'SUCCESS' },
   ]), { passing: 2, failing: 2, pending: 1, failed: ['lint', 'deploy/preview'] })
+})
+
+test('저장소 맨 위 파일로 배포 방식을 정한다', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'git-stage-deploy-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  assert.equal(await deployKindOf(dir), 'tag')
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }))
+  assert.equal(await deployKindOf(dir), 'tag')
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { deploy: 'wrangler deploy' } }))
+  assert.equal(await deployKindOf(dir), 'script')
+  writeFileSync(join(dir, 'wrangler.jsonc'), '{}')
+  assert.equal(await deployKindOf(dir), 'wrangler')
 })

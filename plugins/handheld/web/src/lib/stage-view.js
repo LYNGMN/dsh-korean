@@ -66,8 +66,11 @@ export function stageFacts(stage) {
       if (i.by === 'pr') return [t('stage.f.mergedPr', { n: i.pr.number, base: i.base })]
       if (i.by === 'local') return [t('stage.f.mergedLocal', { base: i.base })]
       return [t('stage.f.notMerged', { base: i.base }), ...prChecks(i.pr)]
-    case 'deploy':
-      return [i.tag ? t('stage.f.tag', { tag: i.tag }) : t('stage.f.noTag')]
+    case 'deploy': {
+      const tag = i.tag ? t('stage.f.tag', { tag: i.tag }) : t('stage.f.noTag')
+      // Done is judged by a tag only; a Wrangler or script deploy leaves no trace in Git.
+      return i.kind === 'wrangler' || i.kind === 'script' ? [t(`stage.f.deploy.${i.kind}`), tag, t('stage.f.deployUnseen')] : [tag]
+    }
     default:
       return []
   }
@@ -89,7 +92,7 @@ export function stageNext(stage, { running = false } = {}) {
     case 'verify': return t(i.run?.editedAfter ? 'stage.n.verifyAgain' : 'stage.n.verify')
     case 'share': return t(i.upstream && i.unpushed === 0 ? 'stage.n.sharePr' : 'stage.n.share')
     case 'merge': return t('stage.n.merge')
-    case 'deploy': return t('stage.n.deploy')
+    case 'deploy': return t(i.kind === 'wrangler' || i.kind === 'script' ? `stage.n.deploy.${i.kind}` : 'stage.n.deploy')
     default: return null
   }
 }
@@ -136,7 +139,7 @@ function askKeyOf(stage) {
     case 'share': return 'stage.a.share'
     // Pushed but no open review request yet: open one first.
     case 'merge': return i.pr && i.pr.state === 'OPEN' ? 'stage.a.merge' : 'stage.a.openPr'
-    case 'deploy': return 'stage.a.deploy'
+    case 'deploy': return i.kind === 'wrangler' || i.kind === 'script' ? `stage.a.deploy.${i.kind}` : 'stage.a.deploy'
     default: return null
   }
 }

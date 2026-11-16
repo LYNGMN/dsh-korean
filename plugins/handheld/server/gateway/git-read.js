@@ -242,6 +242,20 @@ export function verifyRunOf(commands, edits, topLevel) {
   return null
 }
 
+const WRANGLER_FILES = ['wrangler.jsonc', 'wrangler.json', 'wrangler.toml']
+
+/** 저장소 맨 위 파일로 배포 방식을 정한다: Wrangler 설정이 있으면 wrangler, package.json에 deploy 스크립트가 있으면 script, 아니면 tag. */
+export async function deployKindOf(topLevel) {
+  for (const name of WRANGLER_FILES) {
+    try { if ((await stat(join(topLevel, name))).isFile()) return 'wrangler' } catch { /* 없으면 다음 */ }
+  }
+  try {
+    const pkg = JSON.parse(await readFile(join(topLevel, 'package.json'), 'utf8'))
+    if (typeof pkg?.scripts?.deploy === 'string') return 'script'
+  } catch { /* package.json이 없거나 읽을 수 없으면 tag */ }
+  return 'tag'
+}
+
 /**
  * @param {{ run?: typeof runCommand, now?: () => number }} [options] run은 시험에서 바꿔 끼운다.
  */
@@ -365,6 +379,7 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
       prError,
       tag: isBase && pr === null ? null : tag,
       verify: verifyRunOf(commands, edits, topLevel),
+      deploy: await deployKindOf(topLevel),
     }
   }
 

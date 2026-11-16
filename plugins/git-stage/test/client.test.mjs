@@ -189,10 +189,10 @@ test('지금 단계의 요청 문장을 입력창에 넣기만 하고, 보내지
   const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
   const props = { sessionId: 's1', useSession: s => s({ running: false }), useProjection: key => (key === 'todos' ? todos : undefined), inputActions }
   const tree = slots['conversation.view'].Component(props)
-  assert.match(text(tree), /이렇게 요청해 보세요\s+푸시하고 검토 요청\(PR\)을 초안으로 열어 주세요\./)
+  assert.match(text(tree), /이렇게 요청해 보세요\s+테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청\(PR\)을 초안으로 열어 주세요\./)
   const button = find(tree, node => node.type === 'button' && node.children.join('') === '입력창에 넣기')
   button.props.onClick()
-  assert.deepEqual(calls, ['capture', ['insert', '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.', 1]])
+  assert.deepEqual(calls, ['capture', ['insert', '테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.', 1]])
 
   // 입력창 기능을 받지 못한 화면에는 단추가 없다.
   const bare = slots['conversation.view'].Component({ ...props, inputActions: undefined })

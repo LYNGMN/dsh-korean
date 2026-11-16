@@ -125,13 +125,13 @@ test('다음 요청 문장은 지금 단계에만 있고, 로그인이 막히면
   const current = snap => snap.stages[snap.current]
   assert.equal(askOf(current(at({ branch: 'main', isBase: true }))), '이번 일을 위한 새 작업 브랜치를 만들어 주세요.')
   assert.match(askOf(current(at({ changes: 2 }))), /목적별로 나눠 커밋/)
-  assert.equal(askOf(current(at({ ahead: 1 }))), '테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  assert.equal(askOf(current(at({ ahead: 1 }))), '테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
   const verified = { todos: [{ content: 'npm test', status: 'completed' }] }
-  assert.equal(askOf(current(at({ ahead: 1 }, verified))), '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.')
+  assert.equal(askOf(current(at({ ahead: 1 }, verified))), '테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.')
   // 올렸지만 검토 요청이 없으면 합치기 단계에서 먼저 연다.
-  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0 }, verified))), '검토 요청(PR)을 초안으로 열어 주세요.')
+  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0 }, verified))), '검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.')
   const open = { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null }
-  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0, pr: open }, verified))), '검토 요청(PR)을 스쿼시 머지해 주세요.')
+  assert.equal(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0, pr: open }, verified))), 'PR 검사가 모두 통과했는지 확인하고, 통과했으면 스쿼시 머지해 주세요.')
   const merged = { ...open, state: 'MERGED', mergeCommit: 'm' }
   assert.match(askOf(current(at({ ahead: 1, upstream: 'origin/x', unpushed: 0, pr: merged }, verified))), /포함되는 것과 포함하지 않는 것/)
   const blocked = at({ ahead: 1, prError: 'auth' }, verified)
@@ -139,7 +139,7 @@ test('다음 요청 문장은 지금 단계에만 있고, 로그인이 막히면
   const snap = at({ ahead: 1 })
   assert.equal(snap.stages.filter(s => askOf(s) !== null).length, 1)
   // 묶음 폴더에서는 저장소 이름을 앞에 밝힌다.
-  assert.equal(askOf(current(snap), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
+  assert.equal(askOf(current(snap), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
   assert.equal(askOf(snap.stages[0], 'app'), null)
 })
 
@@ -183,4 +183,14 @@ test('열린 PR의 검사가 실패하면 합치기 단계가 막히고, 검사�
   assert.match(askOf(merge), /^PR 검사 가운데 실패한 것/)
   const green = at({ ahead: 1, hadCommits: true, upstream: 'origin/claude/feat/x', pr: { ...pr, checks: { passing: 3, failing: 0, pending: 0, failed: [] } } }, { todos: [{ content: 'npm test', status: 'completed' }] })
   assert.equal(green.stages[4].blocked, null)
+})
+
+test('배포 단계는 프로젝트 배포 방식에 맞춰 말하고, 태그가 아닌 배포는 기록을 확인하지 못한다고 밝힌다', () => {
+  const merged = { ahead: 1, hadCommits: true, upstream: 'origin/x', unpushed: 0, pr: { number: 3, state: 'MERGED', draft: false, url: null, mergeCommit: 'm' } }
+  const deployOf = kind => at({ ...merged, deploy: kind }).stages[5]
+  assert.deepEqual(factsOf(deployOf('wrangler')), ['배포 방식: Wrangler(Cloudflare Worker)', '아직 완성본 표시(태그)가 없어요.', '배포 기록은 여기서 확인하지 못해요.'])
+  assert.match(askOf(deployOf('wrangler')), /Worker 코드가 바뀌는지/)
+  assert.match(nextOf(deployOf('script')), /npm run deploy/)
+  assert.deepEqual(factsOf(deployOf(undefined)), ['아직 완성본 표시(태그)가 없어요.'])
+  assert.match(askOf(deployOf('tag')), /^배포 전에 이번 배포에 포함되는 것과/)
 })
