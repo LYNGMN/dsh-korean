@@ -9,14 +9,15 @@
  * key was needed; the code here is new.
  */
 
-/** Provider ids, in the order the automatic "auto" provider uses for non-Korean queries. */
+/** Provider ids. */
 export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
 
-/** The automatic order: Korean queries try the Korean indexes first. */
-export const DEFAULT_FREE_ORDER = Object.freeze({
-  ko: Object.freeze(['naver', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'bing']),
-  en: PROVIDER_IDS
-})
+/**
+ * The default order of the automatic "auto" provider, the same for every
+ * query language. The user changes it, and which engines it uses, on the
+ * plugin page (the `autoOrder` setting).
+ */
+export const DEFAULT_AUTO_ORDER = PROVIDER_IDS
 
 /** Providers that return nothing without a key; they fail fast instead of calling out. */
 export const REQUIRES_KEY = Object.freeze(['tinyfish', 'jina', 'naver', 'kakao'])
@@ -33,6 +34,9 @@ export const ENDPOINTS = Object.freeze({
   firecrawl: 'https://api.firecrawl.dev/v2/search',
   tinyfish: 'https://api.search.tinyfish.ai',
   jina: 'https://s.jina.ai/',
+  // NAVER API HUB issues every new key since 2026-07-31; keys from the old
+  // Naver Developers console keep working on openapi.naver.com until 2027-06-30.
+  naverHub: 'https://naverapihub.apigw.ntruss.com/search/v1/webkr',
   naver: 'https://openapi.naver.com/v1/search/webkr.json',
   kakao: 'https://dapi.kakao.com/v2/search/web'
 })
@@ -78,18 +82,15 @@ export function normalizeSettings(config = {}) {
     const given = (Array.isArray(raw) ? raw : [raw]).map(text)
     keyNames[id] = names.map((name, index) => given[index] ?? name)
   }
-  const freeOrder = {}
-  for (const language of ['ko', 'en']) {
-    const raw = config.freeOrder?.[language]
-    const wanted = Array.isArray(raw) ? raw.map((p) => String(p).trim()) : DEFAULT_FREE_ORDER[language]
-    freeOrder[language] = [...new Set(wanted)].filter((id) => providers.includes(id))
-  }
+  // `autoOrder` is a live setting: under DSH it is a volatile reference read on
+  // every search, so a change on the plugin page applies to the next search.
+  const autoOrder = () => normalizeOrder(readVolatile(config.autoOrder), providers)
   return {
     count,
     timeoutMs,
     providers,
     keyNames,
-    freeOrder,
+    autoOrder,
     bingMarket: text(config.bingMarket),
     safeSearch: ['off', 'moderate', 'strict'].includes(config.safeSearch) ? config.safeSearch : 'moderate'
   }
@@ -120,7 +121,7 @@ function mcpCall(url, name, args) {
 
 /**
  * Build the HTTP request for one provider.
- * @returns {{ url: string, init: { method: string, headers: Record<string,string>, body?: string } }}
+ * @returns {{ url: string, init: { method: string, headers: Record<string,string>, body?: string }, fallback?: { url: string, init: object } }}
  */
 export function buildRequest(id, { query, count, keys = [], settings }) {
   const apiKey = keys[0] ?? ''
@@ -170,12 +171,23 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
       return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', authorization: `Bearer ${apiKey}` } } }
     }
     case 'naver': {
-      const url = new URL(ENDPOINTS.naver)
-      url.searchParams.set('query', query)
-      url.searchParams.set('display', String(count))
+      // Same response shape on both hosts. HUB first; a 401/403 there retries
+      // the legacy host once, for keys made in the old Naver Developers console.
+      const display = String(Math.min(count, 100))
+      const hub = new URL(ENDPOINTS.naverHub)
+      hub.searchParams.set('query', query)
+      hub.searchParams.set('display', display)
+      hub.searchParams.set('format', 'json')
+      const legacy = new URL(ENDPOINTS.naver)
+      legacy.searchParams.set('query', query)
+      legacy.searchParams.set('display', display)
       return {
-        url: url.toString(),
-        init: { method: 'GET', headers: { accept: 'application/json', 'x-naver-client-id': keys[0] ?? '', 'x-naver-client-secret': keys[1] ?? '' } }
+        url: hub.toString(),
+        init: { method: 'GET', headers: { accept: 'application/json', 'x-ncp-apigw-api-key-id': keys[0] ?? '', 'x-ncp-apigw-api-key': keys[1] ?? '' } },
+        fallback: {
+          url: legacy.toString(),
+          init: { method: 'GET', headers: { accept: 'application/json', 'x-naver-client-id': keys[0] ?? '', 'x-naver-client-secret': keys[1] ?? '' } }
+        }
       }
     }
     case 'kakao': {
@@ -189,9 +201,18 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
   }
 }
 
-/** Whether a query is Korean enough to try the Korean indexes first. */
-export function isKoreanQuery(query) {
-  return /\p{Script=Hangul}/u.test(String(query))
+/** The current value of a DSH volatile config reference, or the plain value itself. */
+export function readVolatile(value) {
+  return value !== null && typeof value === 'object' && typeof value.get === 'function' ? value.get() : value
+}
+
+/**
+ * The engines the automatic provider uses, in order: known, registered and
+ * listed once. An absent list means the default order; an empty one means none.
+ */
+export function normalizeOrder(raw, providers = PROVIDER_IDS) {
+  const wanted = Array.isArray(raw) ? raw.map((id) => String(id).trim()) : DEFAULT_AUTO_ORDER
+  return [...new Set(wanted)].filter((id) => providers.includes(id))
 }
 
 /** A response that arrived but carries the service's own error. */

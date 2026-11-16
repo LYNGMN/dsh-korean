@@ -1,4 +1,5 @@
-import { REQUIRES_KEY, ProviderResponseError, buildRequest, isKoreanQuery, normalizeSettings, parseResponse, resultCount } from './free-core.js'
+import z from '@deepseek-ai/schemastery'
+import { DEFAULT_AUTO_ORDER, PROVIDER_IDS, REQUIRES_KEY, ProviderResponseError, buildRequest, normalizeSettings, parseResponse, resultCount } from './free-core.js'
 import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './search-tool.js'
 
 /**
@@ -15,7 +16,7 @@ import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './s
  *   naver      Naver web documents (NAVER_CLIENT_ID + NAVER_CLIENT_SECRET required)
  *   kakao      Kakao Daum web search (KAKAO_REST_API_KEY required)
  *   bing       Bing result page (no key)
- *   auto       tries the above in turn; Korean queries start with Naver and Kakao
+ *   auto       tries the above in turn, in the order set on the plugin page
  *
  * Every provider is registered on its own so Search Fallback can put them in
  * any order. Nothing here selects web.searchProvider. Keys are entered on the
@@ -31,6 +32,23 @@ export class FreeSearchError extends Error {
 }
 
 export const inject = ['web', 'tools', 'commands']
+
+/**
+ * The bundle's settings. DSH reads this schema to give the entry a settings
+ * namespace; `autoOrder` is volatile, so the plugin page writes it through
+ * `settings.update` and the next search uses it without a restart. The other
+ * fields are set in cordis.patch.yml.
+ */
+export const Config = z.object({
+  providers: z.array(z.string()).default([...PROVIDER_IDS]).description('Engines to register.'),
+  autoOrder: z.array(z.string()).default([...DEFAULT_AUTO_ORDER]).volatile()
+    .description('Engines the automatic engine uses, in order. Engines left out are not used by auto.'),
+  count: z.number().default(8).description('Results per search.'),
+  timeoutMs: z.number().default(20000).description('Time limit per engine, in milliseconds.'),
+  bingMarket: z.string().default('ko-KR').description('Bing market and Accept-Language.'),
+  safeSearch: z.union(['off', 'moderate', 'strict']).default('moderate'),
+  keys: z.dict(z.union([z.string(), z.array(z.string())])).default({}).description('Credential names each engine looks up.')
+})
 
 const USER_AGENT = 'dsh-search-free/1.1.0'
 /** How long the automatic order skips a provider that hit its quota or rate limit. */
@@ -112,8 +130,8 @@ export const PROVIDER_TEXT = Object.freeze({
   auto: {
     title: 'Auto search',
     description: {
-      en: 'Tries the free engines in turn and moves on when one fails or finds nothing. Korean queries start with Naver and Kakao; engines without a needed key are skipped.',
-      ko: '무료 검색 엔진을 차례로 써요. 하나가 실패하거나 결과가 없으면 다음으로 넘어가요. 한국어 검색어는 네이버·카카오부터 쓰고, 키가 필요한데 없는 엔진은 건너뛰어요.'
+      en: 'Tries the engines in the order set on the Search plugin page and moves on when one fails or finds nothing. Engines without a needed key are skipped.',
+      ko: '검색 플러그인 페이지에서 정한 순서로 엔진을 차례로 써요. 하나가 실패하거나 결과가 없으면 다음으로 넘어가고, 키가 필요한데 없는 엔진은 건너뛰어요.'
     }
   }
 })
@@ -170,7 +188,7 @@ export class FreeSearchProvider {
     }
 
     const count = resultCount(this.settings, request)
-    const { url, init } = buildRequest(this.id, { query, count, keys: keyed ? keys : [], settings: this.settings })
+    const planned = buildRequest(this.id, { query, count, keys: keyed ? keys : [], settings: this.settings })
     // A plain timer (not AbortSignal.timeout) so the wait also holds in a bare Node process.
     const timeout = new AbortController()
     const timer = setTimeout(() => timeout.abort(), this.settings.timeoutMs)
@@ -179,7 +197,13 @@ export class FreeSearchProvider {
     let response
     let body
     try {
-      response = await fetch(url, { ...init, headers: { ...init.headers, 'user-agent': USER_AGENT }, redirect: 'follow', signal: combined })
+      const send = ({ url, init }) => fetch(url, { ...init, headers: { ...init.headers, 'user-agent': USER_AGENT }, redirect: 'follow', signal: combined })
+      response = await send(planned)
+      // A key the primary host rejects may still belong to the fallback host (Naver's old console).
+      if (planned.fallback && (response.status === 401 || response.status === 403)) {
+        await response.body?.cancel?.()
+        response = await send(planned.fallback)
+      }
       body = await response.text()
     } catch (error) {
       if (signal?.aborted) throw new FreeSearchError(`${title} search aborted`, 'WEB_ABORTED')
@@ -233,10 +257,9 @@ export class FreeAutoProvider {
     return this.providers.size > 0
   }
 
-  /** The order for this query, without providers that are resting. */
-  orderFor(query) {
-    const order = this.settings.freeOrder[isKoreanQuery(query) ? 'ko' : 'en']
-    return order.filter((id) => this.providers.has(id) && !((this.resting.get(id) ?? 0) > this.now()))
+  /** The order set on the plugin page, without providers that are resting. */
+  orderFor() {
+    return this.settings.autoOrder().filter((id) => this.providers.has(id) && !((this.resting.get(id) ?? 0) > this.now()))
   }
 
   async search(request, signal) {
@@ -245,7 +268,11 @@ export class FreeAutoProvider {
     const started = this.now()
     const failures = []
     let lastEmpty
-    for (const id of this.orderFor(query)) {
+    const order = this.orderFor()
+    if (order.length === 0 && this.settings.autoOrder().length === 0) {
+      throw new FreeSearchError('Auto search has no engine checked. Tick at least one engine under "Automatic engine order" on the Search plugin page.', 'WEB_PROVIDER_ERROR')
+    }
+    for (const id of order) {
       if (signal?.aborted) throw new FreeSearchError('Free search aborted', 'WEB_ABORTED')
       if (this.now() - started > FREE_BUDGET_MS) {
         failures.push('time budget used up')
@@ -282,6 +309,14 @@ function logger(ctx) {
 
 export function apply(ctx, config = {}) {
   const settings = normalizeSettings(config)
+  // The plugin page carries its own order editor (client.js), so DSH need not
+  // generate a second form for this entry.
+  try {
+    const host = ctx.get?.('settings')
+    if (typeof host?.configure === 'function') ctx.effect(() => host.configure({ auto: false }), 'search-free: settings page')
+  } catch {
+    // An older Host without page policies shows its generated form; harmless.
+  }
   const providers = new Map()
   for (const id of settings.providers) {
     const provider = new FreeSearchProvider(ctx, id, settings)

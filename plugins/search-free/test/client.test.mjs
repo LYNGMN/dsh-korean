@@ -13,7 +13,9 @@ async function loadClient() {
   return { id: loaded.id, module: loaded.factory((name) => ({ react: React })[name]) }
 }
 
-function fakeCtx({ configured = {}, withCommandUi = true } = {}) {
+const DEFAULT = ['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
+
+function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
   const calls = { decorations: [], drafts: [], focus: 0, slots: [] }
   let dict
   const input = { setDraft: (text) => calls.drafts.push(text), focus: () => { calls.focus += 1 } }
@@ -24,6 +26,18 @@ function fakeCtx({ configured = {}, withCommandUi = true } = {}) {
     remote: {
       credentials: {
         describe: async (refs) => ({ ok: true, value: Object.fromEntries(refs.map((r) => [r, { configured: configured[r] === true, writable: true }])) })
+      },
+      settings: {
+        describe: async () => ({
+          ok: true,
+          value: {
+            writable: true,
+            namespaces: [
+              { ns: 'web', value: { searchProvider: 'exa-brave-auto' }, revision: 3 },
+              ...(autoOrder === undefined ? [] : [{ ns: 'search-free', value: { providers: DEFAULT, autoOrder }, revision: 7 }])
+            ]
+          }
+        })
       }
     },
     get: (name) => {
@@ -49,9 +63,9 @@ test('the client registers the key card for this bundle', async () => {
   assert.equal(calls.slots[0].key, '@lyngmn/dsh-search-free')
 })
 
-test('a bare /search opens an engine picker: auto first, Korean engines, then global ones with country and key state', async () => {
+test('a bare /search opens an engine picker: auto first, then the engines in the order set on the plugin page', async () => {
   const { module } = await loadClient()
-  const { ctx, calls } = fakeCtx({ configured: { YDC_API_KEY: true } })
+  const { ctx, calls } = fakeCtx({ configured: { YDC_API_KEY: true }, autoOrder: ['bing', 'kakao', 'you', 'kakao', 'google'] })
   module.apply(ctx)
   const [decoration] = calls.decorations
   assert.equal(decoration.name, 'search')
@@ -59,15 +73,27 @@ test('a bare /search opens an engine picker: auto first, Korean engines, then gl
   assert.deepEqual({ ...decoration.ui.searchLabels() }, { placeholder: '엔진 찾기', empty: '엔진이 없어요', noResults: '맞는 엔진이 없어요' })
 
   const options = [...await decoration.ui.options({ sessionId: 's1' }, new AbortController().signal)]
-  assert.deepEqual(options.map((o) => o.id), ['auto', 'naver', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'bing'])
+  assert.deepEqual(options.map((o) => o.id), ['auto', 'bing', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
   assert.equal(options[0].active, true)
-  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'kr', 'kr', 'global', 'global', 'global', 'global', 'global', 'global', 'global', 'global'])
+  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
+  assert.equal(options[1].group.label, '자동에 쓰는 순서')
+  // Flag, country and a short quota; the owner note stays on the plugin page.
   const detail = Object.fromEntries(options.map((o) => [o.id, o.detail]))
-  assert.equal(detail.naver, '한국 · 키 필요')
-  assert.equal(detail.you, '미국 · 키 설정됨')
-  assert.equal(detail.tavily, '이스라엘(네덜란드 Nebius가 인수) · 키 없이 쓰는 중')
-  assert.equal(detail.jina, '독일(Elastic이 인수) · 키 필요')
-  assert.equal(detail.bing, '미국 · 키를 쓰지 않아요')
+  assert.equal(detail.naver, '🇰🇷 한국 · 키 필요 · 하루 2.5만 회')
+  assert.equal(detail.you, '🇺🇸 미국 · 키 설정됨 · 60일 약 2만 회')
+  assert.equal(detail.tavily, '🇮🇱 이스라엘 · 키 없이 소량 · 키 넣으면 월 1천 회')
+  assert.equal(detail.keenable, '🇺🇸 미국 · 키 없이 시간당 1천 회 · 키 넣으면 월 10만 회')
+  assert.equal(detail.jina, '🇩🇪 독일 · 키 필요 · 가입 때 약 1천 회')
+  assert.equal(detail.bing, '🇺🇸 미국 · 키 없음 · 정해진 한도 없음')
+})
+
+test('without the order setting the picker lists every engine in the default order, Korean engines not first', async () => {
+  const { module } = await loadClient()
+  const { ctx, calls } = fakeCtx()
+  module.apply(ctx)
+  const options = [...await calls.decorations[0].ui.options({ sessionId: 's1' }, new AbortController().signal)]
+  assert.equal(JSON.stringify(options.map((o) => o.id)), JSON.stringify(['auto', ...DEFAULT]))
+  assert.deepEqual([...new Set(options.slice(1).map((o) => o.group.name))], ['engines'])
 })
 
 test('picking an engine puts "/search <engine> " in that session\'s composer', async () => {
@@ -91,12 +117,23 @@ test('without the command UI service the card still loads and no picker is hung'
   assert.equal(calls.slots.length, 1)
 })
 
-test('picker options fall back to the sign-up note when key state cannot be read', async () => {
+test('picker options still show both quotas when the key state or the settings cannot be read', async () => {
   const { module } = await loadClient()
   const { ctx, calls } = fakeCtx()
   ctx.remote.credentials.describe = async () => { throw new Error('offline') }
+  ctx.remote.settings.describe = async () => { throw new Error('offline') }
   module.apply(ctx)
   const options = await calls.decorations[0].ui.options({ sessionId: 's1' }, new AbortController().signal)
-  assert.equal(options.find((o) => o.id === 'kakao').detail, '한국 · 가입하고 키를 넣어야 써요')
-  assert.equal(options.find((o) => o.id === 'firecrawl').detail, '미국 · 가입하고 키를 넣으면 한도가 늘어요')
+  assert.equal(options.find((o) => o.id === 'kakao').detail, '🇰🇷 한국 · 키 필요 · 하루 3만 회')
+  assert.equal(options.find((o) => o.id === 'firecrawl').detail, '🇺🇸 미국 · 키 없이 소량 · 키 넣으면 월 500회')
+})
+
+test('every engine has both quotas, a pricing link and, except Bing, a key link in Korean and English', async () => {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  for (const id of DEFAULT) {
+    assert.match(source, new RegExp(`'free\\.${id}': '`), `free.${id}`)
+    if (id === 'bing') continue
+    assert.match(source, new RegExp(`'keyed\\.${id}': '[^']+'[\\s\\S]*'keyed\\.${id}': '`), `keyed.${id} in both dictionaries`)
+    assert.match(source, new RegExp(`id: '${id}'[^\\n]*keyLink: 'https://[^']+', priceLink: 'https://`), `links for ${id}`)
+  }
 })

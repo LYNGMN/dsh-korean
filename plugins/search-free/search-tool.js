@@ -118,8 +118,8 @@ export function createFreeSearchTool({ engines, lookup, timeoutMs = 60000 }) {
   return {
     name: TOOL_NAME,
     description:
-      'Search the web with the free search engines. engine "auto" (the default) tries them in turn and starts with ' +
-      'Naver and Kakao for Korean queries; any other engine searches that one only. Use it when the user names an engine ' +
+      'Search the web with the Search plugin engines. engine "auto" (the default) tries them in the order the user set; ' +
+      'any other engine searches that one only. Use it when the user names an engine ' +
       `(for example through the /${COMMAND_NAME} command), or when web_search fails. Returns source URLs with snippets.`,
     parameters: {
       type: 'object',
