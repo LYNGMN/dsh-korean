@@ -1,0 +1,35 @@
+{
+  "name": "@lyngmn/dsh-search-free",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Adds five web_search providers that work without an API key: You.com, Parallel, Keenable, Tavily and Bing. Put them in a Search Fallback order. Not an official DeepSeek plugin.",
+  "author": "LYNGMN",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "free-core.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LYNGMN/dsh-korean.git",
+    "directory": "plugins/search-free"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

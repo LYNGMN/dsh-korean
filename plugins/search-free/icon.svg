@@ -1,0 +1,14 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "search" (ISC License, https://lucide.dev/icons/search). -->
+  <!-- 24칸 원본을 36칸 가운데에 그대로 놓았다. 같은 묶음(열쇠 기준) 보이는 크기 1.00, 중심 어긋남 0.05px라 보정하지 않았다. -->
+  <g transform="translate(18 18) scale(1) translate(-12 -12)" stroke="url(#search-free-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m21 21-4.34-4.34" />
+    <circle cx="11" cy="11" r="8" />
+  </g>
+  <defs>
+    <linearGradient id="search-free-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>

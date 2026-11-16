@@ -19,9 +19,14 @@ function provider(steps, registry, { fallbackOnEmpty = true } = {}) {
   return { p, warnings }
 }
 
-test('normalizeSettings uses the two default orders and drops invalid ones', () => {
+test('normalizeSettings uses the four default orders and drops invalid ones', () => {
   const defaults = normalizeSettings({})
-  assert.deepEqual(defaults.orders.map((o) => [o.id, o.providers]), [['brave-exa', ['brave', 'exa']], ['exa-brave', ['exa', 'brave']]])
+  assert.deepEqual(defaults.orders.map((o) => [o.id, o.providers]), [
+    ['brave-exa', ['brave', 'exa']],
+    ['exa-brave', ['exa', 'brave']],
+    ['exa-brave-free', ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing']],
+    ['free-only', ['you', 'parallel', 'keenable', 'tavily', 'bing']]
+  ])
   assert.equal(defaults.fallbackOnEmpty, true)
   const s = normalizeSettings({
     fallbackOnEmpty: false,
@@ -115,7 +120,12 @@ test('apply registers one provider per order and reads the registry at search ti
   const registered = []
   const web = { searchProviders, registerSearchProvider: (p) => { registered.push(p); searchProviders.set(p.id, p) } }
   apply({ web }, {})
-  assert.deepEqual(registered.map((p) => [p.id, p.title]), [['brave-exa', 'Brave → Exa'], ['exa-brave', 'Exa → Brave']])
+  assert.deepEqual(registered.map((p) => [p.id, p.title]), [
+    ['brave-exa', 'Brave → Exa'],
+    ['exa-brave', 'Exa → Brave'],
+    ['exa-brave-free', 'Exa → Brave → 무료 검색'],
+    ['free-only', '무료 검색만']
+  ])
   assert.equal(registered[0].description.ko.startsWith('먼저 Brave로'), true)
   // Providers registered after this bundle are still found.
   searchProviders.set('brave', failing('HTTP 429'))
@@ -197,4 +207,28 @@ test('a language change applies to the next search without reloading', async () 
   assert.match((await failAll(host)).message, /모든 공급자가 실패했어요/)
   // The provider picker text is already { en, ko }.
   assert.equal(typeof host.registered[0].description.en, 'string')
+})
+
+test('the patch file declares the same orders as the built-in defaults', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
+  const ids = [...patch.matchAll(/^\s+- id: (\S+)$/gm)].map((m) => m[1]).filter((id) => id !== 'search-fallback')
+  assert.deepEqual(ids, normalizeSettings({}).orders.map((o) => o.id))
+})
+
+test('Exa → Brave → Free search: paid steps fail, a missing free step is skipped and the next free one answers', async () => {
+  const searchProviders = new Map()
+  const registered = []
+  const web = { searchProviders, registerSearchProvider: (p) => { registered.push(p); searchProviders.set(p.id, p) } }
+  apply({ web }, {})
+  const order = registered.find((p) => p.id === 'exa-brave-free')
+  searchProviders.set('exa', failing('credits exhausted'))
+  searchProviders.set('brave', empty())
+  // "you" is not registered (Free Search not installed or the provider turned off).
+  const parallel = ok('https://parallel.example')
+  searchProviders.set('parallel', parallel)
+  searchProviders.set('bing', ok('https://bing.example'))
+  assert.equal((await order.search({ query: 'q' })).sources[0].url, 'https://parallel.example')
+  assert.equal(parallel.calls, 1)
+  assert.equal(searchProviders.get('bing').calls, 0)
 })
