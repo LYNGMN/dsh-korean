@@ -15,8 +15,8 @@ async function loadClient() {
 
 const DEFAULT = ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
 
-function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
-  const calls = { decorations: [], drafts: [], focus: 0, slots: [] }
+function fakeCtx({ configured = {}, withCommandUi = true, withWeb = false, autoOrder } = {}) {
+  const calls = { decorations: [], drafts: [], focus: 0, slots: [], webInjects: [] }
   let dict
   const input = { setDraft: (text) => calls.drafts.push(text), focus: () => { calls.focus += 1 } }
   const ctx = {
@@ -46,6 +46,11 @@ function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
       return undefined
     },
     inject: (deps, fn) => {
+      if (JSON.stringify(deps) === '["configForms","remote.web"]') {
+        calls.webInjects.push(fn)
+        if (withWeb) fn(withWeb)
+        return
+      }
       if (!withCommandUi) return
       assert.equal(JSON.stringify(deps), '["commandUi"]')
       fn({ effect: (f) => f(), commandUi: { decorate: (d) => { calls.decorations.push(d); return () => {} } } })
@@ -74,12 +79,13 @@ test('a bare /search opens an engine picker: auto first, then the engines in the
 
   const options = [...await decoration.ui.options({ sessionId: 's1' }, new AbortController().signal)]
   // Saved before Exa and Brave existed (no autoKnown), so they join at their default place.
-  assert.deepEqual(options.map((o) => o.id), ['auto', 'korea', 'bing', 'kakao', 'exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
+  assert.deepEqual(options.map((o) => o.id), ['auto', 'ko', 'ko-group', 'ko-seq', 'bing', 'kakao', 'exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
   assert.equal(options[0].active, true)
-  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'auto', 'used', 'used', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
-  assert.equal(options[2].group.label, '자동에 쓰는 순서')
-  // No Naver or Kakao key is set here, so the Korean engine says so.
-  assert.equal(options[1].detail, '🇰🇷 네이버나 카카오 키가 필요해요')
+  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'auto', 'auto', 'auto', 'used', 'used', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
+  assert.equal(options[4].group.label, '자동에 쓰는 순서')
+  // No Naver or Kakao key is set here, so each Korean mode says so.
+  assert.deepEqual(options.slice(1, 4).map((o) => o.detail), Array(3).fill('🇰🇷 네이버나 카카오 키가 필요해요'))
+  assert.deepEqual(options.slice(1, 4).map((o) => o.label), ['한국(네이버+카카오)', '한국 엔진별', '한국 차례로'])
   // Flag, country and a short quota; the owner note stays on the plugin page.
   const detail = Object.fromEntries(options.map((o) => [o.id, o.detail]))
   assert.equal(detail.naver, '🇰🇷 한국 · 키 필요 · 하루 2.5만 회')
@@ -95,8 +101,8 @@ test('without the order setting the picker lists every engine in the default ord
   const { ctx, calls } = fakeCtx()
   module.apply(ctx)
   const options = [...await calls.decorations[0].ui.options({ sessionId: 's1' }, new AbortController().signal)]
-  assert.equal(JSON.stringify(options.map((o) => o.id)), JSON.stringify(['auto', 'korea', ...DEFAULT]))
-  assert.deepEqual([...new Set(options.slice(2).map((o) => o.group.name))], ['engines'])
+  assert.equal(JSON.stringify(options.map((o) => o.id)), JSON.stringify(['auto', 'ko', 'ko-group', 'ko-seq', ...DEFAULT]))
+  assert.deepEqual([...new Set(options.slice(4).map((o) => o.group.name))], ['engines'])
 })
 
 test('picking an engine puts "/search <engine> " in that session\'s composer', async () => {
@@ -151,10 +157,56 @@ test('every engine has both quotas, a pricing link and, except Bing, a key link 
   }
 })
 
-test('the card lists engines one kind per line and explains the per-search count, in both dictionaries', async () => {
+test('the card lists engines one kind per line, the command examples and the web search setting, in both dictionaries', async () => {
   const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /engineList: '/)
-  for (const key of ['engineKeyless', 'engineKeyed', 'engineCombined', 'commandCount']) {
+  for (const key of ['engineKeyless', 'engineKeyed', 'engineCombined', 'commandsTitle', 'commandsHint', 'webTitle', 'webHint', 'webDefault', 'webSaved', 'webFailed']) {
     assert.equal(source.match(new RegExp(`\\b${key}: '`, 'g'))?.length, 2, key)
   }
+  for (const key of ['example.ko', 'example.koGroup', 'example.koSeq', 'example.count', 'example.max', 'pick.koreaGroup', 'pick.koreaSeq']) {
+    assert.equal(source.match(new RegExp(`'${key.replace('.', '\\.')}': '`, 'g'))?.length, 2, key)
+  }
+})
+
+test('the web search setting joins the card only when the Host shares the web settings form', async () => {
+  const { module } = await loadClient()
+  const plain = fakeCtx()
+  module.apply(plain.ctx)
+  const web = plain.calls.slots[0].inject().web
+  assert.equal(web.get(), null)
+
+  // The Host serves configForms and remote.web: the bridge hands the same form DSH's page uses.
+  const writes = []
+  const form = {
+    getSnapshot: () => ({ status: 'ready', value: { searchProvider: 'auto' }, base: { searchProvider: 'auto' }, writable: true }),
+    subscribe: () => () => {},
+    set: async (field, value) => { writes.push(['set', field, value]); return true },
+    unset: async (field) => { writes.push(['unset', field]); return true }
+  }
+  const disposers = []
+  const scope = {
+    effect: (fn) => { disposers.push(fn()) },
+    configForms: { get: (ns) => { assert.equal(ns, 'web'); return form } },
+    remote: { web: { listProviders: async () => ({ ok: true, value: { search: [{ id: 'auto', title: 'Auto search' }, { id: 'korea', title: 'Korea (Naver + Kakao)' }], fetch: [] } }) } }
+  }
+  const { ctx, calls } = fakeCtx({ withWeb: scope })
+  module.apply(ctx)
+  const bridge = calls.slots[0].inject().web
+  assert.equal(bridge.get().form, form)
+  assert.deepEqual((await bridge.get().listProviders()).value.search.map((p) => p.id), ['auto', 'korea'])
+  // Leaving the Host's scope drops the section again.
+  let heard = 0
+  bridge.subscribe(() => { heard += 1 })
+  disposers.forEach((dispose) => dispose())
+  assert.equal(bridge.get(), null)
+  assert.equal(heard, 1)
+})
+
+test('command examples are whole commands in a fixed-width face, without an ellipsis', async () => {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  const examples = [...source.matchAll(/\['example\.\w+', '([^']+)'\]/g)].map((m) => m[1])
+  assert.deepEqual(examples.map((e) => e.split(' ').slice(0, 2).join(' ')), ['/search ko', '/search ko-group', '/search ko-seq', '/search naver', '/search exa'])
+  for (const example of examples) assert.match(example, /서울 날씨$/)
+  assert.doesNotMatch(source, /\/search [^'\n]*…/)
+  assert.match(source, /fontFamily: 'ui-monospace/)
 })

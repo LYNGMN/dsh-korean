@@ -36,6 +36,21 @@ window.__ModuleLoader__.load({
      */
     /** Let a long `A·B·C` list wrap after a dot instead of moving as one word. */
     const breakAfterDots = (text) => text.replaceAll('·', '·\u200b')
+    /** Text with `command` spans in a fixed-width face, like inline code in chat. */
+    function rich(text) {
+      return String(text).split('`').map((part, index) => (index % 2 === 1 ? h('code', { key: index, style: styles.code }, part) : part))
+    }
+    /**
+     * Commands the card shows as examples, each with what it does. The command
+     * stays the same in every language; the question is a sample.
+     */
+    const COMMAND_EXAMPLES = [
+      ['example.ko', '/search ko 서울 날씨'],
+      ['example.koGroup', '/search ko-group 서울 날씨'],
+      ['example.koSeq', '/search ko-seq 서울 날씨'],
+      ['example.count', '/search naver 30 서울 날씨'],
+      ['example.max', '/search exa max 서울 날씨']
+    ]
     /** Dictionary keys of the card's engine list, one line each. */
     const ENGINE_LIST_KEYS = ['engineKeyless', 'engineKeyed', 'engineCombined']
     const ENGINES = [
@@ -65,8 +80,25 @@ window.__ModuleLoader__.load({
       summary: 'Engine order and keys. A key raises the limit, and some engines need one.',
       engineKeyless: 'Engines without a key: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing',
       engineKeyed: 'Engines that need a key: Exa, Brave, Naver, Kakao (Daum), TinyFish, Jina',
-      engineCombined: 'Combined: Korea (Naver + Kakao, /search korea)',
-      commandCount: 'Set the number of results for one search in the command: a number such as /search naver 30 …, or the maximum with /search korea max ….',
+      engineCombined: 'Combined: Korea (Naver + Kakao), in three ways below',
+      commandsTitle: 'Engine and count for one search',
+      commandsHint: 'Type these in the chat. A count is 1 to 100; above an engine\'s maximum it takes the maximum.',
+      'example.ko': 'Naver and Kakao together, pages both found first',
+      'example.koGroup': 'Naver and Kakao together, listed engine by engine',
+      'example.koSeq': 'Naver first, Kakao only when Naver fails or finds nothing',
+      'example.count': '30 results, this search only',
+      'example.max': 'as many as the engine gives, this search only',
+      webTitle: 'Engine for web search',
+      webHint: 'The engine the agent\'s `web_search` uses. It is the same setting as “Web search and fetch” in DSH settings, so a change on either page shows on the other.',
+      webLabel: 'Web search engine',
+      webDefault: 'DSH default',
+      webMissing: '{id} (not registered now)',
+      webSaving: 'Saving.',
+      webSaved: 'Saved. Web search engine: {name}',
+      webFailed: 'Could not save the web search engine. Try again.',
+      webReadOnly: 'The profile fixes this setting, so it cannot be changed here.',
+      webLoading: 'Reading the web search setting.',
+      webUnavailable: 'This DSH version cannot change the web search engine here. Use “Web search and fetch” in DSH settings.',
       description: 'Choose which engines the automatic engine uses and in what order, and add an API key per engine. Leave a key empty to search without one on a small quota; a key raises the limit. Engines that need a sign-up are skipped by the automatic engine until you add a key. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
       checking: 'Checking which keys are set…',
       stillChecking: 'The key status is not available yet. Saving still works, and this line disappears once the status loads.',
@@ -145,8 +177,8 @@ window.__ModuleLoader__.load({
       'briefKeyed.jina': '~1,000 on sign-up',
       'briefKeyed.firecrawl': '500/month',
       'note.naver': 'New keys come from NAVER API HUB (NAVER Cloud) since 2026-07-31.',
-      'note.exa': 'A key saved in ~/.dsh/exa-api-key also works.',
-      'note.brave': 'A key saved in ~/.dsh/brave-api-key also works.',
+      'note.exa': 'A key saved in `~/.dsh/exa-api-key` also works.',
+      'note.brave': 'A key saved in `~/.dsh/brave-api-key` also works.',
       'note.firecrawl': 'Without a key it may be refused behind a VPN or proxy.',
       'note.kakao': 'In Kakao Developers, open your app → Platform keys and copy the "REST API key". The admin, JavaScript and native app keys do not work here.',
       'country.KR': 'Korea',
@@ -164,6 +196,10 @@ window.__ModuleLoader__.load({
       'pick.koreaDetail': 'Searches Naver and Kakao together',
       'pick.koreaReady': 'Naver and Kakao together · uses the keys set',
       'pick.koreaNeedsKey': 'Needs a Naver or Kakao key',
+      'pick.koreaGroup': 'Korea by engine',
+      'pick.koreaGroupDetail': 'Naver and Kakao together, listed engine by engine',
+      'pick.koreaSeq': 'Korea in turn',
+      'pick.koreaSeqDetail': 'Naver first, then Kakao when Naver finds nothing',
       'pick.placeholder': 'Find an engine',
       'pick.empty': 'No engines',
       'pick.noResults': 'No matching engine',
@@ -172,7 +208,7 @@ window.__ModuleLoader__.load({
       'group.unused': 'Not used by auto',
       'group.engines': 'Engines',
       orderTitle: 'Automatic engine order',
-      orderHint: 'The automatic engine (/search auto) tries the checked engines from the top. An unchecked engine is left out of auto but can still be picked by name.',
+      orderHint: 'The automatic engine (`/search auto`) tries the checked engines from the top. An unchecked engine is left out of auto but can still be picked by name.',
       orderReset: 'Default order',
       orderSaved: 'Saved. It applies from the next search.',
       orderFailed: 'The order could not be saved.',
@@ -207,8 +243,25 @@ window.__ModuleLoader__.load({
       summary: '엔진 순서와 키예요. 키를 넣으면 한도가 늘고, 일부 엔진은 키가 있어야 써요.',
       engineKeyless: '키 없이 쓰는 엔진: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing',
       engineKeyed: '키가 있어야 쓰는 엔진: Exa·Brave·네이버·카카오(다음)·TinyFish·Jina',
-      engineCombined: '묶음 엔진: 한국(네이버+카카오, /search korea)',
-      commandCount: '이번 검색만 결과 수를 바꾸려면 명령에 적어요. /search naver 30 …처럼 개수를, /search korea max …처럼 최대를 쓸 수 있어요.',
+      engineCombined: '묶음 엔진: 한국(네이버+카카오), 아래 세 가지 방식',
+      commandsTitle: '이번 검색만 엔진·개수 정하기',
+      commandsHint: '대화창에 이렇게 적어요. 개수는 1~100이고, 엔진 최대보다 크면 최대만큼 가져와요.',
+      'example.ko': '네이버·카카오를 함께 찾고, 둘 다 찾은 결과를 먼저 보여 줘요',
+      'example.koGroup': '네이버·카카오를 함께 찾고, 엔진별로 묶어 보여 줘요',
+      'example.koSeq': '네이버로 먼저 찾고, 실패하거나 결과가 없을 때만 카카오를 써요',
+      'example.count': '이번 검색만 30개',
+      'example.max': '이번 검색만 엔진이 주는 최대만큼',
+      webTitle: '웹 검색에 쓰는 엔진',
+      webHint: '에이전트의 `web_search`가 쓰는 엔진이에요. DSH 설정의 ‘웹 검색과 가져오기’와 같은 값이라, 어느 쪽에서 바꿔도 다른 쪽에 바로 보여요.',
+      webLabel: '웹 검색 엔진',
+      webDefault: 'DSH 기본값',
+      webMissing: '{id}(지금 등록되지 않음)',
+      webSaving: '저장하고 있어요.',
+      webSaved: '저장했어요. 웹 검색 엔진: {name}',
+      webFailed: '웹 검색 엔진을 저장하지 못했어요. 다시 해 주세요.',
+      webReadOnly: '프로필이 이 값을 고정해서 여기서는 바꿀 수 없어요.',
+      webLoading: '웹 검색 설정을 읽고 있어요.',
+      webUnavailable: '이 DSH 버전에서는 여기서 바꿀 수 없어요. DSH 설정의 ‘웹 검색과 가져오기’에서 바꿔 주세요.',
       description: '자동 엔진이 어떤 엔진을 어떤 순서로 쓸지 고르고, 엔진마다 API 키를 넣을 수 있어요. 키를 비워 두면 키 없이 적은 한도로 검색하고, 키를 넣으면 한도가 늘어요. 가입해야 쓰는 엔진은 키를 넣기 전까지 자동 엔진이 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
       checking: '어떤 키가 설정됐는지 확인하는 중이에요…',
       stillChecking: '아직 키 상태를 불러오지 못했어요. 저장은 그대로 할 수 있고, 상태를 읽으면 이 안내는 사라져요.',
@@ -287,8 +340,8 @@ window.__ModuleLoader__.load({
       'briefKeyed.jina': '가입 때 약 1천 회',
       'briefKeyed.firecrawl': '월 500회',
       'note.naver': '2026-07-31부터 새 키는 NAVER API HUB(네이버 클라우드)에서 받아요.',
-      'note.exa': '~/.dsh/exa-api-key 파일에 넣은 키도 읽어요.',
-      'note.brave': '~/.dsh/brave-api-key 파일에 넣은 키도 읽어요.',
+      'note.exa': '`~/.dsh/exa-api-key` 파일에 넣은 키도 읽어요.',
+      'note.brave': '`~/.dsh/brave-api-key` 파일에 넣은 키도 읽어요.',
       'note.firecrawl': '키 없이 쓰면 VPN·프록시에서 막힐 수 있어요.',
       'note.kakao': '카카오 디벨로퍼스에서 앱 → 플랫폼 키 페이지의 "REST API 키"를 복사해 넣어요. 어드민 키·JavaScript 키·네이티브 앱 키는 쓰지 않아요.',
       'country.KR': '한국',
@@ -306,6 +359,10 @@ window.__ModuleLoader__.load({
       'pick.koreaDetail': '네이버와 카카오를 함께 검색해요',
       'pick.koreaReady': '네이버·카카오 함께 · 넣은 키로 검색',
       'pick.koreaNeedsKey': '네이버나 카카오 키가 필요해요',
+      'pick.koreaGroup': '한국 엔진별',
+      'pick.koreaGroupDetail': '네이버·카카오 함께 · 엔진별로 묶어 보여 줘요',
+      'pick.koreaSeq': '한국 차례로',
+      'pick.koreaSeqDetail': '네이버 먼저 · 없으면 카카오',
       'pick.placeholder': '엔진 찾기',
       'pick.empty': '엔진이 없어요',
       'pick.noResults': '맞는 엔진이 없어요',
@@ -314,7 +371,7 @@ window.__ModuleLoader__.load({
       'group.unused': '자동에서 뺀 엔진',
       'group.engines': '엔진',
       orderTitle: '자동 엔진 순서',
-      orderHint: '자동 엔진(/search auto)은 체크한 엔진을 위에서부터 차례로 써요. 체크를 끈 엔진은 자동에서 빠지지만, 이름으로 고르면 쓸 수 있어요.',
+      orderHint: '자동 엔진(`/search auto`)은 체크한 엔진을 위에서부터 차례로 써요. 체크를 끈 엔진은 자동에서 빠지지만, 이름으로 고르면 쓸 수 있어요.',
       orderReset: '기본 순서로',
       orderSaved: '저장했어요. 다음 검색부터 적용돼요.',
       orderFailed: '순서를 저장하지 못했어요.',
@@ -350,13 +407,24 @@ window.__ModuleLoader__.load({
       brand: 'var(--dsw-alias-brand-primary, #2563eb)',
       link: 'var(--dsw-alias-link, #2563eb)',
       success: 'var(--dsw-alias-label-success, #15803d)',
-      danger: 'var(--dsw-alias-label-danger, #b91c1c)'
+      danger: 'var(--dsw-alias-label-danger, #b91c1c)',
+      codeBg: 'var(--dsw-alias-bg-layer-3, #f3f4f6)'
     }
 
     const styles = {
       card: { display: 'grid', gap: 12, maxWidth: 640, wordBreak: 'keep-all', overflowWrap: 'anywhere' },
       intro: { margin: 0, fontSize: 13, lineHeight: 1.6, color: color.secondary },
       engineList: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 2 },
+      exampleList: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 },
+      code: {
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        fontSize: '0.92em',
+        padding: '1px 6px',
+        borderRadius: 4,
+        background: color.codeBg,
+        color: color.primary,
+        whiteSpace: 'nowrap'
+      },
       listLine: { margin: 0, fontSize: 13, lineHeight: 1.6, color: color.secondary, textWrap: 'pretty', wordBreak: 'keep-all', overflowWrap: 'anywhere' },
       hint: { margin: 0, fontSize: 12, lineHeight: 1.5, color: color.tertiary, textWrap: 'pretty' },
       meta: { margin: 0, fontSize: 12, lineHeight: 1.5, fontWeight: 500, color: color.secondary, textWrap: 'balance' },
@@ -778,7 +846,7 @@ window.__ModuleLoader__.load({
             h('dd', { key: 'kv', style: styles.quotaValue }, t(`keyed.${engine.id}`))
           ])
         ),
-        engine.note ? h('p', { style: styles.hint }, t(`note.${engine.id}`)) : null,
+        engine.note ? h('p', { style: styles.hint }, rich(t(`note.${engine.id}`))) : null,
         h(CountField, { engine, store, t }),
         ...engine.refs.map((ref, index) => {
           const inputId = `dsh-search-${ref.toLowerCase()}`
@@ -865,7 +933,7 @@ window.__ModuleLoader__.load({
         'div',
         { style: { display: 'grid', gap: 4 } },
         h('h3', { id: titleId, style: styles.sectionTitle }, t('orderTitle')),
-        h('p', { style: styles.hint }, t('orderHint'))
+        h('p', { style: styles.hint }, rich(t('orderHint')))
       )
       if (snapshot === null) {
         return h('section', { style: styles.section, 'aria-labelledby': titleId }, header,
@@ -962,6 +1030,135 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** The settings section DSH's Web search and fetch page also edits; its `searchProvider` picks web_search's engine. */
+    const WEB_NS = 'web'
+    const WEB_FIELD = 'searchProvider'
+
+    /**
+     * A small store for the Host services the web search section needs, which
+     * an older Host may not have: the shared settings form of `web` (the same
+     * mirror and write queue DSH's own page uses, so each page sees the other's
+     * change at once) and the web provider list.
+     */
+    function createWebBridge() {
+      let current = null
+      const listeners = new Set()
+      return {
+        get: () => current,
+        set(next) {
+          current = next
+          for (const listener of listeners) listener()
+        },
+        subscribe(listener) {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        }
+      }
+    }
+
+    function useStore(subscribe, read) {
+      const [value, setValue] = React.useState(read)
+      React.useEffect(() => {
+        setValue(read)
+        return subscribe(() => setValue(read))
+      }, [subscribe, read])
+      return value
+    }
+
+    /**
+     * Which engine web_search uses, read from and written to the `web` section.
+     * Picking the value the profile composes (or "DSH default") clears this
+     * page's override, as DSH's own page does.
+     */
+    function WebSearchSection({ bridge, t }) {
+      const services = useStore(bridge.subscribe, bridge.get)
+      const form = services?.form
+      const read = React.useCallback(() => (form ? form.getSnapshot() : null), [form])
+      const subscribe = React.useCallback((listener) => (form ? form.subscribe(listener) : () => {}), [form])
+      const snapshot = useStore(subscribe, read)
+      const [providers, setProviders] = React.useState(null)
+      const [message, setMessage] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+
+      React.useEffect(() => {
+        if (!services) return undefined
+        let alive = true
+        const load = async () => {
+          try {
+            const response = await services.listProviders()
+            if (alive) setProviders(response?.ok && Array.isArray(response.value?.search) ? response.value.search : [])
+          } catch {
+            if (alive) setProviders([])
+          }
+        }
+        load()
+        const off = services.onProvidersChanged?.(load)
+        return () => {
+          alive = false
+          if (typeof off === 'function') off()
+        }
+      }, [services])
+
+      const titleId = 'dsh-search-web-title'
+      const selectId = 'dsh-search-web-select'
+      const header = h(
+        'div',
+        { style: { display: 'grid', gap: 4 } },
+        h('h3', { id: titleId, style: styles.sectionTitle }, t('webTitle')),
+        h('p', { style: styles.hint }, rich(t('webHint')))
+      )
+      if (!services) return h('section', { style: styles.section, 'aria-labelledby': titleId }, header, h('p', { style: styles.hint }, t('webUnavailable')))
+      if (snapshot === null || snapshot.status === 'loading' || providers === null) {
+        return h('section', { style: styles.section, 'aria-labelledby': titleId }, header, h('p', { role: 'status', style: styles.hint }, t('webLoading')))
+      }
+      if (snapshot.status === 'unavailable') return h('section', { style: styles.section, 'aria-labelledby': titleId }, header, h('p', { style: styles.hint }, t('webUnavailable')))
+
+      const base = snapshot.base && typeof snapshot.base === 'object' ? snapshot.base[WEB_FIELD] : undefined
+      const current = typeof snapshot.value?.[WEB_FIELD] === 'string' ? snapshot.value[WEB_FIELD] : ''
+      const titleOf = (id) => providers.find((provider) => provider.id === id)?.title ?? id
+      const options = []
+      // "DSH default" exists only when the profile composes no engine; then DSH picks one itself.
+      if (base === undefined) options.push({ value: '', label: t('webDefault') })
+      for (const provider of providers) options.push({ value: provider.id, label: provider.title ?? provider.id })
+      if (current !== '' && !providers.some((provider) => provider.id === current)) options.push({ value: current, label: fill(t('webMissing'), { id: current }) })
+      const locked = !snapshot.writable
+
+      const choose = async (id) => {
+        if (busy || id === current) return
+        setBusy(true)
+        setMessage({ tone: 'muted', text: t('webSaving') })
+        try {
+          const ok = id === '' || id === base ? await form.unset(WEB_FIELD) : await form.set(WEB_FIELD, id)
+          setMessage(ok ? { tone: 'success', text: fill(t('webSaved'), { name: id === '' ? t('webDefault') : titleOf(id) }) } : { tone: 'danger', text: t('webFailed') })
+        } catch {
+          setMessage({ tone: 'danger', text: t('webFailed') })
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      return h(
+        'section',
+        { style: styles.section, 'aria-labelledby': titleId },
+        header,
+        h('label', { htmlFor: selectId, style: styles.srOnly }, t('webLabel')),
+        h(
+          'select',
+          {
+            id: selectId,
+            value: current,
+            disabled: locked,
+            'aria-describedby': locked ? `${selectId}-locked` : undefined,
+            onChange: (event) => { choose(event.target.value) },
+            style: { ...styles.input, maxWidth: 420, appearance: 'auto', cursor: locked ? 'default' : 'pointer' }
+          },
+          ...options.map((option) => h('option', { key: option.value, value: option.value }, option.label))
+        ),
+        locked ? h('p', { id: `${selectId}-locked`, style: styles.hint }, t('webReadOnly')) : null,
+        h('div', { role: 'status', 'aria-live': 'polite' }, message === null ? null : h('p', { style: messageStyle(message.tone) }, message.text))
+      )
+    }
+
     function SearchSettingsCard(props) {
       const { t, view } = props
       if (view === 'summary') return t('summary')
@@ -1018,7 +1215,21 @@ window.__ModuleLoader__.load({
         { style: styles.card },
         h('p', { style: styles.intro }, t('description')),
         h('ul', { style: styles.engineList }, ENGINE_LIST_KEYS.map((key) => h('li', { key, style: styles.listLine }, breakAfterDots(t(key))))),
-        h('p', { style: styles.listLine }, t('commandCount')),
+        h(
+          'section',
+          { style: styles.section, 'aria-labelledby': 'dsh-search-commands-title' },
+          h('div', { style: { display: 'grid', gap: 4 } },
+            h('h3', { id: 'dsh-search-commands-title', style: styles.sectionTitle }, t('commandsTitle')),
+            h('p', { style: styles.hint }, t('commandsHint'))),
+          h('ul', { style: styles.exampleList }, COMMAND_EXAMPLES.map(([key, command]) => h(
+            'li',
+            { key, style: styles.listLine },
+            h('code', { style: styles.code }, command),
+            ' ',
+            t(key)
+          )))
+        ),
+        props.web ? h(WebSearchSection, { bridge: props.web, t }) : null,
         h(AutoOrderSection, { store, t }),
         h('h3', { style: styles.sectionTitle }, t('keysTitle')),
         info === null ? h('p', { role: 'status', style: styles.hint }, notice ?? t('checking')) : null,
@@ -1039,7 +1250,12 @@ window.__ModuleLoader__.load({
     /** The host command this bundle registers; a bare `/search` opens the engine picker. */
     const COMMAND = 'search'
     const AUTO = 'auto'
-    const KOREA = 'korea'
+    /** The short names `/search` takes for the Korean modes (ko is korea). */
+    const KOREA_MODES = [
+      { id: 'ko', label: 'pick.korea' },
+      { id: 'ko-group', label: 'pick.koreaGroup', detail: 'pick.koreaGroupDetail' },
+      { id: 'ko-seq', label: 'pick.koreaSeq', detail: 'pick.koreaSeqDetail' }
+    ]
 
     /**
      * Options of the bare `/search` picker: the automatic engine, then the
@@ -1068,21 +1284,22 @@ window.__ModuleLoader__.load({
       const auto = { id: AUTO, label: t('pick.auto'), detail: t('pick.autoDetail'), group: autoGroup, active: true }
       // The combined Korean engine sits with auto: it is not one engine of the order.
       const koreaReady = ['naver', 'kakao'].some((id) => engineState(ENGINE_BY_ID.get(id), info)?.key === 'stateKeyed')
-      const korea = {
-        id: KOREA,
-        label: t('pick.korea'),
-        detail: `${flagOf('KR')} ${info === null ? t('pick.koreaDetail') : koreaReady ? t('pick.koreaReady') : t('pick.koreaNeedsKey')}`,
+      const koreaState = info === null || koreaReady ? null : t('pick.koreaNeedsKey')
+      const korea = KOREA_MODES.map((mode) => ({
+        id: mode.id,
+        label: t(mode.label),
+        detail: `${flagOf('KR')} ${koreaState ?? (mode.detail ? t(mode.detail) : info === null ? t('pick.koreaDetail') : t('pick.koreaReady'))}`,
         group: autoGroup
-      }
+      }))
       if (saved === null) {
         const engines = { name: 'engines', label: t('group.engines') }
-        return [auto, korea, ...ENGINES.map((engine) => option(engine, engines))]
+        return [auto, ...korea, ...ENGINES.map((engine) => option(engine, engines))]
       }
       const used = { name: 'used', label: t('group.used') }
       const unused = { name: 'unused', label: t('group.unused') }
       return [
         auto,
-        korea,
+        ...korea,
         ...saved.order.map((id) => option(ENGINE_BY_ID.get(id), used)),
         ...ENGINES.filter((engine) => !saved.order.includes(engine.id)).map((engine) => option(engine, unused))
       ]
@@ -1106,6 +1323,22 @@ window.__ModuleLoader__.load({
       inject: ['slots', 'locale', 'remote', 'remote.credentials', 'remote.settings'],
       apply(ctx) {
         const t = ctx.locale.bind(NS)
+        // The web search section joins only when the Host has the shared settings
+        // forms and the web provider list; older Hosts show the rest of the card.
+        const web = createWebBridge()
+        if (typeof ctx.inject === 'function') ctx.inject(['configForms', 'remote.web'], (scope) => {
+          scope.effect(() => {
+            web.set({
+              form: scope.configForms.get(WEB_NS),
+              listProviders: () => scope.remote.web.listProviders(),
+              onProvidersChanged: (listener) => {
+                const offs = [ctx.remote.$on?.('web/providers-changed', listener), ctx.on?.('connection/reset', listener)]
+                return () => { for (const off of offs) if (typeof off === 'function') off() }
+              }
+            })
+            return () => web.set(null)
+          }, 'search: web search setting')
+        })
         // The Host keeps `/search <engine> <question>`; a bare `/search` from the
         // menu or the composer opens an engine picker instead, so the engine names
         // need not be remembered.
@@ -1128,7 +1361,7 @@ window.__ModuleLoader__.load({
           name: 'plugins.bundle.config',
           key: '@lyngmn/dsh-search',
           locale: NS,
-          inject: () => ({ credentials: ctx.remote.credentials, settings: ctx.remote.settings })
+          inject: () => ({ credentials: ctx.remote.credentials, settings: ctx.remote.settings, web })
         }, SearchSettingsCard))
       }
     }
