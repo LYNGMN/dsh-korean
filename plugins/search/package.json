@@ -1,8 +1,8 @@
 {
-  "name": "@lyngmn/dsh-search-free",
+  "name": "@lyngmn/dsh-search",
   "version": "1.1.0",
   "private": true,
-  "description": "Adds ten web_search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (auto) that follows the order set on this page and the /search command. Each provider takes an API key on this page; leave it empty to search without a key on a small quota. Naver, Kakao, TinyFish and Jina need a key. Not an official DeepSeek plugin.",
+  "description": "Adds several web search engines, an automatic engine that searches in the order you set, and the /search command for picking one. Keys, order and result counts per engine are set on this page. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "index.js",
@@ -14,7 +14,7 @@
   },
   "files": [
     "index.js",
-    "free-core.js",
+    "search-core.js",
     "search-tool.js",
     "host-locale.js",
     "client.js",
@@ -26,7 +26,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LYNGMN/dsh-korean.git",
-    "directory": "plugins/search-free"
+    "directory": "plugins/search"
   },
   "dsh": {
     "bundle": {

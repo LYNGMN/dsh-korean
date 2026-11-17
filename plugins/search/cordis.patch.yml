@@ -1,27 +1,30 @@
-# Search bundle for DSH (@lyngmn/dsh-search-free).
+# Search bundle for DSH (@lyngmn/dsh-search).
 # It registers:
 #   web_search providers  you, parallel, keenable, tavily, tinyfish, jina,
 #                         firecrawl, naver, kakao, bing
 #   auto                  a web_search provider that tries them in turn
 #                         (in the order set on the plugin page: autoOrder)
-#   free_search           a tool that searches one engine, or "auto"
+#   engine_search           a tool that searches one engine, or "auto"
 #   /search <engine> <question>
 #                         a command that uses that engine for one request
 # It does not pick web.searchProvider. Pick "auto" or a Search Fallback order
-# such as "Exa → Brave → Free search" on the Web search settings page.
+# such as "Exa → Brave → Auto" on the Web search settings page.
 # Keys are entered on this plugin's page and kept in the DSH credential store;
 # they are never stored here. Without a key, You.com, Parallel, Keenable,
 # Tavily, Firecrawl and Bing use their keyless tier; TinyFish, Jina, Naver and
 # Kakao are skipped.
 - insert:
-    - id: search-free
-      name: '@lyngmn/dsh-search-free'
+    - id: search
+      name: '@lyngmn/dsh-search'
       config:
         providers: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
         # Engines the automatic "auto" provider uses, in order. The plugin page
         # changes it (DSH keeps that change in the profile and applies it live).
         autoOrder: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
-        count: 8
+        # Results per engine when the plugin page sets none. The page saves its
+        # per-engine numbers as `counts` (for example naver: 30), each kept within
+        # that engine's own maximum.
+        count: 10
         timeoutMs: 20000
         # Bing market (mkt) and Accept-Language.
         bingMarket: ko-KR

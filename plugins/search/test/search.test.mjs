@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { Config, FreeAutoProvider, QUOTA_COOLDOWN_MS, apply, errorDetail } from '../index.js'
+import { Config, AutoSearchProvider, KoreaSearchProvider, QUOTA_COOLDOWN_MS, apply, errorDetail } from '../index.js'
 import {
   PROVIDER_IDS,
   buildRequest,
@@ -13,7 +13,7 @@ import {
   normalizeSettings,
   parseMcpMessage,
   parseResponse
-} from '../free-core.js'
+} from '../search-core.js'
 
 const SETTINGS = normalizeSettings({ bingMarket: 'ko-KR' })
 const PARSE = { query: 'q', count: 8, keyed: false }
@@ -50,17 +50,17 @@ function stubFetch(t, respond) {
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 
-test('apply registers ten engines plus the automatic one, the free_search tool and /search', () => {
+test('apply registers every engine, the automatic and the Korean one, the engine_search tool and /search', () => {
   const { providers, tools, commands } = register()
-  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto'])
+  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto', 'korea'])
   for (const p of providers) {
     assert.equal(p.available(), true)
     assert.ok(p.title)
     assert.match(p.description.ko, /[가-힣]/)
     assert.ok(p.description.en)
   }
-  assert.deepEqual(tools.map((tool) => tool.name), ['free_search'])
-  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', ...PROVIDER_IDS])
+  assert.deepEqual(tools.map((tool) => tool.name), ['engine_search'])
+  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', 'korea', ...PROVIDER_IDS])
   assert.deepEqual(commands.map((command) => command.name), ['search'])
 })
 
@@ -86,6 +86,15 @@ test('the automatic order is a volatile setting: no language priority, read agai
   assert.deepEqual(settings.autoOrder(), ['kakao', 'bing'])
   current = ['you']
   assert.deepEqual(settings.autoOrder(), ['you'])
+
+  // Per-engine counts are live too, and kept within each engine's maximum.
+  let counts = { naver: 30 }
+  const live = normalizeSettings({ counts: { get: () => counts } })
+  assert.equal(live.countFor('naver'), 30)
+  assert.equal(live.countFor('you'), 10)
+  counts = { naver: 300, bing: 3 }
+  assert.equal(live.countFor('naver'), 100)
+  assert.equal(live.countFor('bing'), 3)
 
   const config = Config({})
   assert.deepEqual(readVolatile(config.autoOrder), PROVIDER_IDS)
@@ -123,7 +132,7 @@ test('keyless and keyed requests go to the right endpoint with the right headers
   assert.equal(bing.searchParams.get('adlt'), 'moderate')
 
   const firecrawl = buildRequest('firecrawl', { ...base, count: 20 })
-  assert.equal(JSON.parse(firecrawl.init.body).limit, 10)
+  assert.equal(JSON.parse(firecrawl.init.body).limit, 20)
   assert.equal(firecrawl.init.headers.authorization, undefined)
   assert.equal(buildRequest('firecrawl', { ...base, keys: ['k5'] }).init.headers.authorization, 'Bearer k5')
 
@@ -132,7 +141,7 @@ test('keyless and keyed requests go to the right endpoint with the right headers
   assert.equal(tinyfish.init.headers['x-api-key'], 'k6')
 
   const jina = buildRequest('jina', { ...base, keys: ['k7'] })
-  assert.equal(jina.url, 'https://s.jina.ai/?q=q')
+  assert.equal(jina.url, 'https://s.jina.ai/?q=q&num=5')
   assert.equal(jina.init.headers.authorization, 'Bearer k7')
 
   // NAVER API HUB first, the old Naver Developers host as the fallback.
@@ -147,6 +156,31 @@ test('keyless and keyed requests go to the right endpoint with the right headers
   const kakao = buildRequest('kakao', { ...base, count: 60, keys: ['k9'] })
   assert.equal(kakao.url, 'https://dapi.kakao.com/v2/search/web?query=q&size=50')
   assert.equal(kakao.init.headers.authorization, 'KakaoAK k9')
+})
+
+test('each engine gets the count within its own bounds, and lower ones without a key', () => {
+  const ask = (id, count, keys = []) => buildRequest(id, { query: 'q', count, keys, settings: SETTINGS })
+  // You.com: 100 with a key, 50 without one.
+  assert.equal(new URL(ask('you', 80).url).searchParams.get('count'), '50')
+  assert.equal(new URL(ask('you', 80, ['k']).url).searchParams.get('count'), '80')
+  assert.equal(new URL(ask('you', 500, ['k']).url).searchParams.get('count'), '100')
+  // Parallel: up to 20 with a key; the keyless MCP takes no count.
+  assert.equal(JSON.parse(ask('parallel', 30, ['k']).init.body).advanced_settings.max_results, 20)
+  assert.equal(JSON.parse(ask('parallel', 30).init.body).params.arguments.max_results, undefined)
+  // Keenable passes max_results on both tiers, up to 50.
+  assert.equal(JSON.parse(ask('keenable', 70).init.body).params.arguments.max_results, 50)
+  assert.equal(JSON.parse(ask('keenable', 30, ['k']).init.body).max_results, 30)
+  assert.equal(JSON.parse(ask('tavily', 50).init.body).max_results, 20)
+  assert.equal(new URL(ask('jina', 50, ['k']).url).searchParams.get('num'), '20')
+  assert.equal(JSON.parse(ask('firecrawl', 500).init.body).limit, 100)
+  assert.equal(new URL(ask('naver', 500, ['i', 's']).url).searchParams.get('display'), '100')
+  assert.equal(new URL(ask('kakao', 500, ['k']).url).searchParams.get('size'), '50')
+  // A count that is not a whole number of 1 or more falls back to the default.
+  assert.equal(new URL(ask('kakao', 0, ['k']).url).searchParams.get('size'), '10')
+  // Engines without a count parameter: the results are cut to the count after they arrive.
+  assert.equal(new URL(ask('tinyfish', 5, ['k']).url).searchParams.get('count'), null)
+  const many = JSON.stringify({ results: Array.from({ length: 10 }, (_, i) => ({ url: `https://t.example/${i}`, title: `T${i}` })) })
+  assert.equal(parseResponse('tinyfish', many, { query: 'q', count: 4, keyed: true }).sources.length, 4)
 })
 
 test('Tavily and You.com responses become sources', () => {
@@ -210,10 +244,11 @@ test('Bing result pages parse, wrapped links are unwrapped and a human-check pag
 
 test('the search uses a stored key when there is one and the keyless tier otherwise', async (t) => {
   const calls = stubFetch(t, () => json({ results: [{ url: 'https://t.example', title: 'T' }] }))
-  await provider('tavily').search({ query: 'q', maxResults: 3 })
+  // The count set on the plugin page wins over the maxResults an agent passes.
+  await provider('tavily', { counts: { tavily: 3 } }).search({ query: 'q', maxResults: 15 })
   assert.equal(calls[0].init.headers['x-tavily-access-mode'], 'keyless')
   assert.equal(JSON.parse(calls[0].init.body).max_results, 3)
-  assert.equal(calls[0].init.headers['user-agent'], 'dsh-search-free/1.1.0')
+  assert.equal(calls[0].init.headers['user-agent'], 'dsh-search/1.1.0')
 
   await provider('tavily', {}, { TAVILY_API_KEY: 'secret-tavily' }).search({ query: 'q' })
   assert.equal(calls[1].init.headers.authorization, 'Bearer secret-tavily')
@@ -315,7 +350,7 @@ const fails = (message, extra = {}) => () => { throw Object.assign(new Error(mes
 function auto(map, { now = () => 0, order } = {}) {
   const providers = new Map(Object.entries(map).map(([id, behaviour]) => [id, fake(id, behaviour)]))
   const settings = normalizeSettings({ autoOrder: order })
-  return { auto: new FreeAutoProvider({ providers, settings, now }), providers }
+  return { auto: new AutoSearchProvider({ providers, settings, now }), providers }
 }
 
 test('the automatic order is the one the user set, whatever the query language', async () => {
@@ -365,6 +400,44 @@ test('when every engine fails the error lists why; an empty answer still wins', 
   assert.deepEqual((await b.search({ query: 'q' })).sources, [])
   const { auto: c } = auto({})
   await assert.rejects(c.search({ query: 'q' }), /no engine is enabled/)
+})
+
+test('korea searches Naver and Kakao together, alternating results and merging URLs', async () => {
+  const two = (urls) => () => ({ sources: urls.map((url) => ({ url })), truncated: false })
+  const providers = new Map([
+    ['naver', fake('naver', two(['https://a.kr', 'https://b.kr/', 'https://c.kr']))],
+    ['kakao', fake('kakao', two(['https://x.kr', 'https://b.kr']))]
+  ])
+  const korea = new KoreaSearchProvider({ providers })
+  const result = await korea.search({ query: '서울' })
+  assert.deepEqual(result.sources.map((s) => s.url), ['https://a.kr', 'https://x.kr', 'https://b.kr/', 'https://c.kr'])
+  assert.equal(result.answeredBy, 'NAVER + KAKAO')
+  assert.equal(providers.get('naver').calls, 1)
+  assert.equal(providers.get('kakao').calls, 1)
+
+  // One engine failing still returns the other's results.
+  const half = new KoreaSearchProvider({ providers: new Map([
+    ['naver', fake('naver', fails('no key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))],
+    ['kakao', fake('kakao', two(['https://x.kr']))]
+  ]) })
+  assert.equal((await half.search({ query: 'q' })).answeredBy, 'KAKAO')
+
+  // Both without a key: a missing-key error that names both.
+  const none = new KoreaSearchProvider({ providers: new Map([
+    ['naver', fake('naver', fails('naver needs a key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))],
+    ['kakao', fake('kakao', fails('kakao needs a key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))]
+  ]) })
+  await assert.rejects(none.search({ query: 'q' }), (error) => error.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' && /naver needs a key; kakao: kakao needs a key/.test(error.message))
+})
+
+test('korea is registered as a provider and an engine of the tool, but not part of auto', () => {
+  const { providers, tools } = register()
+  assert.ok(providers.some((p) => p.id === 'korea'))
+  assert.deepEqual(tools[0].parameters.properties.engine.enum.slice(0, 2), ['auto', 'korea'])
+  assert.equal(normalizeSettings({}).autoOrder().includes('korea'), false)
+  // Without Naver and Kakao registered there is no korea engine.
+  const { providers: few } = register({ providers: ['bing'] })
+  assert.equal(few.some((p) => p.id === 'korea'), false)
 })
 
 test('a cancelled automatic search stops at once', async () => {
