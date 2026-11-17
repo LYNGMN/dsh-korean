@@ -47,7 +47,7 @@ test('키트 플러그인 모두를 한 번에 link:로 넣는다', () => {
   const made = calls()
   assert.equal(made.length, 1)
   assert.ok(made[0].startsWith('plugin --profile desktop add '))
-  // The shell lists folders in glob order ("search-brave/" before "search/"); the order does not matter.
+  // The shell's glob order and JavaScript's sort may differ; the order does not matter.
   assert.deepEqual(made[0].slice('plugin --profile desktop add '.length).split(' ').sort(), links.sort())
 })
 
@@ -65,6 +65,15 @@ test('폴더 이름을 바꾼 플러그인은 바꾸기 전 이름도 먼저 뺀
   assert.equal(result.status, 0, result.stderr)
   assert.equal(calls()[0], 'plugin --profile desktop remove @lyngmn/dsh-brave-search @lyngmn/dsh-exa-search')
   assert.match(calls()[1], /^plugin --profile desktop add /)
+})
+
+test('검색 플러그인에 합친 Brave·Exa·검색 자동 전환은 허락을 받고 먼저 뺀다', () => {
+  const { run, calls } = setup({ '@lyngmn/dsh-search-brave': 'link:/b', '@lyngmn/dsh-search-exa': 'link:/e', '@lyngmn/dsh-search-fallback': 'link:/f', other: '1.0.0' })
+  const result = run([], 'y\n')
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(calls()[0], 'plugin --profile desktop remove @lyngmn/dsh-search-brave @lyngmn/dsh-search-exa @lyngmn/dsh-search-fallback')
+  assert.match(calls()[1], /^plugin --profile desktop add /)
+  assert.ok(!calls()[1].includes('search-brave'))
 })
 
 test('다른 이름 플러그인을 빼지 말라고 하면 겹치지 않게 아무것도 넣지 않고 멈춘다', () => {

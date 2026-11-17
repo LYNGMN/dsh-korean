@@ -4,6 +4,15 @@
 
 ## 다음 판 (미정)
 
+- 검색(`@lyngmn/dsh-search`) 1.2.0: Brave Search(`@lyngmn/dsh-search-brave`)·Exa Search(`@lyngmn/dsh-search-exa`)·검색 자동 전환(`@lyngmn/dsh-search-fallback`)을 검색 플러그인 하나로 합쳤습니다. 키트 플러그인은 14개에서 11개가 됩니다.
+  - Exa·Brave는 엔진 `exa`·`brave`가 됩니다. 자동 엔진의 기본 순서는 Exa → Brave → You.com → … → Bing입니다. 키는 예전처럼 `EXA_API_KEY`·`BRAVE_API_KEY`로 찾고, `~/.dsh/exa-api-key`·`~/.dsh/brave-api-key` 파일도 읽습니다. 결과 수는 Exa 1~100개(10개를 넘으면 추가 요금), Brave 1~20개입니다.
+  - 1.1에서 순서를 저장했다면, 그때 없던 Exa·Brave는 기본 자리(맨 앞)에 들어갑니다. 이제부터는 저장할 때 아는 엔진 목록(`autoKnown`)도 함께 남겨, 일부러 끈 엔진과 새 엔진을 구분합니다.
+  - `brave_search`·`exa_search` 도구와 `/brave`·`/exa` 명령은 같은 이름으로 남습니다. `/brave 20 …`, `/exa max …`처럼 이번 검색 개수도 정할 수 있습니다.
+  - 검색 자동 전환은 자동 엔진과 하는 일이 같아 코드를 옮기지 않았습니다. 순서 이름 `exa-brave`·`brave-exa`·`exa-brave-auto`만 정해진 순서로 도는 자동 엔진으로 남겨, `web.searchProvider`로 이 이름을 고른 프로필이 계속 동작합니다. 새로 고를 때는 `auto`를 권합니다.
+  - 검색 플러그인 패치가 `web.searchProvider`를 `auto`로 정합니다(예전에는 Brave 패치가 `brave`로 정했습니다). 프로필에서 다른 값을 고른 경우 그 값이 그대로 남습니다.
+  - 예전 플러그인이 아직 깔려 있어 이름(`brave`, `brave_search`, `/brave` 등)이 겹치면, 그 이름만 건너뛰고 경고를 남깁니다. 검색 플러그인 전체가 빠지지 않습니다. 설치기는 예전 세 패키지를 알아보고 먼저 뺄지 묻습니다.
+  - 예전 플러그인 아이콘은 `plugins/search/icons/`에 보관했습니다.
+  - 프로필에 예전 항목을 덮어쓰는 줄(`- id: brave-search`)이 남아 있으면 DSH가 켤 때 "entry not found" 경고를 냅니다. 그 줄은 `cordis.patch.yml`에서 지워도 됩니다.
 - 플러그인 14번째: 검색(`@lyngmn/dsh-search`) 1.1.0. 여러 웹검색 엔진과 자동 엔진, `/search` 명령을 더합니다.
   - 이름에서 free를 뺐습니다: 패키지 `@lyngmn/dsh-search-free` → `@lyngmn/dsh-search`, 폴더 `plugins/search`, 도구 `free_search` → `engine_search`. 무료 엔진만 있는 것이 아니라서입니다. 설치기는 예전 이름으로 깔린 플러그인을 알아보고 먼저 뺄지 묻습니다.
   - 키 없이 쓰는 공급자: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing.
@@ -20,7 +29,6 @@
   - 네이버는 2026-07-31부터 새 키를 주는 NAVER API HUB로 먼저 요청하고, 예전 네이버 개발자센터 키(2027-06-30까지 유효)는 HUB가 거절하면 예전 주소로 한 번 더 요청합니다.
   - 설정을 읽으려고 의존성 `@deepseek-ai/schemastery`를 더했습니다. 설치기가 키트 루트에서 `npm install --omit=dev`로 받습니다.
   - 요청 형식은 dsh-free-search(MIT)의 엔진 코드와 각 서비스의 API 문서를 보고 새로 썼습니다. DuckDuckGo는 첫 요청부터 사람 확인 페이지가 나와 넣지 않았습니다.
-- 검색 자동 전환 1.0.2: 순서 "Exa → Brave → Auto"(`exa-brave-auto`)를 더했습니다. 마지막 단계는 검색 플러그인의 자동 엔진이 맡고, 검색 플러그인이 설치되지 않았으면 그 단계는 건너뜁니다.
 
 ## 1.0.0 (2026-11-15)
 

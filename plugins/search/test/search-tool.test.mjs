@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply } from '../index.js'
-import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseToolArgs } from '../search-tool.js'
+import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseSingleInput, parseToolArgs } from '../search-tool.js'
 
 const ENGINES = ['auto', 'you', 'naver', 'kakao', 'bing']
 
@@ -57,7 +57,7 @@ test('/search steers the agent to engine_search with the engine and refuses an e
   assert.match(steered[0].content[0].text, /engine_search tool, engine "naver", instead/)
   const empty = search.handler({ rawInput: 'auto', agent: { steer: () => assert.fail('must not steer') } })
   assert.equal(empty.kind, 'error')
-  assert.match(empty.text, /auto, korea, you, parallel/)
+  assert.match(empty.text, /auto, korea, exa, brave, you, parallel/)
   assert.ok(COMMAND_TEXT.ko.hint.includes('<질문>'))
 })
 
@@ -133,4 +133,41 @@ test('/search with a count tells the agent the count, grants it, and the tool th
   // "max" is the engine maximum (100), held to the keyless maximum (50) without a key.
   await run('max')
   assert.deepEqual(counts, ['10', '30', '10', '50'])
+})
+
+test('parseSingleInput reads an optional count before the question for /exa and /brave', () => {
+  assert.deepEqual(parseSingleInput('20 전기차'), { count: 20, question: '전기차' })
+  assert.deepEqual(parseSingleInput('max 전기차'), { count: 'max', question: '전기차' })
+  assert.deepEqual(parseSingleInput('2026 월드컵'), { question: '2026 월드컵' })
+  assert.deepEqual(parseSingleInput('  '), { question: '' })
+})
+
+test('/brave and brave_search keep their names and follow a count the user set', async (t) => {
+  const commands = []
+  const tools = []
+  const credentials = { resolve: async (ref) => (ref === 'BRAVE_API_KEY' ? { value: 'bk' } : undefined) }
+  apply({ get: (name) => (name === 'credentials' ? credentials : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }, {})
+  const brave = commands.find((c) => c.name === 'brave')
+  const tool = tools.find((x) => x.name === 'brave_search')
+  assert.ok(brave && tool)
+  assert.match(tool.description, /Brave only/)
+  assert.equal(tool.parameters.properties.engine, undefined)
+
+  const steered = []
+  const reply = brave.handler({ rawInput: '30 전기차', agent: { steer: (m) => steered.push(m) } })
+  assert.match(steered[0].content[0].text, /^전기차\n\n\(Search instruction for this request: do the web searches with the brave_search tool and count "30"/)
+  assert.match(reply.text, /20/, '30 is above Brave\'s maximum of 20')
+  assert.equal(brave.handler({ rawInput: 'max', agent: { steer: () => assert.fail('must not steer') } }).kind, 'error')
+
+  const counts = []
+  const real = globalThis.fetch
+  t.after(() => { globalThis.fetch = real })
+  globalThis.fetch = async (url) => {
+    counts.push(new URL(String(url)).searchParams.get('count'))
+    return new Response(JSON.stringify({ web: { results: [] } }), { status: 200 })
+  }
+  await tool.execute({ query: 'q', count: '30' }, {})
+  await tool.execute({ query: 'q', count: '5' }, {})
+  await tool.execute({ query: 'q', engine: 'exa' }, {})
+  assert.deepEqual(counts, ['20', '10', '10'], 'the granted count (held to 20), then the page setting; engine cannot be switched')
 })

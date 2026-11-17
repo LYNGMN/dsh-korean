@@ -1,26 +1,32 @@
 # Search bundle for DSH (@lyngmn/dsh-search).
 # It registers:
-#   web_search providers  you, parallel, keenable, tavily, tinyfish, jina,
-#                         firecrawl, naver, kakao, bing
+#   web_search providers  exa, brave, you, parallel, keenable, tavily, tinyfish,
+#                         jina, firecrawl, naver, kakao, bing
 #   auto                  a web_search provider that tries them in turn
 #                         (in the order set on the plugin page: autoOrder)
-#   engine_search           a tool that searches one engine, or "auto"
-#   /search <engine> <question>
-#                         a command that uses that engine for one request
-# It does not pick web.searchProvider. Pick "auto" or a Search Fallback order
-# such as "Exa → Brave → Auto" on the Web search settings page.
+#   korea                 Naver and Kakao together
+#   exa-brave, brave-exa, exa-brave-auto
+#                         the earlier Search Fallback order names, kept so a
+#                         profile that picks one keeps working
+#   engine_search         a tool that searches one engine, or "auto"
+#   exa_search, brave_search
+#                         tools that search Exa or Brave only
+#   /search <engine> [max|count] <question>, /exa …, /brave …
+#                         commands that use that engine for one request
+# It picks "auto" for web_search (Exa, then Brave, then the rest by default).
+# A profile that picks another provider keeps its choice.
 # Keys are entered on this plugin's page and kept in the DSH credential store;
-# they are never stored here. Without a key, You.com, Parallel, Keenable,
-# Tavily, Firecrawl and Bing use their keyless tier; TinyFish, Jina, Naver and
-# Kakao are skipped.
+# they are never stored here. Exa and Brave also read the key files below.
+# Without a key, You.com, Parallel, Keenable, Tavily, Firecrawl and Bing use
+# their keyless tier; Exa, Brave, TinyFish, Jina, Naver and Kakao are skipped.
 - insert:
     - id: search
       name: '@lyngmn/dsh-search'
       config:
-        providers: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
+        providers: [exa, brave, you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
         # Engines the automatic "auto" provider uses, in order. The plugin page
         # changes it (DSH keeps that change in the profile and applies it live).
-        autoOrder: [you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
+        autoOrder: [exa, brave, you, parallel, keenable, tavily, tinyfish, jina, firecrawl, naver, kakao, bing]
         # Results per engine when the plugin page sets none. The page saves its
         # per-engine numbers as `counts` (for example naver: 30), each kept within
         # that engine's own maximum.
@@ -29,8 +35,20 @@
         # Bing market (mkt) and Accept-Language.
         bingMarket: ko-KR
         safeSearch: moderate
+        # Brave request options (country, searchLang, uiLang), left to Brave's defaults.
+        brave: {}
+        # Exa search type and highlight length per result.
+        exa:
+          type: auto
+          snippetChars: 400
+        # Key files Exa and Brave read after the credential store and the environment (chmod 600).
+        keyFiles:
+          exa: "~/.dsh/exa-api-key"
+          brave: "~/.dsh/brave-api-key"
         # Credential names each engine looks up (Naver needs two).
         keys:
+          exa: EXA_API_KEY
+          brave: BRAVE_API_KEY
           you: YDC_API_KEY
           parallel: PARALLEL_API_KEY
           keenable: KEENABLE_API_KEY
@@ -40,3 +58,6 @@
           firecrawl: FIRECRAWL_API_KEY
           naver: [NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]
           kakao: KAKAO_REST_API_KEY
+- id: web
+  config:
+    searchProvider: auto
