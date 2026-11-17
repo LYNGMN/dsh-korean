@@ -149,3 +149,11 @@ test('every engine has both quotas, a pricing link and, except Bing, a key link 
     assert.match(source, new RegExp(`id: '${id}'[^\\n]*keyLink: 'https://[^']+', priceLink: 'https://`), `links for ${id}`)
   }
 })
+
+test('the card lists engines one kind per line and explains the per-search count, in both dictionaries', async () => {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /engineList: '/)
+  for (const key of ['engineKeyless', 'engineKeyed', 'engineCombined', 'commandCount']) {
+    assert.equal(source.match(new RegExp(`\\b${key}: '`, 'g'))?.length, 2, key)
+  }
+})

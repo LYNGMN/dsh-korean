@@ -34,6 +34,10 @@ window.__ModuleLoader__.load({
      * one engine-specific line. Quotas and links checked 2026-11-17 against the
      * official pages.
      */
+    /** Let a long `A·B·C` list wrap after a dot instead of moving as one word. */
+    const breakAfterDots = (text) => text.replaceAll('·', '·\u200b')
+    /** Dictionary keys of the card's engine list, one line each. */
+    const ENGINE_LIST_KEYS = ['engineKeyless', 'engineKeyed', 'engineCombined']
     const ENGINES = [
       { id: 'you', country: 'US', name: 'You.com', mode: 'optional', results: { max: 100, keylessMax: 50, param: true }, refs: ['YDC_API_KEY'], keyLink: 'https://you.com/platform', priceLink: 'https://you.com/plans' },
       { id: 'parallel', costNote: true, country: 'US', name: 'Parallel', mode: 'optional', results: { max: 20, keylessMax: 10, param: true, keylessParam: false }, refs: ['PARALLEL_API_KEY'], keyLink: 'https://platform.parallel.ai/', priceLink: 'https://parallel.ai/pricing' },
@@ -57,7 +61,10 @@ window.__ModuleLoader__.load({
     const en = {
       title: 'Search',
       summary: 'Engine order and keys. A key raises the limit, and some engines need one.',
-      engineList: 'Engines without a key: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing. Engines that need a key: Naver, Kakao (Daum), TinyFish, Jina. Combined: Korea (Naver + Kakao, /search korea).',
+      engineKeyless: 'Engines without a key: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing',
+      engineKeyed: 'Engines that need a key: Naver, Kakao (Daum), TinyFish, Jina',
+      engineCombined: 'Combined: Korea (Naver + Kakao, /search korea)',
+      commandCount: 'Set the number of results for one search in the command: a number such as /search naver 30 …, or the maximum with /search korea max ….',
       description: 'Choose which engines the automatic engine uses and in what order, and add an API key per engine. Leave a key empty to search without one on a small quota; a key raises the limit. Engines that need a sign-up are skipped by the automatic engine until you add a key. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
       checking: 'Checking which keys are set…',
       stillChecking: 'The key status is not available yet. Saving still works, and this line disappears once the status loads.',
@@ -187,7 +194,10 @@ window.__ModuleLoader__.load({
     const ko = {
       title: '검색',
       summary: '엔진 순서와 키예요. 키를 넣으면 한도가 늘고, 일부 엔진은 키가 있어야 써요.',
-      engineList: '키 없이 쓰는 엔진: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing. 키가 있어야 쓰는 엔진: 네이버·카카오(다음)·TinyFish·Jina. 묶음 엔진: 한국(네이버+카카오, /search korea).',
+      engineKeyless: '키 없이 쓰는 엔진: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing',
+      engineKeyed: '키가 있어야 쓰는 엔진: 네이버·카카오(다음)·TinyFish·Jina',
+      engineCombined: '묶음 엔진: 한국(네이버+카카오, /search korea)',
+      commandCount: '이번 검색만 결과 수를 바꾸려면 명령에 적어요. /search naver 30 …처럼 개수를, /search korea max …처럼 최대를 쓸 수 있어요.',
       description: '자동 엔진이 어떤 엔진을 어떤 순서로 쓸지 고르고, 엔진마다 API 키를 넣을 수 있어요. 키를 비워 두면 키 없이 적은 한도로 검색하고, 키를 넣으면 한도가 늘어요. 가입해야 쓰는 엔진은 키를 넣기 전까지 자동 엔진이 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
       checking: '어떤 키가 설정됐는지 확인하는 중이에요…',
       stillChecking: '아직 키 상태를 불러오지 못했어요. 저장은 그대로 할 수 있고, 상태를 읽으면 이 안내는 사라져요.',
@@ -326,6 +336,8 @@ window.__ModuleLoader__.load({
     const styles = {
       card: { display: 'grid', gap: 12, maxWidth: 640, wordBreak: 'keep-all', overflowWrap: 'anywhere' },
       intro: { margin: 0, fontSize: 13, lineHeight: 1.6, color: color.secondary },
+      engineList: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 2 },
+      listLine: { margin: 0, fontSize: 13, lineHeight: 1.6, color: color.secondary, textWrap: 'pretty', wordBreak: 'keep-all', overflowWrap: 'anywhere' },
       hint: { margin: 0, fontSize: 12, lineHeight: 1.5, color: color.tertiary, textWrap: 'pretty' },
       meta: { margin: 0, fontSize: 12, lineHeight: 1.5, fontWeight: 500, color: color.secondary, textWrap: 'balance' },
       row: { display: 'grid', gap: 8, paddingTop: 12, borderTop: `1px solid ${color.divider}` },
@@ -966,7 +978,8 @@ window.__ModuleLoader__.load({
         'div',
         { style: styles.card },
         h('p', { style: styles.intro }, t('description')),
-        h('p', { style: styles.intro }, t('engineList')),
+        h('ul', { style: styles.engineList }, ENGINE_LIST_KEYS.map((key) => h('li', { key, style: styles.listLine }, breakAfterDots(t(key))))),
+        h('p', { style: styles.listLine }, t('commandCount')),
         h(AutoOrderSection, { store, t }),
         h('h3', { style: styles.sectionTitle }, t('keysTitle')),
         info === null ? h('p', { role: 'status', style: styles.hint }, notice ?? t('checking')) : null,

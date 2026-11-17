@@ -9,6 +9,7 @@ import {
   decodeBingUrl,
   normalizeOrder,
   readVolatile,
+  resultCount,
   looksRelevant,
   normalizeSettings,
   parseMcpMessage,
@@ -337,9 +338,9 @@ function fake(id, behaviour) {
     id,
     title: id.toUpperCase(),
     calls: 0,
-    async search() {
+    async search(request) {
       this.calls += 1
-      return behaviour()
+      return behaviour(request)
     }
   }
 }
@@ -452,4 +453,24 @@ test('helpers: clip by code point and relevance by query words', () => {
   assert.equal(looksRelevant('서울 날씨', [{ url: 'https://x.example', title: '부산 소식' }]), false)
   assert.equal(looksRelevant('서울 날씨', [{ url: 'https://x.example', title: '오늘 서울의 하늘' }]), true)
   assert.equal(looksRelevant('???', [{ url: 'https://x.example' }]), true)
+})
+
+test('a count set with a command overrides the page setting and stays inside each engine\'s limits', () => {
+  const settings = normalizeSettings({ counts: { naver: 7 } })
+  assert.equal(resultCount(settings, 'naver'), 7)
+  assert.equal(resultCount(settings, 'naver', 30), 30)
+  assert.equal(resultCount(settings, 'naver', 'max'), 100)
+  assert.equal(resultCount(settings, 'kakao', 'max'), 50)
+  assert.equal(resultCount(settings, 'kakao', 80), 50)
+  // The keyless bound still applies when the request is built.
+  const url = new URL(buildRequest('you', { query: 'q', count: resultCount(settings, 'you', 'max'), settings }).url)
+  assert.equal(url.searchParams.get('count'), '50')
+})
+
+test('korea hands the per-search count to both members', async () => {
+  const seen = []
+  const member = (id) => fake(id, (request) => { seen.push([id, request.userCount]); return { sources: [], truncated: false } })
+  const korea = new KoreaSearchProvider({ providers: new Map([['naver', member('naver')], ['kakao', member('kakao')]]) })
+  await korea.search({ query: '서울', userCount: 'max' })
+  assert.deepEqual(seen.sort(), [['kakao', 'max'], ['naver', 'max']])
 })

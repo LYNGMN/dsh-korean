@@ -136,10 +136,14 @@ export function clampCount(id, raw) {
 
 /**
  * The number of results to ask an engine for. The user's per-engine setting
- * wins over the `maxResults` an agent passes (2026-11-17 decision), so the
- * request's bound is not read here.
+ * wins over the `maxResults` an agent passes (2026-11-17 decision), so that
+ * bound is not read here. `userCount` is the count the user set for one search
+ * with a command (a number, or "max" for the engine's own maximum);
+ * buildRequest clamps it to the engine's limits, keyless ones included.
  */
-export function resultCount(settings, id) {
+export function resultCount(settings, id, userCount) {
+  if (userCount === 'max') return RESULT_LIMITS[id]?.max ?? settings.countFor(id)
+  if (Number.isInteger(userCount) && userCount >= 1) return clampCount(id, userCount)
   return settings.countFor(id)
 }
 

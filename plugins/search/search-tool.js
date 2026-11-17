@@ -40,6 +40,50 @@ export const ENGINE_ALIASES = Object.freeze({
   자동: 'auto'
 })
 
+/** Words that ask for an engine's largest result count. */
+export const MAX_WORDS = Object.freeze(['max', 'maximum', 'all', '최대'])
+/** The largest count a command may name; a larger number belongs to the question (a year, say). */
+export const COMMAND_COUNT_LIMIT = 100
+/** How long a count the user set with a command stays valid for the tool. */
+export const COUNT_GRANT_MS = 30 * 60 * 1000
+
+/**
+ * Read one word as a result count: "max" (or another MAX_WORDS entry), or a
+ * whole number 1–100 written as `30`, `30개` or `x30`. Anything else is undefined.
+ */
+export function parseCount(word) {
+  const text = String(word ?? '').trim().toLowerCase()
+  if (MAX_WORDS.includes(text)) return 'max'
+  const match = /^x?(\d{1,3})(?:개)?$/u.exec(text)
+  if (match === null) return undefined
+  const value = Number(match[1])
+  return value >= 1 && value <= COMMAND_COUNT_LIMIT ? value : undefined
+}
+
+/**
+ * The count the user set with the last /search command. The tool follows a
+ * `count` argument only when it matches this grant, so the agent cannot raise
+ * the count on its own: the user's setting on the plugin page still wins.
+ */
+export function createCountGrants({ now = () => Date.now(), ttlMs = COUNT_GRANT_MS } = {}) {
+  let grant
+  return {
+    /** Remember (or, with no count, forget) the count of the latest command. */
+    set(engine, count) {
+      grant = count === undefined ? undefined : { engine, count, until: now() + ttlMs }
+    },
+    /** The granted count when `engine` and `count` match a live grant, otherwise undefined. */
+    allow(engine, count) {
+      if (grant === undefined || count === undefined) return undefined
+      if (grant.until <= now()) {
+        grant = undefined
+        return undefined
+      }
+      return grant.engine === engine && grant.count === count ? count : undefined
+    }
+  }
+}
+
 const SOURCE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -61,7 +105,7 @@ export function parseToolArgs(args, engines) {
   // `max_results` is accepted for agents used to web_search, then ignored: the
   // user sets how many results each engine returns on the plugin page.
   for (const key of Object.keys(args)) {
-    if (!['query', 'max_results', 'engine'].includes(key)) violations.push(`"${key}" is not a known argument`)
+    if (!['query', 'max_results', 'engine', 'count'].includes(key)) violations.push(`"${key}" is not a known argument`)
   }
   const query = typeof args.query === 'string' ? args.query.trim() : ''
   if (query === '') violations.push('"query" must be a non-empty string')
@@ -70,8 +114,13 @@ export function parseToolArgs(args, engines) {
     engine = typeof args.engine === 'string' ? args.engine.trim().toLowerCase() : ''
     if (!engines.includes(engine)) violations.push(`"engine" must be one of ${engines.join(', ')}`)
   }
+  let count
+  if (args.count !== undefined) {
+    count = typeof args.count === 'number' ? (Number.isInteger(args.count) ? parseCount(String(args.count)) : undefined) : parseCount(args.count)
+    if (count === undefined) violations.push('"count" must be a whole number 1-100 or "max"')
+  }
   if (violations.length > 0) throw new Error(`invalid arguments: ${violations.join('; ')}`)
-  return { engine, request: { query } }
+  return count === undefined ? { engine, request: { query } } : { engine, count, request: { query } }
 }
 
 function sourceLabel(source) {
@@ -114,19 +163,20 @@ function cleanSource(source) {
  * Build the raw `engine_search` tool definition.
  * @param {{ engines: string[], lookup: (engine: string) => ({ title: string, search: Function } | undefined), timeoutMs?: number }} options
  */
-export function createEngineSearchTool({ engines, lookup, timeoutMs = 60000 }) {
+export function createEngineSearchTool({ engines, lookup, grants, timeoutMs = 60000 }) {
   return {
     name: TOOL_NAME,
     description:
       'Search the web with the Search plugin engines. engine "auto" (the default) tries them in the order the user set; ' +
       'engine "korea" searches Naver and Kakao together for Korean pages; any other engine searches that one only. ' +
-      'The user sets how many results each engine returns. Use it when the user names an engine ' +
+      'The user sets how many results each engine returns; pass "count" only when a /search instruction names one. Use it when the user names an engine ' +
       `(for example through the /${COMMAND_NAME} command), or when web_search fails. Returns source URLs with snippets.`,
     parameters: {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'One search query.' },
         engine: { type: 'string', enum: engines, description: `Engine to use; "${DEFAULT_ENGINE}" picks automatically.` },
+        count: { type: 'string', description: 'Only the count a /search instruction gives, such as "30" or "max". Otherwise leave it out.' }
       },
       required: ['query']
     },
@@ -146,10 +196,11 @@ export function createEngineSearchTool({ engines, lookup, timeoutMs = 60000 }) {
     timeoutMs,
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      const { engine, request } = parseToolArgs(args, engines)
+      const { engine, count, request } = parseToolArgs(args, engines)
       const provider = lookup(engine)
       if (provider === undefined) throw new Error(`engine "${engine}" is not available`)
-      const result = await provider.search(request, exec?.signal)
+      const userCount = grants?.allow(engine, count)
+      const result = await provider.search(userCount === undefined ? request : { ...request, userCount }, exec?.signal)
       const sources = Array.isArray(result?.sources) ? result.sources.filter((s) => typeof s?.url === 'string').map(cleanSource) : []
       const answeredBy = typeof result?.answeredBy === 'string' ? result.answeredBy : provider.title
       return { engine: answeredBy, sources, truncated: result?.truncated === true }
@@ -157,69 +208,96 @@ export function createEngineSearchTool({ engines, lookup, timeoutMs = 60000 }) {
   }
 }
 
+function splitWord(text) {
+  const match = /^(\S+)(?:\s+([\s\S]*))?$/u.exec(text)
+  return match === null ? undefined : { word: match[1], rest: (match[2] ?? '').trim() }
+}
+
 /**
- * Split `/search` input into an engine and a question. A first word that is not
- * an engine belongs to the question, and the automatic engine is used.
+ * Split `/search` input into an engine, an optional count and a question.
+ * A first word that is not an engine belongs to the question, and the automatic
+ * engine is used. The word right after the engine (or the first word, for the
+ * automatic engine) may be a count: `max`, `30`, `30개`, `x30`.
  */
 export function parseCommandInput(raw, engines) {
   const text = String(raw ?? '').trim()
-  const match = /^(\S+)(?:\s+([\s\S]*))?$/u.exec(text)
-  if (match === null) return { engine: DEFAULT_ENGINE, question: '' }
-  const word = match[1].toLowerCase()
-  const engine = engines.includes(word) ? word : ENGINE_ALIASES[word]
-  if (engine !== undefined && engines.includes(engine)) return { engine, question: (match[2] ?? '').trim() }
-  return { engine: DEFAULT_ENGINE, question: text }
+  const first = splitWord(text)
+  if (first === undefined) return { engine: DEFAULT_ENGINE, question: '' }
+  const word = first.word.toLowerCase()
+  const named = engines.includes(word) ? word : ENGINE_ALIASES[word]
+  const engine = named !== undefined && engines.includes(named) ? named : DEFAULT_ENGINE
+  const tail = named !== undefined && engines.includes(named) ? first.rest : text
+  const next = splitWord(tail)
+  const count = next === undefined ? undefined : parseCount(next.word)
+  if (count === undefined) return { engine, question: tail }
+  return { engine, count, question: next.rest }
 }
 
 /** The steering text the command hands to the agent. */
-export function commandPrompt(question, engine) {
-  return `${question}\n\n(Search instruction for this request: do the web searches with the ${TOOL_NAME} tool and engine "${engine}", instead of web_search. You may still use web_fetch to read a result.)`
+export function commandPrompt(question, engine, count) {
+  const countPart = count === undefined ? '' : ` and count "${count}"`
+  return `${question}\n\n(Search instruction for this request: do the web searches with the ${TOOL_NAME} tool, engine "${engine}"${countPart}, instead of web_search. You may still use web_fetch to read a result.)`
 }
 
 /** User-facing text of the slash command, by DSH language. */
 export const COMMAND_TEXT = Object.freeze({
   en: {
-    description: 'Search the web with a chosen engine for this request only (/search auto, /search naver …)',
-    hint: '<auto|korea|naver|kakao|you|…> <question>',
-    usage: 'Usage: /search <engine> <question>. Engines: {engines}',
+    description: 'Search the web with a chosen engine for this request only (/search auto, /search naver 30 …)',
+    hint: '<auto|korea|naver|kakao|you|…> [max|count] <question>',
+    usage: 'Usage: /search <engine> [max|count] <question>. Engines: {engines}. A question that starts with a number 1–100 needs a count in front: /search naver 10 3 idiots.',
     failed: '/search failed: {message}',
-    searching: 'Searching with {engine}.'
+    searching: 'Searching with {engine}.',
+    searchingCount: 'Searching with {engine}, up to {count} results.',
+    searchingMax: 'Searching with {engine}, as many results as each engine allows.',
+    searchingCapped: 'Searching with {engine}, at most {count} results (its maximum).'
   },
   ko: {
-    description: '이번 요청만 무료 검색 엔진으로 웹검색해요(/search auto, /search naver …)',
-    hint: '<auto|korea|naver|kakao|you|…> <질문>',
-    usage: '사용법: /search <엔진> <질문>. 엔진: {engines}',
+    description: '이번 요청만 고른 엔진으로 웹검색해요(/search auto, /search naver 30 …)',
+    hint: '<auto|korea|naver|kakao|you|…> [max|개수] <질문>',
+    usage: '사용법: /search <엔진> [max|개수] <질문>. 엔진: {engines}. 1~100 숫자로 시작하는 질문은 앞에 개수를 하나 더 써요: /search naver 10 3 idiots',
     failed: '/search 실패: {message}',
-    searching: '{engine}로 검색해요.'
+    searching: '{engine}로 검색해요.',
+    searchingCount: '{engine}로 {count}개까지 검색해요.',
+    searchingMax: '{engine}로 엔진마다 최대 개수로 검색해요.',
+    searchingCapped: '{engine}로 최대 {count}개 검색해요.'
   }
 })
+
+/** The command's reply: the engine, and the count when the user set one. */
+export function startText(t, engine, count, max) {
+  if (count === undefined) return t('searching', { engine })
+  if (count === 'max') return max === undefined ? t('searchingMax', { engine }) : t('searchingCapped', { engine, count: max })
+  if (max !== undefined && count > max) return t('searchingCapped', { engine, count: max })
+  return t('searchingCount', { engine, count })
+}
 
 /**
  * Register `/search <engine> <question>`: it sends the question to the agent
  * with an instruction to search through `engine_search` and that engine for this
  * request only. The command is registered again when the DSH language changes.
- * @param {{ engines: string[], titles: Record<string, string> }} options
+ * @param {{ engines: string[], titles: Record<string, string>, grants?: ReturnType<typeof createCountGrants>, maxFor?: (engine: string) => number | undefined }} options
  */
-export function registerSearchCommand(ctx, { engines, titles }) {
+export function registerSearchCommand(ctx, { engines, titles, grants, maxFor = () => undefined }) {
   const t = createText(ctx, COMMAND_TEXT)
   return registerLocalized(ctx, (locale) => ctx.commands.register({
     name: COMMAND_NAME,
     description: t('description', undefined, locale),
     input: { hint: t('hint', undefined, locale) },
     handler: (invocation) => {
-      const { engine, question } = parseCommandInput(invocation?.rawInput, engines)
+      const { engine, count, question } = parseCommandInput(invocation?.rawInput, engines)
       if (question === '') return { kind: 'error', text: t('usage', { engines: engines.join(', ') }) }
       try {
         invocation.agent.steer(Object.freeze({
           role: 'user',
           id: randomUUID(),
-          content: Object.freeze([Object.freeze({ type: 'text', text: commandPrompt(question, engine) })]),
+          content: Object.freeze([Object.freeze({ type: 'text', text: commandPrompt(question, engine, count) })]),
           source: Object.freeze({ kind: 'user' })
         }))
       } catch (error) {
         return { kind: 'error', text: t('failed', { message: error instanceof Error ? error.message : String(error) }) }
       }
-      return { kind: 'success', text: t('searching', { engine: titles[engine] ?? engine }) }
+      grants?.set(engine, count)
+      return { kind: 'success', text: startText(t, titles[engine] ?? engine, count, maxFor(engine)) }
     }
   }))
 }
