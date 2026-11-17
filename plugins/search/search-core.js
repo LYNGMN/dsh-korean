@@ -59,8 +59,36 @@ export const DEFAULT_KEY_NAMES = Object.freeze({
   bing: Object.freeze([])
 })
 
-const DEFAULT_COUNT = 8
-const MAX_COUNT = 20
+/**
+ * How many results one request to each engine can return, from the official
+ * API references (checked 2026-11-17).
+ * - `max`: the engine's own upper bound with a key.
+ * - `keylessMax`: a lower bound without a key, where there is one.
+ * - `param: false`: the API takes no count, so the results are cut after they
+ *   arrive and `max` is what it returns at most. `keylessParam: false` is the
+ *   same for the keyless tier only.
+ * Sources: Naver HUB webkr `display` 1–100; Kakao web `size` 1–50; You.com
+ * `count` 1–100 (keyless agents/search answers 402 above 50, probed); Parallel
+ * `advanced_settings.max_results` up to 20 (keyless MCP has no count and
+ * returns 10); Keenable `max_results` 1–50; Tavily `max_results` 0–20;
+ * TinyFish has no count (10 a page); Jina `num` up to 20; Firecrawl `limit`
+ * 1–100; Bing's results page ignores `count` and shows 10.
+ */
+export const RESULT_LIMITS = Object.freeze({
+  you: Object.freeze({ max: 100, keylessMax: 50, param: true }),
+  parallel: Object.freeze({ max: 20, keylessMax: 10, param: true, keylessParam: false }),
+  keenable: Object.freeze({ max: 50, param: true }),
+  tavily: Object.freeze({ max: 20, param: true }),
+  tinyfish: Object.freeze({ max: 10, param: false }),
+  jina: Object.freeze({ max: 20, param: true }),
+  firecrawl: Object.freeze({ max: 100, param: true }),
+  naver: Object.freeze({ max: 100, param: true }),
+  kakao: Object.freeze({ max: 50, param: true }),
+  bing: Object.freeze({ max: 10, param: false })
+})
+
+/** Results per engine when the plugin page sets none. */
+export const DEFAULT_COUNT = 10
 const DEFAULT_TIMEOUT_MS = 20000
 const SNIPPET_CHARS = 300
 
@@ -71,7 +99,7 @@ function text(value) {
 /** Normalize the bundle's YAML config into stable settings. */
 export function normalizeSettings(config = {}) {
   const rawCount = Number(config.count)
-  const count = Number.isInteger(rawCount) && rawCount > 0 ? Math.min(rawCount, MAX_COUNT) : DEFAULT_COUNT
+  const count = Number.isInteger(rawCount) && rawCount > 0 ? rawCount : DEFAULT_COUNT
   const rawTimeout = Number(config.timeoutMs)
   const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000 ? Math.min(rawTimeout, 60000) : DEFAULT_TIMEOUT_MS
   const listed = Array.isArray(config.providers) ? config.providers.map((p) => String(p).trim()) : PROVIDER_IDS
@@ -85,8 +113,11 @@ export function normalizeSettings(config = {}) {
   // `autoOrder` is a live setting: under DSH it is a volatile reference read on
   // every search, so a change on the plugin page applies to the next search.
   const autoOrder = () => normalizeOrder(readVolatile(config.autoOrder), providers)
+  // `counts` is live as well: results per engine, set on the plugin page.
+  const countFor = (id) => clampCount(id, readVolatile(config.counts)?.[id] ?? count)
   return {
     count,
+    countFor,
     timeoutMs,
     providers,
     keyNames,
@@ -96,10 +127,20 @@ export function normalizeSettings(config = {}) {
   }
 }
 
-/** The number of results to ask for, honoring DSH's per-call bound. */
-export function resultCount(settings, request) {
-  const requested = Number(request?.maxResults)
-  return Number.isInteger(requested) && requested > 0 ? Math.min(requested, MAX_COUNT) : settings.count
+/** A result count within the engine's own bounds; anything unreadable becomes the default. */
+export function clampCount(id, raw) {
+  const max = RESULT_LIMITS[id]?.max ?? DEFAULT_COUNT
+  const value = Number(raw)
+  return Number.isInteger(value) && value >= 1 ? Math.min(value, max) : Math.min(DEFAULT_COUNT, max)
+}
+
+/**
+ * The number of results to ask an engine for. The user's per-engine setting
+ * wins over the `maxResults` an agent passes (2026-11-17 decision), so the
+ * request's bound is not read here.
+ */
+export function resultCount(settings, id) {
+  return settings.countFor(id)
 }
 
 function jsonPost(url, body, headers = {}) {
@@ -123,8 +164,12 @@ function mcpCall(url, name, args) {
  * Build the HTTP request for one provider.
  * @returns {{ url: string, init: { method: string, headers: Record<string,string>, body?: string }, fallback?: { url: string, init: object } }}
  */
-export function buildRequest(id, { query, count, keys = [], settings }) {
+export function buildRequest(id, { query, count: wanted, keys = [], settings }) {
   const apiKey = keys[0] ?? ''
+  // The keyless tier of some engines allows fewer results than a key does.
+  const keylessMax = RESULT_LIMITS[id]?.keylessMax
+  const bounded = clampCount(id, wanted)
+  const count = apiKey === '' && keylessMax !== undefined ? Math.min(bounded, keylessMax) : bounded
   switch (id) {
     case 'tavily':
       return jsonPost(
@@ -148,8 +193,8 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
       }
       return mcpCall(ENDPOINTS.parallelMcp, 'web_search', { objective: query, search_queries: [query] })
     case 'keenable':
-      if (apiKey) return jsonPost(ENDPOINTS.keenableRest, { query, mode: 'realtime' }, { 'x-api-key': apiKey })
-      return mcpCall(ENDPOINTS.keenableMcp, 'search_web_pages', { query })
+      if (apiKey) return jsonPost(ENDPOINTS.keenableRest, { query, mode: 'realtime', max_results: count }, { 'x-api-key': apiKey })
+      return mcpCall(ENDPOINTS.keenableMcp, 'search_web_pages', { query, max_results: count })
     case 'bing': {
       const url = new URL(ENDPOINTS.bing)
       url.searchParams.set('q', query)
@@ -159,7 +204,7 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
       return { url: url.toString(), init: { method: 'GET', headers: { accept: 'text/html', 'accept-language': language } } }
     }
     case 'firecrawl':
-      return jsonPost(ENDPOINTS.firecrawl, { query, limit: Math.min(count, 10) }, apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+      return jsonPost(ENDPOINTS.firecrawl, { query, limit: count }, apiKey ? { authorization: `Bearer ${apiKey}` } : {})
     case 'tinyfish': {
       const url = new URL(ENDPOINTS.tinyfish)
       url.searchParams.set('query', query)
@@ -168,12 +213,13 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
     case 'jina': {
       const url = new URL(ENDPOINTS.jina)
       url.searchParams.set('q', query)
+      url.searchParams.set('num', String(count))
       return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', authorization: `Bearer ${apiKey}` } } }
     }
     case 'naver': {
       // Same response shape on both hosts. HUB first; a 401/403 there retries
       // the legacy host once, for keys made in the old Naver Developers console.
-      const display = String(Math.min(count, 100))
+      const display = String(count)
       const hub = new URL(ENDPOINTS.naverHub)
       hub.searchParams.set('query', query)
       hub.searchParams.set('display', display)
@@ -193,7 +239,7 @@ export function buildRequest(id, { query, count, keys = [], settings }) {
     case 'kakao': {
       const url = new URL(ENDPOINTS.kakao)
       url.searchParams.set('query', query)
-      url.searchParams.set('size', String(Math.min(count, 50)))
+      url.searchParams.set('size', String(count))
       return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', authorization: `KakaoAK ${apiKey}` } } }
     }
     default:

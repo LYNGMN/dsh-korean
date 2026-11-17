@@ -34,7 +34,7 @@ function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
             writable: true,
             namespaces: [
               { ns: 'web', value: { searchProvider: 'exa-brave-auto' }, revision: 3 },
-              ...(autoOrder === undefined ? [] : [{ ns: 'search-free', value: { providers: DEFAULT, autoOrder }, revision: 7 }])
+              ...(autoOrder === undefined ? [] : [{ ns: 'search', value: { providers: DEFAULT, autoOrder }, revision: 7 }])
             ]
           }
         })
@@ -56,11 +56,11 @@ function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
 
 test('the client registers the key card for this bundle', async () => {
   const { id, module } = await loadClient()
-  assert.equal(id, '@lyngmn/dsh-search-free')
+  assert.equal(id, '@lyngmn/dsh-search')
   const { ctx, calls } = fakeCtx()
   module.apply(ctx)
   assert.equal(calls.slots[0].name, 'plugins.bundle.config')
-  assert.equal(calls.slots[0].key, '@lyngmn/dsh-search-free')
+  assert.equal(calls.slots[0].key, '@lyngmn/dsh-search')
 })
 
 test('a bare /search opens an engine picker: auto first, then the engines in the order set on the plugin page', async () => {
@@ -73,10 +73,12 @@ test('a bare /search opens an engine picker: auto first, then the engines in the
   assert.deepEqual({ ...decoration.ui.searchLabels() }, { placeholder: '엔진 찾기', empty: '엔진이 없어요', noResults: '맞는 엔진이 없어요' })
 
   const options = [...await decoration.ui.options({ sessionId: 's1' }, new AbortController().signal)]
-  assert.deepEqual(options.map((o) => o.id), ['auto', 'bing', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
+  assert.deepEqual(options.map((o) => o.id), ['auto', 'korea', 'bing', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
   assert.equal(options[0].active, true)
-  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
-  assert.equal(options[1].group.label, '자동에 쓰는 순서')
+  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'auto', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
+  assert.equal(options[2].group.label, '자동에 쓰는 순서')
+  // No Naver or Kakao key is set here, so the Korean engine says so.
+  assert.equal(options[1].detail, '🇰🇷 네이버나 카카오 키가 필요해요')
   // Flag, country and a short quota; the owner note stays on the plugin page.
   const detail = Object.fromEntries(options.map((o) => [o.id, o.detail]))
   assert.equal(detail.naver, '🇰🇷 한국 · 키 필요 · 하루 2.5만 회')
@@ -92,8 +94,8 @@ test('without the order setting the picker lists every engine in the default ord
   const { ctx, calls } = fakeCtx()
   module.apply(ctx)
   const options = [...await calls.decorations[0].ui.options({ sessionId: 's1' }, new AbortController().signal)]
-  assert.equal(JSON.stringify(options.map((o) => o.id)), JSON.stringify(['auto', ...DEFAULT]))
-  assert.deepEqual([...new Set(options.slice(1).map((o) => o.group.name))], ['engines'])
+  assert.equal(JSON.stringify(options.map((o) => o.id)), JSON.stringify(['auto', 'korea', ...DEFAULT]))
+  assert.deepEqual([...new Set(options.slice(2).map((o) => o.group.name))], ['engines'])
 })
 
 test('picking an engine puts "/search <engine> " in that session\'s composer', async () => {
@@ -126,6 +128,16 @@ test('picker options still show both quotas when the key state or the settings c
   const options = await calls.decorations[0].ui.options({ sessionId: 's1' }, new AbortController().signal)
   assert.equal(options.find((o) => o.id === 'kakao').detail, '🇰🇷 한국 · 키 필요 · 하루 3만 회')
   assert.equal(options.find((o) => o.id === 'firecrawl').detail, '🇺🇸 미국 · 키 없이 소량 · 키 넣으면 월 500회')
+})
+
+test('the card shows the same result limits the server uses', async () => {
+  const { RESULT_LIMITS } = await import('../search-core.js')
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  for (const [id, limit] of Object.entries(RESULT_LIMITS)) {
+    const line = source.split('\n').find((l) => l.includes(`{ id: '${id}',`))
+    const shown = line.match(/results: (\{[^}]*\})/)[1].replace(/(\w+):/g, '"$1":')
+    assert.deepEqual(JSON.parse(shown), { ...limit }, id)
+  }
 })
 
 test('every engine has both quotas, a pricing link and, except Bing, a key link in Korean and English', async () => {

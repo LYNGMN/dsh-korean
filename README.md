@@ -88,8 +88,8 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>검색 공급자가 실패하면 다음 공급자로 다시 찾아요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>검색</strong></td>
-<td>웹검색 공급자 10개(네이버·카카오·You.com·Parallel·Keenable·Tavily·TinyFish·Jina·Firecrawl·Bing)와 플러그인 페이지에서 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 플러그인 페이지에서 자동 엔진이 쓸 엔진과 순서를 고르고, 공급자마다 나라·키 없이/키 넣은 한도·키 받는 곳·요금표를 보고 키를 넣을 수 있어요.</td>
+<td align="center" nowrap><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>검색</strong></td>
+<td>여러 웹검색 엔진과, 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 플러그인 페이지에서 엔진별 키·순서·결과 수를 정해요.<br>키 없이: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing / 키 필요: 네이버·카카오·TinyFish·Jina / 묶음: 한국(네이버+카카오)</td>
 </tr>
 <tr>
 <td align="center" nowrap><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>자동 검토 복구</strong></td>

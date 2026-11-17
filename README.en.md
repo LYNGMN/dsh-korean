@@ -88,8 +88,8 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>When a search provider fails, retries with the next one.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/search-free/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
-<td>Adds ten web search providers (Naver, Kakao, You.com, Parallel, Keenable, Tavily, TinyFish, Jina, Firecrawl, Bing), an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. On the plugin page you choose which engines auto uses and in what order, and see each provider's country, its limit with and without a key, where to get a key and its pricing page.</td>
+<td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
+<td>Adds several web search engines, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao)</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>

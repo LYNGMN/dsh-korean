@@ -131,11 +131,13 @@ if [ -n "${MISSING// /}" ]; then
   fi
 fi
 
-# 폴더 이름을 바꾼 플러그인의 바꾸기 전 폴더 이름(DSH 목록이 패키지 이름 순이라 검색 플러그인을 search-로 모음).
+# 폴더 이름을 바꾼 플러그인의 바꾸기 전 폴더 이름(DSH 목록이 패키지 이름 순이라 검색 플러그인을 search-로 모음;
+# search-free는 무료만이 아니라서 search로 바꿈).
 previous_folder() {
   case "$1" in
     search-brave) echo brave-search ;;
     search-exa) echo exa-search ;;
+    search) echo search-free ;;
   esac
 }
 

@@ -1,5 +1,5 @@
 /**
- * Browser half of the Search bundle (@lyngmn/dsh-search-free).
+ * Browser half of the Search bundle (@lyngmn/dsh-search).
  *
  * It adds a card to the bundle's Plugins page:
  * - the automatic engine's order: which engines it uses and in what order,
@@ -13,11 +13,11 @@
  * A bare `/search` opens an engine picker with each engine's short quota.
  */
 window.__ModuleLoader__.load({
-  id: '@lyngmn/dsh-search-free',
+  id: '@lyngmn/dsh-search',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const NS = 'freeSearchSettings'
+    const NS = 'searchSettings'
     /** How long the card waits for the Host before it shows "still checking". */
     const READY_TIMEOUT_MS = 8000
     /** Retry delay while the Host reports no credential service yet. */
@@ -28,31 +28,36 @@ window.__ModuleLoader__.load({
      * order the key list uses. `mode`: 'optional' works without
      * a key, 'required' is skipped without one, 'none' takes no key. `country`
      * is where the company is based (ISO 3166 code); `keyLink` is where a key is
-     * issued and `priceLink` the official pricing or quota page; `note` adds
+     * issued and `priceLink` the official pricing or quota page; `results` is
+     * how many results one request returns (same numbers as RESULT_LIMITS in
+     * search-core.js); `note` adds
      * one engine-specific line. Quotas and links checked 2026-11-17 against the
      * official pages.
      */
     const ENGINES = [
-      { id: 'you', country: 'US', name: 'You.com', mode: 'optional', refs: ['YDC_API_KEY'], keyLink: 'https://you.com/platform', priceLink: 'https://you.com/plans' },
-      { id: 'parallel', country: 'US', name: 'Parallel', mode: 'optional', refs: ['PARALLEL_API_KEY'], keyLink: 'https://platform.parallel.ai/', priceLink: 'https://parallel.ai/pricing' },
-      { id: 'keenable', country: 'US', name: 'Keenable', mode: 'optional', refs: ['KEENABLE_API_KEY'], keyLink: 'https://app.keenable.ai/console', priceLink: 'https://keenable.ai/pricing' },
-      { id: 'tavily', country: 'IL', owner: true, name: 'Tavily', mode: 'optional', refs: ['TAVILY_API_KEY'], keyLink: 'https://app.tavily.com', priceLink: 'https://www.tavily.com/pricing' },
-      { id: 'tinyfish', country: 'US', name: 'TinyFish', mode: 'required', refs: ['TINYFISH_API_KEY'], keyLink: 'https://agent.tinyfish.ai/api-keys', priceLink: 'https://www.tinyfish.ai/pricing' },
-      { id: 'jina', country: 'DE', owner: true, name: 'Jina', mode: 'required', refs: ['JINA_API_KEY'], keyLink: 'https://jina.ai/api-dashboard', priceLink: 'https://jina.ai/api-dashboard/pricing' },
-      { id: 'firecrawl', country: 'US', name: 'Firecrawl', note: true, mode: 'optional', refs: ['FIRECRAWL_API_KEY'], keyLink: 'https://www.firecrawl.dev/app/api-keys', priceLink: 'https://www.firecrawl.dev/pricing' },
-      { id: 'naver', country: 'KR', name: 'Naver', note: true, mode: 'required', refs: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], keyLink: 'https://www.ncloud.com/product/applicationService/naverApiHub', priceLink: 'https://api.ncloud-docs.com/docs/naver-api-hub-search-webkr' },
-      { id: 'kakao', country: 'KR', name: 'Kakao (Daum)', mode: 'required', refs: ['KAKAO_REST_API_KEY'], keyLink: 'https://developers.kakao.com/console/app', priceLink: 'https://developers.kakao.com/docs/latest/ko/getting-started/quota' },
-      { id: 'bing', country: 'US', name: 'Bing', mode: 'none', refs: [], keyLink: '', priceLink: '' }
+      { id: 'you', country: 'US', name: 'You.com', mode: 'optional', results: { max: 100, keylessMax: 50, param: true }, refs: ['YDC_API_KEY'], keyLink: 'https://you.com/platform', priceLink: 'https://you.com/plans' },
+      { id: 'parallel', costNote: true, country: 'US', name: 'Parallel', mode: 'optional', results: { max: 20, keylessMax: 10, param: true, keylessParam: false }, refs: ['PARALLEL_API_KEY'], keyLink: 'https://platform.parallel.ai/', priceLink: 'https://parallel.ai/pricing' },
+      { id: 'keenable', country: 'US', name: 'Keenable', mode: 'optional', results: { max: 50, param: true }, refs: ['KEENABLE_API_KEY'], keyLink: 'https://app.keenable.ai/console', priceLink: 'https://keenable.ai/pricing' },
+      { id: 'tavily', country: 'IL', owner: true, name: 'Tavily', mode: 'optional', results: { max: 20, param: true }, refs: ['TAVILY_API_KEY'], keyLink: 'https://app.tavily.com', priceLink: 'https://www.tavily.com/pricing' },
+      { id: 'tinyfish', country: 'US', name: 'TinyFish', mode: 'required', results: { max: 10, param: false }, refs: ['TINYFISH_API_KEY'], keyLink: 'https://agent.tinyfish.ai/api-keys', priceLink: 'https://www.tinyfish.ai/pricing' },
+      { id: 'jina', costNote: true, country: 'DE', owner: true, name: 'Jina', mode: 'required', results: { max: 20, param: true }, refs: ['JINA_API_KEY'], keyLink: 'https://jina.ai/api-dashboard', priceLink: 'https://jina.ai/api-dashboard/pricing' },
+      { id: 'firecrawl', costNote: true, country: 'US', name: 'Firecrawl', note: true, mode: 'optional', results: { max: 100, param: true }, refs: ['FIRECRAWL_API_KEY'], keyLink: 'https://www.firecrawl.dev/app/api-keys', priceLink: 'https://www.firecrawl.dev/pricing' },
+      { id: 'naver', country: 'KR', name: 'Naver', note: true, mode: 'required', results: { max: 100, param: true }, refs: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], keyLink: 'https://www.ncloud.com/product/applicationService/naverApiHub', priceLink: 'https://api.ncloud-docs.com/docs/naver-api-hub-search-webkr' },
+      { id: 'kakao', country: 'KR', name: 'Kakao (Daum)', note: true, mode: 'required', results: { max: 50, param: true }, refs: ['KAKAO_REST_API_KEY'], keyLink: 'https://developers.kakao.com/console/app', priceLink: 'https://developers.kakao.com/docs/latest/ko/getting-started/quota' },
+      { id: 'bing', country: 'US', name: 'Bing', mode: 'none', results: { max: 10, param: false }, refs: [], keyLink: '', priceLink: '' }
     ]
     const ALL_REFS = ENGINES.flatMap((engine) => engine.refs)
     const DEFAULT_ORDER = ENGINES.map((engine) => engine.id)
+    /** Results per engine when the plugin page sets none; the server uses the same number. */
+    const DEFAULT_COUNT = 10
     const ENGINE_BY_ID = new Map(ENGINES.map((engine) => [engine.id, engine]))
     /** This bundle's settings namespace: its entry id in cordis.patch.yml. */
-    const SETTINGS_NS = 'search-free'
+    const SETTINGS_NS = 'search'
 
     const en = {
       title: 'Search',
       summary: 'Engine order and keys. A key raises the limit, and some engines need one.',
+      engineList: 'Engines without a key: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing. Engines that need a key: Naver, Kakao (Daum), TinyFish, Jina. Combined: Korea (Naver + Kakao, /search korea).',
       description: 'Choose which engines the automatic engine uses and in what order, and add an API key per engine. Leave a key empty to search without one on a small quota; a key raises the limit. Engines that need a sign-up are skipped by the automatic engine until you add a key. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
       checking: 'Checking which keys are set…',
       stillChecking: 'The key status is not available yet. Saving still works, and this line disappears once the status loads.',
@@ -65,6 +70,11 @@ window.__ModuleLoader__.load({
       apiKeyOptional: 'API key (optional)',
       clientId: 'Client ID',
       clientSecret: 'Client Secret',
+      restApiKey: 'REST API key',
+      storedKey: 'Saved key:',
+      storedLabel: 'starts with {head} and ends with {tail}',
+      storedHidden: 'hidden in full because it is short',
+      storedElsewhere: 'set outside this page (environment or .env)',
       placeholder: 'Paste the key',
       placeholderOptional: 'Empty: search without a key',
       save: 'Save',
@@ -121,6 +131,7 @@ window.__ModuleLoader__.load({
       'briefKeyed.firecrawl': '500/month',
       'note.naver': 'New keys come from NAVER API HUB (NAVER Cloud) since 2026-07-31.',
       'note.firecrawl': 'Without a key it may be refused behind a VPN or proxy.',
+      'note.kakao': 'In Kakao Developers, open your app → Platform keys and copy the "REST API key". The admin, JavaScript and native app keys do not work here.',
       'country.KR': 'Korea',
       'country.US': 'United States',
       'country.IL': 'Israel',
@@ -132,6 +143,10 @@ window.__ModuleLoader__.load({
       'signup.none': 'No sign-up',
       'pick.auto': 'Auto',
       'pick.autoDetail': 'Tries the engines in the order set on the plugin page',
+      'pick.korea': 'Korea (Naver + Kakao)',
+      'pick.koreaDetail': 'Searches Naver and Kakao together',
+      'pick.koreaReady': 'Naver and Kakao together · uses the keys set',
+      'pick.koreaNeedsKey': 'Needs a Naver or Kakao key',
       'pick.placeholder': 'Find an engine',
       'pick.empty': 'No engines',
       'pick.noResults': 'No matching engine',
@@ -151,7 +166,18 @@ window.__ModuleLoader__.load({
       moveUp: 'Move {name} up',
       moveDown: 'Move {name} down',
       moved: '{name} is now number {n}.',
-      keysTitle: 'Keys and limits'
+      keysTitle: 'Keys and limits',
+      countLabel: 'Results per search',
+      countRangeHint: '1 to {max} · default {def}',
+      countCutHint: '1 to {max} · default {def} (the API takes no count; extra results are cut)',
+      countKeyless: 'up to {n} without a key',
+      countKeylessFixed: 'fixed at {n} without a key',
+      'countCost.parallel': 'With a key, more than 10 results add $1 per 1,000 searches.',
+      'countCost.jina': 'Each search uses tokens (from 10,000).',
+      'countCost.firecrawl': 'Every 10 results use 2 credits.',
+      countRange: 'Enter a whole number from 1 to {max}.',
+      countSaved: 'Saved: {n} results from the next search.',
+      countFailed: 'The number could not be saved.'
     }
 
     // The Web client ships English and Chinese dictionaries. Keep Chinese as an
@@ -161,6 +187,7 @@ window.__ModuleLoader__.load({
     const ko = {
       title: '검색',
       summary: '엔진 순서와 키예요. 키를 넣으면 한도가 늘고, 일부 엔진은 키가 있어야 써요.',
+      engineList: '키 없이 쓰는 엔진: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing. 키가 있어야 쓰는 엔진: 네이버·카카오(다음)·TinyFish·Jina. 묶음 엔진: 한국(네이버+카카오, /search korea).',
       description: '자동 엔진이 어떤 엔진을 어떤 순서로 쓸지 고르고, 엔진마다 API 키를 넣을 수 있어요. 키를 비워 두면 키 없이 적은 한도로 검색하고, 키를 넣으면 한도가 늘어요. 가입해야 쓰는 엔진은 키를 넣기 전까지 자동 엔진이 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
       checking: '어떤 키가 설정됐는지 확인하는 중이에요…',
       stillChecking: '아직 키 상태를 불러오지 못했어요. 저장은 그대로 할 수 있고, 상태를 읽으면 이 안내는 사라져요.',
@@ -173,6 +200,11 @@ window.__ModuleLoader__.load({
       apiKeyOptional: 'API 키(선택)',
       clientId: 'Client ID',
       clientSecret: 'Client Secret',
+      restApiKey: 'REST API 키',
+      storedKey: '저장된 키:',
+      storedLabel: '{head}로 시작하고 {tail}로 끝나요',
+      storedHidden: '짧아서 모두 가렸어요',
+      storedElsewhere: '이 페이지 밖(환경 변수나 .env)에서 설정됐어요',
       placeholder: '키 붙여넣기',
       placeholderOptional: '비워 두면 키 없이 써요',
       save: '저장',
@@ -229,6 +261,7 @@ window.__ModuleLoader__.load({
       'briefKeyed.firecrawl': '월 500회',
       'note.naver': '2026-07-31부터 새 키는 NAVER API HUB(네이버 클라우드)에서 받아요.',
       'note.firecrawl': '키 없이 쓰면 VPN·프록시에서 막힐 수 있어요.',
+      'note.kakao': '카카오 디벨로퍼스에서 앱 → 플랫폼 키 페이지의 "REST API 키"를 복사해 넣어요. 어드민 키·JavaScript 키·네이티브 앱 키는 쓰지 않아요.',
       'country.KR': '한국',
       'country.US': '미국',
       'country.IL': '이스라엘',
@@ -240,6 +273,10 @@ window.__ModuleLoader__.load({
       'signup.none': '가입하지 않아도 돼요',
       'pick.auto': '자동',
       'pick.autoDetail': '플러그인 페이지에서 정한 순서로 써요',
+      'pick.korea': '한국(네이버+카카오)',
+      'pick.koreaDetail': '네이버와 카카오를 함께 검색해요',
+      'pick.koreaReady': '네이버·카카오 함께 · 넣은 키로 검색',
+      'pick.koreaNeedsKey': '네이버나 카카오 키가 필요해요',
       'pick.placeholder': '엔진 찾기',
       'pick.empty': '엔진이 없어요',
       'pick.noResults': '맞는 엔진이 없어요',
@@ -259,7 +296,18 @@ window.__ModuleLoader__.load({
       moveUp: '{name} 위로',
       moveDown: '{name} 아래로',
       moved: '{name}: {n}번째로 옮겼어요.',
-      keysTitle: '엔진별 키와 한도'
+      keysTitle: '엔진별 키와 한도',
+      countLabel: '가져올 결과 수',
+      countRangeHint: '1~{max}개 · 기본 {def}개',
+      countCutHint: '1~{max}개 · 기본 {def}개(API에 개수 설정이 없어 받은 뒤 잘라요)',
+      countKeyless: '키 없이는 최대 {n}개',
+      countKeylessFixed: '키 없이는 {n}개로 정해져 있어요',
+      'countCost.parallel': '키를 넣고 10개를 넘기면 1,000번 검색마다 $1이 더 붙어요.',
+      'countCost.jina': '검색마다 토큰을 써요(1만 토큰부터).',
+      'countCost.firecrawl': '결과 10개마다 2크레딧을 써요.',
+      countRange: '1부터 {max}까지 정수로 넣어 주세요.',
+      countSaved: '저장했어요. 다음 검색부터 {n}개를 가져와요.',
+      countFailed: '개수를 저장하지 못했어요.'
     }
 
     const color = {
@@ -299,8 +347,11 @@ window.__ModuleLoader__.load({
       },
       buttons: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, maxWidth: 320 },
       link: { display: 'inline-flex', alignItems: 'center', minHeight: 44, minWidth: 44, color: color.link, fontSize: 13 },
-      links: { display: 'flex', flexWrap: 'wrap', columnGap: 20, rowGap: 0 },
+      links: { display: 'flex', flexWrap: 'wrap', columnGap: 20, rowGap: 4 },
       section: { display: 'grid', gap: 8 },
+      srOnly: { position: 'absolute', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 },
+      masked: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: color.secondary, overflowWrap: 'anywhere', wordBreak: 'break-all' },
+      countRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4 },
       sectionTitle: { margin: '8px 0 0', fontSize: 15, fontWeight: 600, lineHeight: '24px', color: color.primary },
       quota: { display: 'grid', gridTemplateColumns: 'max-content minmax(0, 1fr)', columnGap: 12, rowGap: 2, margin: 0, fontSize: 12, lineHeight: 1.5 },
       quotaTerm: { fontWeight: 500, color: color.secondary },
@@ -359,6 +410,15 @@ window.__ModuleLoader__.load({
       return engine.mode === 'required' ? { key: 'stateNeeded', tone: 'danger' } : { key: 'stateKeyless', tone: 'muted' }
     }
 
+    /** The site a link opens, without a leading "www.", so similar pages are told apart. */
+    function hostOf(link) {
+      try {
+        return new URL(link).hostname.replace(/^www\./, '')
+      } catch {
+        return ''
+      }
+    }
+
     /** Fill `{name}` placeholders in a dictionary string. */
     function fill(text, values) {
       return String(text).replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''))
@@ -395,11 +455,28 @@ window.__ModuleLoader__.load({
       return [...new Set(raw.map((id) => String(id).trim()))].filter((id) => ENGINE_BY_ID.has(id))
     }
 
+    /** Per-engine result counts as saved: whole numbers of 1 or more, known engines only. */
+    function cleanCounts(raw) {
+      const counts = {}
+      if (raw === null || typeof raw !== 'object') return counts
+      for (const [id, value] of Object.entries(raw)) {
+        if (ENGINE_BY_ID.has(id) && Number.isInteger(value) && value >= 1) counts[id] = value
+      }
+      return counts
+    }
+
+    /** The count an engine uses: the saved one within its bounds, else the default. */
+    function countOf(engine, counts) {
+      const saved = counts?.[engine.id]
+      return Number.isInteger(saved) && saved >= 1 ? Math.min(saved, engine.results.max) : Math.min(DEFAULT_COUNT, engine.results.max)
+    }
+
     /**
-     * Read the automatic engine's order from this entry's settings namespace.
-     * Returns null when the Host has no settings service or no such namespace.
+     * Read this entry's settings: the automatic engine's order and the
+     * per-engine result counts. Returns null when the Host has no settings
+     * service or no such namespace.
      */
-    async function readOrder(settings) {
+    async function readSettings(settings) {
       if (!settings || typeof settings.describe !== 'function') return null
       const response = await settings.describe()
       if (!response?.ok) return null
@@ -411,21 +488,176 @@ window.__ModuleLoader__.load({
         ns: String(own.ns),
         revision: own.revision,
         writable: response.value?.writable !== false,
-        order: cleanOrder(own.value.autoOrder)
+        order: cleanOrder(own.value.autoOrder),
+        counts: cleanCounts(own.value.counts)
       }
+    }
+
+    /**
+     * The card's view of this entry's settings, shared by the order list and
+     * the count fields. Writes run one at a time; each reads the latest
+     * revision first and builds its patch from that read, so two sections
+     * saving close together do not undo each other.
+     */
+    function useBundleSettings(settings) {
+      const [snapshot, setSnapshot] = React.useState(null)
+      const [failed, setFailed] = React.useState(false)
+      const [queue] = React.useState(() => ({ tail: Promise.resolve() }))
+
+      React.useEffect(() => {
+        let alive = true
+        let timer
+        const started = Date.now()
+        const attempt = async () => {
+          if (!alive) return
+          let next = null
+          try {
+            next = await readSettings(settings)
+          } catch {}
+          if (!alive) return
+          if (next !== null) {
+            setSnapshot(next)
+            setFailed(false)
+            return
+          }
+          if (Date.now() - started < READY_TIMEOUT_MS) timer = setTimeout(attempt, RETRY_DELAY_MS)
+          else setFailed(true)
+        }
+        attempt()
+        return () => {
+          alive = false
+          clearTimeout(timer)
+        }
+      }, [settings])
+
+      /** Save `patchFor(latest)`; resolves once saved and re-read, rejects with the Host's message. */
+      const write = (patchFor) => {
+        const run = queue.tail.then(async () => {
+          if (typeof settings?.update !== 'function') throw new Error('')
+          const latest = await readSettings(settings)
+          if (latest === null) throw new Error('')
+          try {
+            const response = await settings.update(latest.ns, patchFor(latest), latest.revision)
+            if (response && response.ok === false) throw new Error(response.error?.message ?? '')
+          } finally {
+            // Show what was saved, or what someone else saved meanwhile.
+            const after = await readSettings(settings).catch(() => null)
+            if (after !== null) setSnapshot(after)
+          }
+        })
+        queue.tail = run.catch(() => {})
+        return run
+      }
+
+      return { snapshot, failed, write }
+    }
+
+    /**
+     * What the card says about a stored key. The Host's file store sends a
+     * masked preview (first five and last four characters, the rest as •; all
+     * • when the key is too short to show any); the key itself never reaches
+     * the card.
+     */
+    function storedKeyView(view, t) {
+      if (view?.configured !== true) return null
+      const masked = typeof view.masked === 'string' && view.masked !== '' ? view.masked : null
+      if (masked === null) return { text: t('storedElsewhere'), label: t('storedElsewhere') }
+      const head = masked.match(/^[^•]*/)[0]
+      const tail = masked.match(/[^•]*$/)[0]
+      const label = head === '' && tail === '' ? t('storedHidden') : fill(t('storedLabel'), { head, tail })
+      return { text: masked, label, mono: true }
     }
 
     function fieldLabel(engine, index, t) {
       if (engine.id === 'naver') return index === 0 ? t('clientId') : t('clientSecret')
+      if (engine.id === 'kakao') return t('restApiKey')
       return engine.mode === 'optional' ? t('apiKeyOptional') : t('apiKey')
     }
 
-    function EngineRow({ engine, info, writable, credentials, t, onChanged }) {
+    /** "1~100 · default 10", with the keyless bound and a note when the API takes no count. */
+    function countHint(engine, t) {
+      const { max, keylessMax, param, keylessParam } = engine.results
+      const parts = [fill(t(param ? 'countRangeHint' : 'countCutHint'), { max, def: Math.min(DEFAULT_COUNT, max) })]
+      if (keylessMax !== undefined) parts.push(fill(t(keylessParam === false ? 'countKeylessFixed' : 'countKeyless'), { n: keylessMax }))
+      return parts.join(' · ')
+    }
+
+    /**
+     * How many results this engine fetches. Saved when the field is left or
+     * Enter is pressed; the engine's own maximum is shown next to it.
+     */
+    function CountField({ engine, store, t }) {
+      const saved = store.snapshot === null ? null : countOf(engine, store.snapshot.counts)
+      const [draft, setDraft] = React.useState(null)
+      const [message, setMessage] = React.useState(null)
+      const inputId = `dsh-search-${engine.id}-count`
+      const hintId = `${inputId}-hint`
+      const { max } = engine.results
+      const shown = draft ?? (saved === null ? '' : String(saved))
+      const locked = store.snapshot === null || !store.snapshot.writable
+
+      const commit = async () => {
+        if (draft === null) return
+        const value = Number(draft.trim())
+        if (!Number.isInteger(value) || value < 1 || value > max) {
+          setMessage({ tone: 'danger', text: fill(t('countRange'), { max }) })
+          return
+        }
+        if (value === saved) {
+          setDraft(null)
+          return
+        }
+        setMessage(null)
+        try {
+          await store.write((latest) => ({ counts: { ...latest.counts, [engine.id]: value } }))
+          setDraft(null)
+          setMessage({ tone: 'success', text: fill(t('countSaved'), { n: value }) })
+        } catch (error) {
+          const detail = typeof error?.message === 'string' ? error.message.trim() : ''
+          setMessage({ tone: 'danger', text: detail ? `${t('countFailed')} (${detail})` : t('countFailed') })
+        }
+      }
+
+      return h(
+        'div',
+        { style: { display: 'grid', gap: 4 } },
+        h('label', { htmlFor: inputId, style: styles.label }, t('countLabel')),
+        h(
+          'div',
+          { style: styles.countRow },
+          h('input', {
+            id: inputId,
+            type: 'number',
+            inputMode: 'numeric',
+            min: 1,
+            max,
+            step: 1,
+            value: shown,
+            disabled: locked,
+            'aria-describedby': hintId,
+            onChange: (event) => setDraft(event.target.value),
+            onBlur: commit,
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                commit()
+              }
+            },
+            style: { ...styles.input, width: 112 }
+          }),
+          h('span', { id: hintId, style: styles.hint }, countHint(engine, t))
+        ),
+        engine.costNote ? h('p', { style: styles.hint }, t(`countCost.${engine.id}`)) : null,
+        h('div', { role: 'status', 'aria-live': 'polite' }, message === null ? null : h('p', { style: messageStyle(message.tone) }, message.text))
+      )
+    }
+
+    function EngineRow({ engine, info, writable, credentials, store, t, onChanged }) {
       const [drafts, setDrafts] = React.useState(() => engine.refs.map(() => ''))
       const [busy, setBusy] = React.useState(null)
       const [message, setMessage] = React.useState(null)
       const state = engineState(engine, info)
-      const headingId = `free-search-${engine.id}-name`
+      const headingId = `dsh-search-${engine.id}-name`
       const anyConfigured = info !== null && engine.refs.some((ref) => info[ref]?.configured === true)
 
       const save = async () => {
@@ -497,8 +729,9 @@ window.__ModuleLoader__.load({
           ])
         ),
         engine.note ? h('p', { style: styles.hint }, t(`note.${engine.id}`)) : null,
+        h(CountField, { engine, store, t }),
         ...engine.refs.map((ref, index) => {
-          const inputId = `free-search-${ref.toLowerCase()}`
+          const inputId = `dsh-search-${ref.toLowerCase()}`
           return h(
             'div',
             { key: ref, style: { display: 'grid', gap: 4 } },
@@ -517,7 +750,19 @@ window.__ModuleLoader__.load({
                 setDrafts(next)
               },
               style: styles.input
-            })
+            }),
+            (() => {
+              const stored = storedKeyView(info?.[ref], t)
+              if (stored === null) return null
+              return h(
+                'p',
+                { style: styles.hint },
+                `${t('storedKey')} `,
+                // Screen readers hear "starts with … ends with …" instead of a run of bullets.
+                stored.mono ? h('span', { style: styles.masked, 'aria-hidden': 'true' }, stored.text) : stored.text,
+                stored.mono ? h('span', { style: styles.srOnly }, stored.label) : null
+              )
+            })()
           )
         }),
         engine.refs.length === 0
@@ -535,10 +780,10 @@ window.__ModuleLoader__.load({
             'div',
             { style: styles.links },
             engine.keyLink
-              ? h('a', { href: engine.keyLink, target: '_blank', rel: 'noreferrer', style: styles.link, 'aria-label': `${t('getKey')}: ${engine.name}` }, `${t('getKey')} ↗`)
+              ? h('a', { href: engine.keyLink, target: '_blank', rel: 'noreferrer', style: styles.link, 'aria-label': `${t('getKey')}: ${engine.name}, ${hostOf(engine.keyLink)}` }, `${t('getKey')} · ${hostOf(engine.keyLink)} ↗`)
               : null,
             engine.priceLink
-              ? h('a', { href: engine.priceLink, target: '_blank', rel: 'noreferrer', style: styles.link, 'aria-label': `${t('pricing')}: ${engine.name}` }, `${t('pricing')} ↗`)
+              ? h('a', { href: engine.priceLink, target: '_blank', rel: 'noreferrer', style: styles.link, 'aria-label': `${t('pricing')}: ${engine.name}, ${hostOf(engine.priceLink)}` }, `${t('pricing')} · ${hostOf(engine.priceLink)} ↗`)
               : null
           )
           : null
@@ -551,39 +796,12 @@ window.__ModuleLoader__.load({
      * default order. Every change is saved at once, fenced by the revision of
      * the last read so a change made elsewhere is not overwritten.
      */
-    function AutoOrderSection({ settings, t }) {
-      const [snapshot, setSnapshot] = React.useState(null)
-      const [failed, setFailed] = React.useState(false)
+    function AutoOrderSection({ store, t }) {
+      const [pending, setPending] = React.useState(null)
       const [busy, setBusy] = React.useState(false)
       const [message, setMessage] = React.useState(null)
       const [focusId, setFocusId] = React.useState(null)
-      const [reload, setReload] = React.useState(0)
-
-      React.useEffect(() => {
-        let alive = true
-        let timer
-        const started = Date.now()
-        const attempt = async () => {
-          if (!alive) return
-          let next = null
-          try {
-            next = await readOrder(settings)
-          } catch {}
-          if (!alive) return
-          if (next !== null) {
-            setSnapshot(next)
-            setFailed(false)
-            return
-          }
-          if (Date.now() - started < READY_TIMEOUT_MS) timer = setTimeout(attempt, RETRY_DELAY_MS)
-          else setFailed(true)
-        }
-        attempt()
-        return () => {
-          alive = false
-          clearTimeout(timer)
-        }
-      }, [settings, reload])
+      const snapshot = store.snapshot
 
       // Moving a row moves its DOM node, which drops focus; put it back on the same control.
       React.useEffect(() => {
@@ -592,7 +810,7 @@ window.__ModuleLoader__.load({
         setFocusId(null)
       }, [focusId])
 
-      const titleId = 'free-search-order-title'
+      const titleId = 'dsh-search-order-title'
       const header = h(
         'div',
         { style: { display: 'grid', gap: 4 } },
@@ -601,10 +819,11 @@ window.__ModuleLoader__.load({
       )
       if (snapshot === null) {
         return h('section', { style: styles.section, 'aria-labelledby': titleId }, header,
-          h('p', { role: 'status', style: styles.hint }, failed ? t('orderUnavailable') : t('orderLoading')))
+          h('p', { role: 'status', style: styles.hint }, store.failed ? t('orderUnavailable') : t('orderLoading')))
       }
 
-      const order = snapshot.order
+      // While a save runs the list shows the new order at once.
+      const order = pending ?? snapshot.order
       const rest = DEFAULT_ORDER.filter((id) => !order.includes(id))
       // Controls stay enabled while a save runs (a disabled control drops focus);
       // the handlers ignore clicks until it lands.
@@ -612,30 +831,25 @@ window.__ModuleLoader__.load({
       const isDefault = order.length === DEFAULT_ORDER.length && order.every((id, index) => id === DEFAULT_ORDER[index])
 
       const save = async (next, announce) => {
-        if (typeof settings?.update !== 'function') return setMessage({ tone: 'danger', text: t('orderReadOnly') })
-        const previous = snapshot
-        setSnapshot({ ...snapshot, order: next })
+        setPending(next)
         setBusy(true)
         setMessage(null)
         try {
-          const response = await settings.update(snapshot.ns, { autoOrder: next }, snapshot.revision)
-          if (response && response.ok === false) throw new Error(response.error?.message ?? '')
+          await store.write(() => ({ autoOrder: next }))
           setMessage({ tone: 'success', text: announce ? `${announce} ${t('orderSaved')}` : t('orderSaved') })
         } catch (error) {
-          setSnapshot(previous)
           const detail = typeof error?.message === 'string' ? error.message.trim() : ''
           setMessage({ tone: 'danger', text: detail ? `${t('orderFailed')} (${detail})` : t('orderFailed') })
         } finally {
+          setPending(null)
           setBusy(false)
-          // Read the new revision (or the value someone else saved) for the next change.
-          setReload((value) => value + 1)
         }
       }
 
       const toggle = (id) => {
         if (busy) return
         // The row moves between the checked and unchecked parts; keep focus on its box.
-        setFocusId(`free-search-order-${id}`)
+        setFocusId(`dsh-search-order-${id}`)
         const next = order.includes(id) ? order.filter((other) => other !== id) : [...order, id]
         save(next)
       }
@@ -649,14 +863,14 @@ window.__ModuleLoader__.load({
         next.splice(to, 0, id)
         // Keep focus on the arrow pressed, or on the other arrow once this one reaches the end.
         const edge = (step < 0 && to === 0) || (step > 0 && to === next.length - 1)
-        setFocusId(`free-search-order-${id}-${(step < 0) !== edge ? 'up' : 'down'}`)
+        setFocusId(`dsh-search-order-${id}-${(step < 0) !== edge ? 'up' : 'down'}`)
         save(next, fill(t('moved'), { name: ENGINE_BY_ID.get(id).name, n: to + 1 }))
       }
 
       const row = (id, rank) => {
         const engine = ENGINE_BY_ID.get(id)
         const checked = rank > 0
-        const boxId = `free-search-order-${id}`
+        const boxId = `dsh-search-order-${id}`
         const arrow = (step, label, glyph, disabled) => h('button', {
           type: 'button',
           id: `${boxId}-${step < 0 ? 'up' : 'down'}`,
@@ -697,7 +911,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function FreeSearchSettingsCard(props) {
+    function SearchSettingsCard(props) {
       const { t, view } = props
       if (view === 'summary') return t('summary')
 
@@ -706,6 +920,7 @@ window.__ModuleLoader__.load({
       const [writable, setWritable] = React.useState(true)
       const [notice, setNotice] = React.useState(null)
       const [revision, setRevision] = React.useState(0)
+      const store = useBundleSettings(props.settings)
 
       React.useEffect(() => {
         let alive = true
@@ -751,7 +966,8 @@ window.__ModuleLoader__.load({
         'div',
         { style: styles.card },
         h('p', { style: styles.intro }, t('description')),
-        h(AutoOrderSection, { settings: props.settings, t }),
+        h('p', { style: styles.intro }, t('engineList')),
+        h(AutoOrderSection, { store, t }),
         h('h3', { style: styles.sectionTitle }, t('keysTitle')),
         info === null ? h('p', { role: 'status', style: styles.hint }, notice ?? t('checking')) : null,
         writable ? null : h('p', { style: styles.hint }, t('readOnly')),
@@ -761,6 +977,7 @@ window.__ModuleLoader__.load({
           info,
           writable,
           credentials,
+          store,
           t,
           onChanged: () => setRevision((value) => value + 1)
         }))
@@ -770,6 +987,7 @@ window.__ModuleLoader__.load({
     /** The host command this bundle registers; a bare `/search` opens the engine picker. */
     const COMMAND = 'search'
     const AUTO = 'auto'
+    const KOREA = 'korea'
 
     /**
      * Options of the bare `/search` picker: the automatic engine, then the
@@ -786,7 +1004,7 @@ window.__ModuleLoader__.load({
             return null
           }
         })(),
-        readOrder(settings).catch(() => null)
+        readSettings(settings).catch(() => null)
       ])
       const option = (engine, group) => ({
         id: engine.id,
@@ -794,15 +1012,25 @@ window.__ModuleLoader__.load({
         detail: `${originText(engine, t, false)} · ${briefText(engine, engineState(engine, info), t)}`,
         group
       })
-      const auto = { id: AUTO, label: t('pick.auto'), detail: t('pick.autoDetail'), group: { name: 'auto', label: t('group.auto') }, active: true }
+      const autoGroup = { name: 'auto', label: t('group.auto') }
+      const auto = { id: AUTO, label: t('pick.auto'), detail: t('pick.autoDetail'), group: autoGroup, active: true }
+      // The combined Korean engine sits with auto: it is not one engine of the order.
+      const koreaReady = ['naver', 'kakao'].some((id) => engineState(ENGINE_BY_ID.get(id), info)?.key === 'stateKeyed')
+      const korea = {
+        id: KOREA,
+        label: t('pick.korea'),
+        detail: `${flagOf('KR')} ${info === null ? t('pick.koreaDetail') : koreaReady ? t('pick.koreaReady') : t('pick.koreaNeedsKey')}`,
+        group: autoGroup
+      }
       if (saved === null) {
         const engines = { name: 'engines', label: t('group.engines') }
-        return [auto, ...ENGINES.map((engine) => option(engine, engines))]
+        return [auto, korea, ...ENGINES.map((engine) => option(engine, engines))]
       }
       const used = { name: 'used', label: t('group.used') }
       const unused = { name: 'unused', label: t('group.unused') }
       return [
         auto,
+        korea,
         ...saved.order.map((id) => option(ENGINE_BY_ID.get(id), used)),
         ...ENGINES.filter((engine) => !saved.order.includes(engine.id)).map((engine) => option(engine, unused))
       ]
@@ -840,16 +1068,16 @@ window.__ModuleLoader__.load({
               options: () => pickerOptions(ctx.remote.credentials, ctx.remote.settings, t),
               onSelect: (option, session) => { fillDraft(ctx, session.sessionId, option.id) }
             }
-          }), 'search-free: /search engine picker')
+          }), 'search: /search engine picker')
         })
-        ctx.effect(() => ctx.locale.register(NS, { en, zh, ko }), 'free-search-settings: dictionaries')
+        ctx.effect(() => ctx.locale.register(NS, { en, zh, ko }), 'dsh-search-settings: dictionaries')
         // The bundle's own detail page renders this keyed config section.
         ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
           name: 'plugins.bundle.config',
-          key: '@lyngmn/dsh-search-free',
+          key: '@lyngmn/dsh-search',
           locale: NS,
           inject: () => ({ credentials: ctx.remote.credentials, settings: ctx.remote.settings })
-        }, FreeSearchSettingsCard))
+        }, SearchSettingsCard))
       }
     }
   }

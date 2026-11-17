@@ -1,10 +1,10 @@
 import z from '@deepseek-ai/schemastery'
-import { DEFAULT_AUTO_ORDER, PROVIDER_IDS, REQUIRES_KEY, ProviderResponseError, buildRequest, normalizeSettings, parseResponse, resultCount } from './free-core.js'
-import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './search-tool.js'
+import { DEFAULT_AUTO_ORDER, PROVIDER_IDS, REQUIRES_KEY, ProviderResponseError, buildRequest, normalizeSettings, parseResponse, resultCount } from './search-core.js'
+import { DEFAULT_ENGINE, createEngineSearchTool, registerSearchCommand } from './search-tool.js'
 
 /**
- * Search for DSH (@lyngmn/dsh-search-free): free web_search providers, the automatic `auto`
- * provider, the `free_search` tool and the `/search <engine> <question>` command.
+ * Search for DSH (@lyngmn/dsh-search): web_search providers with and without keys, the automatic `auto`
+ * provider, the `engine_search` tool and the `/search <engine> <question>` command.
  *
  *   you        You.com (keyless, 100 searches a day; YDC_API_KEY raises it)
  *   parallel   Parallel (keyless MCP with a tight rate limit; PARALLEL_API_KEY uses the REST API)
@@ -22,10 +22,10 @@ import { DEFAULT_ENGINE, createFreeSearchTool, registerSearchCommand } from './s
  * any order. Nothing here selects web.searchProvider. Keys are entered on the
  * bundle's plugin page (client.js) and stored in the DSH credential store.
  */
-export class FreeSearchError extends Error {
+export class SearchError extends Error {
   constructor(message, code, { quota = false } = {}) {
     super(message)
-    this.name = 'FreeSearchError'
+    this.name = 'SearchError'
     this.code = code
     this.quota = quota
   }
@@ -43,18 +43,20 @@ export const Config = z.object({
   providers: z.array(z.string()).default([...PROVIDER_IDS]).description('Engines to register.'),
   autoOrder: z.array(z.string()).default([...DEFAULT_AUTO_ORDER]).volatile()
     .description('Engines the automatic engine uses, in order. Engines left out are not used by auto.'),
-  count: z.number().default(8).description('Results per search.'),
+  counts: z.dict(z.number()).default({}).volatile()
+    .description('Results per engine, set on the plugin page. Clamped to each engine\'s own maximum.'),
+  count: z.number().default(10).description('Results per engine when counts names none.'),
   timeoutMs: z.number().default(20000).description('Time limit per engine, in milliseconds.'),
   bingMarket: z.string().default('ko-KR').description('Bing market and Accept-Language.'),
   safeSearch: z.union(['off', 'moderate', 'strict']).default('moderate'),
   keys: z.dict(z.union([z.string(), z.array(z.string())])).default({}).description('Credential names each engine looks up.')
 })
 
-const USER_AGENT = 'dsh-search-free/1.1.0'
+const USER_AGENT = 'dsh-search/1.1.0'
 /** How long the automatic order skips a provider that hit its quota or rate limit. */
 export const QUOTA_COOLDOWN_MS = 10 * 60 * 1000
 /** Overall time the automatic order may spend before it stops trying more providers. */
-const FREE_BUDGET_MS = 50000
+const AUTO_BUDGET_MS = 50000
 
 export const PROVIDER_TEXT = Object.freeze({
   you: {
@@ -127,6 +129,13 @@ export const PROVIDER_TEXT = Object.freeze({
       ko: 'Bing 검색 결과 페이지를 읽어요. 키와 한도는 없지만, 네트워크에 따라 빈 결과나 사람 확인 페이지가 나올 수 있어요.'
     }
   },
+  korea: {
+    title: 'Korea (Naver + Kakao)',
+    description: {
+      en: 'Searches Naver and Kakao (Daum) together and mixes their results, for Korean pages. Uses the keys and result counts set for each.',
+      ko: '네이버와 카카오(다음)를 함께 검색해 결과를 섞어요. 한국어 페이지를 찾을 때 좋아요. 키와 결과 수는 엔진마다 정한 것을 써요.'
+    }
+  },
   auto: {
     title: 'Auto search',
     description: {
@@ -159,7 +168,7 @@ export function errorDetail(value, keys = []) {
   return detail.length > 200 ? `${detail.slice(0, 200)}…` : detail
 }
 
-export class FreeSearchProvider {
+export class EngineSearchProvider {
   constructor(ctx, id, settings) {
     this.ctx = ctx
     this.id = id
@@ -175,19 +184,19 @@ export class FreeSearchProvider {
   async search(request, signal) {
     const title = this.title
     const query = String(request?.query ?? '').trim()
-    if (query.length === 0) throw new FreeSearchError(`${title} requires a non-empty query`, 'WEB_PROVIDER_ERROR')
-    if (signal?.aborted) throw new FreeSearchError(`${title} search aborted`, 'WEB_ABORTED')
+    if (query.length === 0) throw new SearchError(`${title} requires a non-empty query`, 'WEB_PROVIDER_ERROR')
+    if (signal?.aborted) throw new SearchError(`${title} search aborted`, 'WEB_ABORTED')
 
     const names = this.settings.keyNames[this.id] ?? []
     const keys = await Promise.all(names.map((name) => resolveOptionalKey(this.ctx, name)))
-    if (signal?.aborted) throw new FreeSearchError(`${title} search aborted`, 'WEB_ABORTED')
+    if (signal?.aborted) throw new SearchError(`${title} search aborted`, 'WEB_ABORTED')
     const keyed = keys.length > 0 && keys.every(Boolean)
     if (REQUIRES_KEY.includes(this.id) && !keyed) {
       const missing = names.filter((_, index) => !keys[index]).join(', ')
-      throw new FreeSearchError(`${title} needs ${missing}. Add it on the Search plugin page.`, 'WEB_PROVIDER_CREDENTIAL_MISSING')
+      throw new SearchError(`${title} needs ${missing}. Add it on the Search plugin page.`, 'WEB_PROVIDER_CREDENTIAL_MISSING')
     }
 
-    const count = resultCount(this.settings, request)
+    const count = resultCount(this.settings, this.id)
     const planned = buildRequest(this.id, { query, count, keys: keyed ? keys : [], settings: this.settings })
     // A plain timer (not AbortSignal.timeout) so the wait also holds in a bare Node process.
     const timeout = new AbortController()
@@ -206,9 +215,9 @@ export class FreeSearchProvider {
       }
       body = await response.text()
     } catch (error) {
-      if (signal?.aborted) throw new FreeSearchError(`${title} search aborted`, 'WEB_ABORTED')
-      if (timeout.signal.aborted) throw new FreeSearchError(`${title} did not answer within ${this.settings.timeoutMs / 1000}s`, 'WEB_PROVIDER_ERROR')
-      throw new FreeSearchError(`${title} request failed: ${errorDetail(error?.message ?? error, keys)}`, 'WEB_PROVIDER_ERROR')
+      if (signal?.aborted) throw new SearchError(`${title} search aborted`, 'WEB_ABORTED')
+      if (timeout.signal.aborted) throw new SearchError(`${title} did not answer within ${this.settings.timeoutMs / 1000}s`, 'WEB_PROVIDER_ERROR')
+      throw new SearchError(`${title} request failed: ${errorDetail(error?.message ?? error, keys)}`, 'WEB_PROVIDER_ERROR')
     } finally {
       clearTimeout(timer)
     }
@@ -217,31 +226,31 @@ export class FreeSearchProvider {
       const detail = errorDetail(body, keys)
       const suffix = detail ? `: ${detail}` : ''
       if (keyed && (response.status === 401 || response.status === 403)) {
-        throw new FreeSearchError(`${title} rejected the API key (HTTP ${response.status})${suffix}`, 'WEB_PROVIDER_ERROR')
+        throw new SearchError(`${title} rejected the API key (HTTP ${response.status})${suffix}`, 'WEB_PROVIDER_ERROR')
       }
       if (this.id === 'firecrawl' && !keyed && response.status === 403) {
-        throw new FreeSearchError(`Firecrawl refused the keyless tier from this network (often a VPN or proxy); add FIRECRAWL_API_KEY${suffix}`, 'WEB_PROVIDER_ERROR', { quota: true })
+        throw new SearchError(`Firecrawl refused the keyless tier from this network (often a VPN or proxy); add FIRECRAWL_API_KEY${suffix}`, 'WEB_PROVIDER_ERROR', { quota: true })
       }
       if (response.status === 402 || response.status === 429) {
-        throw new FreeSearchError(`${title} rate limit or quota reached (HTTP ${response.status})${suffix}`, 'WEB_PROVIDER_ERROR', { quota: true })
+        throw new SearchError(`${title} rate limit or quota reached (HTTP ${response.status})${suffix}`, 'WEB_PROVIDER_ERROR', { quota: true })
       }
-      throw new FreeSearchError(`${title} returned HTTP ${response.status}${suffix}`, 'WEB_PROVIDER_ERROR')
+      throw new SearchError(`${title} returned HTTP ${response.status}${suffix}`, 'WEB_PROVIDER_ERROR')
     }
 
     try {
       return parseResponse(this.id, body, { query, count, keyed })
     } catch (error) {
       const message = error instanceof ProviderResponseError ? error.message : `${title} returned an unreadable response`
-      throw new FreeSearchError(errorDetail(message, keys), 'WEB_PROVIDER_ERROR', { quota: error?.kind === 'quota' })
+      throw new SearchError(errorDetail(message, keys), 'WEB_PROVIDER_ERROR', { quota: error?.kind === 'quota' })
     }
   }
 }
 
 /**
- * The automatic provider: runs the free engines in turn for one query.
+ * The automatic provider: runs the engines in the order set on the plugin page for one query.
  * A provider that hit its quota is skipped for QUOTA_COOLDOWN_MS.
  */
-export class FreeAutoProvider {
+export class AutoSearchProvider {
   constructor({ providers, settings, now = () => Date.now(), log }) {
     this.id = DEFAULT_ENGINE
     this.title = PROVIDER_TEXT.auto.title
@@ -264,17 +273,17 @@ export class FreeAutoProvider {
 
   async search(request, signal) {
     const query = String(request?.query ?? '').trim()
-    if (query.length === 0) throw new FreeSearchError('Free search requires a non-empty query', 'WEB_PROVIDER_ERROR')
+    if (query.length === 0) throw new SearchError('Auto search requires a non-empty query', 'WEB_PROVIDER_ERROR')
     const started = this.now()
     const failures = []
     let lastEmpty
     const order = this.orderFor()
     if (order.length === 0 && this.settings.autoOrder().length === 0) {
-      throw new FreeSearchError('Auto search has no engine checked. Tick at least one engine under "Automatic engine order" on the Search plugin page.', 'WEB_PROVIDER_ERROR')
+      throw new SearchError('Auto search has no engine checked. Tick at least one engine under "Automatic engine order" on the Search plugin page.', 'WEB_PROVIDER_ERROR')
     }
     for (const id of order) {
-      if (signal?.aborted) throw new FreeSearchError('Free search aborted', 'WEB_ABORTED')
-      if (this.now() - started > FREE_BUDGET_MS) {
+      if (signal?.aborted) throw new SearchError('Auto search aborted', 'WEB_ABORTED')
+      if (this.now() - started > AUTO_BUDGET_MS) {
         failures.push('time budget used up')
         break
       }
@@ -288,18 +297,79 @@ export class FreeAutoProvider {
         if (signal?.aborted || error?.code === 'WEB_ABORTED') throw error
         if (error?.quota) this.resting.set(id, this.now() + QUOTA_COOLDOWN_MS)
         // A missing key is expected for key-only engines; keep it out of the warning log.
-        if (error?.code !== 'WEB_PROVIDER_CREDENTIAL_MISSING') this.log?.warn?.(`search-free: ${id} failed: ${error?.message ?? error}`)
+        if (error?.code !== 'WEB_PROVIDER_CREDENTIAL_MISSING') this.log?.warn?.(`search: ${id} failed: ${error?.message ?? error}`)
         failures.push(`${id}: ${error?.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' ? 'no key' : error?.message ?? error}`)
       }
     }
     if (lastEmpty !== undefined) return lastEmpty
-    throw new FreeSearchError(`Free search: every engine failed. ${failures.join('; ') || 'no engine is enabled'}`, 'WEB_PROVIDER_ERROR')
+    throw new SearchError(`Auto search: every engine failed. ${failures.join('; ') || 'no engine is enabled'}`, 'WEB_PROVIDER_ERROR')
+  }
+}
+
+/** The engines the `korea` engine combines, in the order their results alternate. */
+export const KOREA_MEMBERS = Object.freeze(['naver', 'kakao'])
+export const KOREA_ENGINE = 'korea'
+
+/**
+ * The combined Korean engine: Naver and Kakao at the same time, results taken
+ * in turn and merged by URL. One member failing (or lacking a key) still
+ * returns the other's results.
+ */
+export class KoreaSearchProvider {
+  constructor({ providers }) {
+    this.id = KOREA_ENGINE
+    this.title = PROVIDER_TEXT.korea.title
+    this.description = PROVIDER_TEXT.korea.description
+    this.members = KOREA_MEMBERS.map((id) => providers.get(id)).filter(Boolean)
+  }
+
+  available() {
+    return this.members.length > 0
+  }
+
+  async search(request, signal) {
+    const query = String(request?.query ?? '').trim()
+    if (query.length === 0) throw new SearchError('Korea search requires a non-empty query', 'WEB_PROVIDER_ERROR')
+    const settled = await Promise.allSettled(this.members.map((provider) => provider.search(request, signal)))
+    if (signal?.aborted || settled.some((r) => r.status === 'rejected' && r.reason?.code === 'WEB_ABORTED')) {
+      throw new SearchError('Korea search aborted', 'WEB_ABORTED')
+    }
+    const answered = []
+    const failures = []
+    settled.forEach((result, index) => {
+      const provider = this.members[index]
+      if (result.status === 'fulfilled') answered.push({ provider, sources: Array.isArray(result.value?.sources) ? result.value.sources : [] })
+      else failures.push({ provider, error: result.reason })
+    })
+    if (answered.length === 0) {
+      const missing = failures.every(({ error }) => error?.code === 'WEB_PROVIDER_CREDENTIAL_MISSING')
+      const detail = failures.map(({ provider, error }) => `${provider.id}: ${error?.message ?? error}`).join('; ')
+      throw new SearchError(`Korea search: both engines failed. ${detail}`, missing ? 'WEB_PROVIDER_CREDENTIAL_MISSING' : 'WEB_PROVIDER_ERROR', {
+        quota: failures.some(({ error }) => error?.quota === true)
+      })
+    }
+    // Take one result from each engine in turn; keep the first copy of a URL.
+    const seen = new Set()
+    const sources = []
+    const longest = Math.max(...answered.map(({ sources: list }) => list.length))
+    for (let index = 0; index < longest; index += 1) {
+      for (const { sources: list } of answered) {
+        const source = list[index]
+        if (source === undefined) continue
+        const key = String(source.url).replace(/\/+$/, '').toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        sources.push(source)
+      }
+    }
+    const names = answered.filter(({ sources: list }) => list.length > 0).map(({ provider }) => provider.title)
+    return { sources, truncated: false, answeredBy: names.length > 0 ? names.join(' + ') : this.title }
   }
 }
 
 function logger(ctx) {
   try {
-    if (typeof ctx.logger === 'function') return ctx.logger('search-free')
+    if (typeof ctx.logger === 'function') return ctx.logger('search')
     if (typeof ctx.logger?.warn === 'function') return ctx.logger
   } catch {
     // Logging is best effort.
@@ -313,22 +383,25 @@ export function apply(ctx, config = {}) {
   // generate a second form for this entry.
   try {
     const host = ctx.get?.('settings')
-    if (typeof host?.configure === 'function') ctx.effect(() => host.configure({ auto: false }), 'search-free: settings page')
+    if (typeof host?.configure === 'function') ctx.effect(() => host.configure({ auto: false }), 'search: settings page')
   } catch {
     // An older Host without page policies shows its generated form; harmless.
   }
   const providers = new Map()
   for (const id of settings.providers) {
-    const provider = new FreeSearchProvider(ctx, id, settings)
+    const provider = new EngineSearchProvider(ctx, id, settings)
     providers.set(id, provider)
     ctx.web.registerSearchProvider(provider)
   }
-  const auto = new FreeAutoProvider({ providers, settings, log: logger(ctx) })
+  const auto = new AutoSearchProvider({ providers, settings, log: logger(ctx) })
   ctx.web.registerSearchProvider(auto)
+  // The combined Korean engine, when at least one of its members is registered.
+  const korea = new KoreaSearchProvider({ providers })
+  if (korea.available()) ctx.web.registerSearchProvider(korea)
 
-  const engines = [DEFAULT_ENGINE, ...settings.providers]
-  const lookup = (engine) => (engine === DEFAULT_ENGINE ? auto : providers.get(engine))
-  ctx.tools?.register?.(createFreeSearchTool({ engines, lookup }))
+  const engines = [DEFAULT_ENGINE, ...(korea.available() ? [KOREA_ENGINE] : []), ...settings.providers]
+  const lookup = (engine) => (engine === DEFAULT_ENGINE ? auto : engine === KOREA_ENGINE ? korea : providers.get(engine))
+  ctx.tools?.register?.(createEngineSearchTool({ engines, lookup }))
   if (ctx.commands !== undefined) {
     const titles = Object.fromEntries(engines.map((engine) => [engine, PROVIDER_TEXT[engine].title]))
     registerSearchCommand(ctx, { engines, titles })

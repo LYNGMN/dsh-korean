@@ -7,7 +7,8 @@ const ENGINES = ['auto', 'you', 'naver', 'kakao', 'bing']
 
 test('parseToolArgs checks the query, the engine and max_results', () => {
   assert.deepEqual(parseToolArgs({ query: ' q ' }, ENGINES), { engine: 'auto', request: { query: 'q' } })
-  assert.deepEqual(parseToolArgs({ query: 'q', engine: 'Naver', max_results: 50 }, ENGINES), { engine: 'naver', request: { query: 'q', maxResults: 20 } })
+  // max_results is accepted but ignored: the plugin page sets the count per engine.
+  assert.deepEqual(parseToolArgs({ query: 'q', engine: 'Naver', max_results: 50 }, ENGINES), { engine: 'naver', request: { query: 'q' } })
   assert.throws(() => parseToolArgs({ query: '', engine: 'google', extra: 1 }, ENGINES), (error) =>
     /"extra" is not a known argument/.test(error.message) && /"query" must be/.test(error.message) && /"engine" must be one of auto, you/.test(error.message))
   assert.throws(() => parseToolArgs(null, ENGINES), /must be an object/)
@@ -20,6 +21,8 @@ test('parseCommandInput reads an engine, an alias, or none', () => {
   assert.deepEqual(parseCommandInput('NAVER 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('네이버 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('다음 서울 날씨', ENGINES), { engine: 'kakao', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('korea 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('한국 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('서울 날씨 알려 줘', ENGINES), { engine: 'auto', question: '서울 날씨 알려 줘' })
   assert.deepEqual(parseCommandInput('naver', ENGINES), { engine: 'naver', question: '' })
   assert.deepEqual(parseCommandInput('   ', ENGINES), { engine: 'auto', question: '' })
@@ -42,7 +45,7 @@ test('the tool searches the chosen engine and names the engine that answered', a
   assert.match(formatToolOutput('X', { sources: [], truncated: false }), /No results found\./)
 })
 
-test('/search steers the agent to free_search with the engine and refuses an empty question', () => {
+test('/search steers the agent to engine_search with the engine and refuses an empty question', () => {
   const commands = []
   apply({ get: () => undefined, web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
   const [search] = commands
@@ -51,9 +54,9 @@ test('/search steers the agent to free_search with the engine and refuses an emp
   const result = search.handler({ rawInput: 'naver 서울 날씨', agent: { steer: (m) => steered.push(m) } })
   assert.equal(result.kind, 'success')
   assert.equal(steered[0].content[0].text, commandPrompt('서울 날씨', 'naver'))
-  assert.match(steered[0].content[0].text, /free_search tool and engine "naver"/)
+  assert.match(steered[0].content[0].text, /engine_search tool and engine "naver"/)
   const empty = search.handler({ rawInput: 'auto', agent: { steer: () => assert.fail('must not steer') } })
   assert.equal(empty.kind, 'error')
-  assert.match(empty.text, /auto, you, parallel/)
+  assert.match(empty.text, /auto, korea, you, parallel/)
   assert.ok(COMMAND_TEXT.ko.hint.includes('<질문>'))
 })
