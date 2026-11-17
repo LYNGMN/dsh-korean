@@ -89,7 +89,7 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 </tr>
 <tr>
 <td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
-<td>Adds several web search engines, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao)</td>
+<td>Adds several web search engines, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page; one search can ask for more with <code>/search naver 30 …</code> or <code>/search korea max …</code>.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao)</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>

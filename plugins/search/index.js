@@ -1,6 +1,6 @@
 import z from '@deepseek-ai/schemastery'
-import { DEFAULT_AUTO_ORDER, PROVIDER_IDS, REQUIRES_KEY, ProviderResponseError, buildRequest, normalizeSettings, parseResponse, resultCount } from './search-core.js'
-import { DEFAULT_ENGINE, createEngineSearchTool, registerSearchCommand } from './search-tool.js'
+import { DEFAULT_AUTO_ORDER, PROVIDER_IDS, REQUIRES_KEY, RESULT_LIMITS, ProviderResponseError, buildRequest, normalizeSettings, parseResponse, resultCount } from './search-core.js'
+import { DEFAULT_ENGINE, createCountGrants, createEngineSearchTool, registerSearchCommand } from './search-tool.js'
 
 /**
  * Search for DSH (@lyngmn/dsh-search): web_search providers with and without keys, the automatic `auto`
@@ -196,7 +196,7 @@ export class EngineSearchProvider {
       throw new SearchError(`${title} needs ${missing}. Add it on the Search plugin page.`, 'WEB_PROVIDER_CREDENTIAL_MISSING')
     }
 
-    const count = resultCount(this.settings, this.id)
+    const count = resultCount(this.settings, this.id, request?.userCount)
     const planned = buildRequest(this.id, { query, count, keys: keyed ? keys : [], settings: this.settings })
     // A plain timer (not AbortSignal.timeout) so the wait also holds in a bare Node process.
     const timeout = new AbortController()
@@ -401,9 +401,11 @@ export function apply(ctx, config = {}) {
 
   const engines = [DEFAULT_ENGINE, ...(korea.available() ? [KOREA_ENGINE] : []), ...settings.providers]
   const lookup = (engine) => (engine === DEFAULT_ENGINE ? auto : engine === KOREA_ENGINE ? korea : providers.get(engine))
-  ctx.tools?.register?.(createEngineSearchTool({ engines, lookup }))
+  // The count a /search command sets for one search; the tool follows only this.
+  const grants = createCountGrants()
+  ctx.tools?.register?.(createEngineSearchTool({ engines, lookup, grants }))
   if (ctx.commands !== undefined) {
     const titles = Object.fromEntries(engines.map((engine) => [engine, PROVIDER_TEXT[engine].title]))
-    registerSearchCommand(ctx, { engines, titles })
+    registerSearchCommand(ctx, { engines, titles, grants, maxFor: (engine) => RESULT_LIMITS[engine]?.max })
   }
 }
