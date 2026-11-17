@@ -11,7 +11,7 @@
 #   engine_search         a tool that searches one engine, or "auto"
 #   exa_search, brave_search
 #                         tools that search Exa or Brave only
-#   /search <engine> [max|count] <question>, /exa …, /brave …
+#   /search <engine> [max|count] <question>, /exa [max|count] <question>, /brave [max|count] <question>
 #                         commands that use that engine for one request
 # It picks "auto" for web_search (Exa, then Brave, then the rest by default).
 # A profile that picks another provider keeps its choice.
@@ -61,3 +61,4 @@
 - id: web
   config:
     searchProvider: auto
+    fetchProvider: http

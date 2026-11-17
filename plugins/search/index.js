@@ -168,8 +168,22 @@ export const PROVIDER_TEXT = Object.freeze({
   korea: {
     title: 'Korea (Naver + Kakao)',
     description: {
-      en: 'Searches Naver and Kakao (Daum) together and mixes their results, for Korean pages. Uses the keys and result counts set for each.',
-      ko: '네이버와 카카오(다음)를 함께 검색해 결과를 섞어요. 한국어 페이지를 찾을 때 좋아요. 키와 결과 수는 엔진마다 정한 것을 써요.'
+      en: 'Searches Naver and Kakao (Daum) together for Korean pages: pages both found come first, then the rest in turn, each marked with the engine that found it. Uses the keys and result counts set for each.',
+      ko: '네이버와 카카오(다음)를 함께 검색해요. 둘 다 찾은 페이지를 먼저, 나머지는 번갈아 보여 주고, 어느 엔진이 찾았는지 표시해요. 키와 결과 수는 엔진마다 정한 것을 써요.'
+    }
+  },
+  'korea-group': {
+    title: 'Korea by engine (Naver, Kakao)',
+    description: {
+      en: 'Searches Naver and Kakao (Daum) together and lists the results engine by engine.',
+      ko: '네이버와 카카오(다음)를 함께 검색해 엔진별로 묶어 보여 줘요.'
+    }
+  },
+  'korea-seq': {
+    title: 'Korea in turn (Naver → Kakao)',
+    description: {
+      en: 'Searches Naver first and Kakao (Daum) only when Naver fails or finds nothing.',
+      ko: '네이버로 먼저 찾고, 실패하거나 결과가 없을 때만 카카오(다음)를 써요.'
     }
   },
   auto: {
@@ -212,6 +226,25 @@ export const LEGACY_ORDERS = Object.freeze({
     }
   })
 })
+
+/**
+ * The web_search provider the profile picks (`web.searchProvider`), read from
+ * the Host settings service (`describe()` lists `{ ns, value }` per section).
+ * undefined: none picked; null: it cannot be read.
+ */
+export function readWebSearchProvider(ctx) {
+  let described
+  try {
+    described = ctx.get?.('settings')?.describe?.()
+  } catch {
+    return null
+  }
+  if (!Array.isArray(described)) return null
+  const web = described.find((entry) => entry?.ns === 'web')
+  if (web === undefined) return null
+  const value = web.value?.searchProvider
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
 
 /** Engines that also get a tool and a command of their own, as before the merge. */
 export const SINGLE_ENGINE_TOOLS = Object.freeze(['exa', 'brave'])
@@ -411,18 +444,30 @@ export class AutoSearchProvider {
 
 /** The engines the `korea` engine combines, in the order their results alternate. */
 export const KOREA_MEMBERS = Object.freeze(['naver', 'kakao'])
-export const KOREA_ENGINE = 'korea'
+/** The Korean engines: merged, grouped by engine, and one engine after the other. */
+export const KOREA_MODES = Object.freeze({ merge: 'korea', group: 'korea-group', sequence: 'korea-seq' })
+
+function urlKey(url) {
+  return String(url).replace(/#.*$/, '').replace(/\/+$/, '').toLowerCase()
+}
 
 /**
- * The combined Korean engine: Naver and Kakao at the same time, results taken
- * in turn and merged by URL. One member failing (or lacking a key) still
- * returns the other's results.
+ * Naver and Kakao at the same time. One member failing (or lacking a key)
+ * still returns the other's results.
+ * - `merge` (`korea`): pages both engines found come first, then the rest in
+ *   turn; each source says which engine found it (`from`).
+ * - `group` (`korea-group`): Naver's results, then Kakao's that Naver did not
+ *   already list, each under its engine (`group`).
+ * `searchDetailed` keeps `from`, `group` and a one-line `summary` for the
+ * engine_search tool; `search` (web_search) folds the engine names into the
+ * snippet, since web_search sources carry only url, title, snippet and date.
  */
 export class KoreaSearchProvider {
-  constructor({ providers }) {
-    this.id = KOREA_ENGINE
-    this.title = PROVIDER_TEXT.korea.title
-    this.description = PROVIDER_TEXT.korea.description
+  constructor({ providers, mode = 'merge' }) {
+    this.mode = mode === 'group' ? 'group' : 'merge'
+    this.id = KOREA_MODES[this.mode]
+    this.title = PROVIDER_TEXT[this.id].title
+    this.description = PROVIDER_TEXT[this.id].description
     this.members = KOREA_MEMBERS.map((id) => providers.get(id)).filter(Boolean)
   }
 
@@ -431,6 +476,15 @@ export class KoreaSearchProvider {
   }
 
   async search(request, signal) {
+    const result = await this.searchDetailed(request, signal)
+    const sources = result.sources.map(({ from, group, ...plain }) => {
+      const label = `[${from.join(' + ')}]`
+      return { ...plain, snippet: plain.snippet ? `${label} ${plain.snippet}` : label }
+    })
+    return { sources, truncated: false, answeredBy: result.answeredBy }
+  }
+
+  async searchDetailed(request, signal) {
     const query = String(request?.query ?? '').trim()
     if (query.length === 0) throw new SearchError('Korea search requires a non-empty query', 'WEB_PROVIDER_ERROR')
     const settled = await Promise.allSettled(this.members.map((provider) => provider.search(request, signal)))
@@ -451,22 +505,57 @@ export class KoreaSearchProvider {
         quota: failures.some(({ error }) => error?.quota === true)
       })
     }
-    // Take one result from each engine in turn; keep the first copy of a URL.
-    const seen = new Set()
-    const sources = []
-    const longest = Math.max(...answered.map(({ sources: list }) => list.length))
-    for (let index = 0; index < longest; index += 1) {
-      for (const { sources: list } of answered) {
-        const source = list[index]
-        if (source === undefined) continue
-        const key = String(source.url).replace(/\/+$/, '').toLowerCase()
-        if (seen.has(key)) continue
-        seen.add(key)
-        sources.push(source)
+
+    // Which engines found each URL.
+    const finders = new Map()
+    for (const { provider, sources } of answered) {
+      for (const source of sources) {
+        const key = urlKey(source.url)
+        const list = finders.get(key) ?? []
+        if (!list.includes(provider.title)) list.push(provider.title)
+        finders.set(key, list)
       }
     }
+    const both = [...finders.values()].filter((list) => list.length > 1).length
+    const seen = new Set()
+    const take = (source, group) => {
+      const key = urlKey(source.url)
+      if (seen.has(key)) return undefined
+      seen.add(key)
+      return { ...source, from: finders.get(key), ...(group ? { group } : {}) }
+    }
+
+    let sources = []
+    if (this.mode === 'group') {
+      for (const { provider, sources: list } of answered) {
+        for (const source of list) {
+          const kept = take(source, provider.title)
+          if (kept) sources.push(kept)
+        }
+      }
+    } else {
+      // One from each engine in turn; pages both found move to the front, in that same order.
+      const longest = Math.max(...answered.map(({ sources: list }) => list.length))
+      const turns = []
+      for (let index = 0; index < longest; index += 1) {
+        for (const { sources: list } of answered) if (list[index] !== undefined) turns.push(list[index])
+      }
+      const shared = turns.filter((source) => finders.get(urlKey(source.url)).length > 1)
+      const single = turns.filter((source) => finders.get(urlKey(source.url)).length === 1)
+      sources = [...shared, ...single].map((source) => take(source)).filter(Boolean)
+    }
+
+    const counts = answered.map(({ provider, sources: list }) => `${provider.title} ${list.length}`)
+    const failed = failures.map(({ provider, error }) => `${provider.title} ${error?.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' ? 'has no key' : 'failed'}`)
+    const summary = [...counts, ...(answered.length > 1 ? [`in both ${both}`] : []), ...failed].join(', ')
     const names = answered.filter(({ sources: list }) => list.length > 0).map(({ provider }) => provider.title)
-    return { sources, truncated: false, answeredBy: names.length > 0 ? names.join(' + ') : this.title }
+    return {
+      sources,
+      truncated: false,
+      answeredBy: names.length > 0 ? names.join(' + ') : this.title,
+      summary,
+      layout: this.mode === 'group' ? 'grouped' : 'merged'
+    }
   }
 }
 
@@ -522,17 +611,42 @@ export function apply(ctx, config = {}) {
   }
   const auto = new AutoSearchProvider({ providers, settings, log })
   registerProvider(auto)
-  // The combined Korean engine, when at least one of its members is registered.
+  // The Korean engines, when at least one member is registered. Only the merged
+  // one is a web_search provider; the grouped and one-after-the-other ones are
+  // for engine_search and /search, so the Web search settings list stays short.
   const korea = new KoreaSearchProvider({ providers })
+  const koreaGroup = new KoreaSearchProvider({ providers, mode: 'group' })
+  const koreaSeq = new AutoSearchProvider({
+    providers, settings, log, id: KOREA_MODES.sequence, title: PROVIDER_TEXT['korea-seq'].title, description: PROVIDER_TEXT['korea-seq'].description, order: KOREA_MEMBERS
+  })
+  const koreaEngines = korea.available() ? { [KOREA_MODES.merge]: korea, [KOREA_MODES.group]: koreaGroup, [KOREA_MODES.sequence]: koreaSeq } : {}
   if (korea.available()) registerProvider(korea)
-  // The earlier Search Fallback order ids, as automatic engines with a fixed order.
-  for (const [id, legacy] of Object.entries(LEGACY_ORDERS)) {
-    if (legacy.order !== null && !legacy.order.some((engine) => providers.has(engine))) continue
-    registerProvider(new AutoSearchProvider({ providers, settings, log, id, title: legacy.title, description: legacy.description, order: legacy.order }))
+  // The earlier Search Fallback order ids, as automatic engines with a fixed
+  // order: only the one web.searchProvider names (all of them when that cannot
+  // be read), so the Web search settings list does not repeat auto three times.
+  const legacyRegistered = new Set()
+  const registerLegacy = (selected) => {
+    for (const [id, legacy] of Object.entries(LEGACY_ORDERS)) {
+      if (legacyRegistered.has(id) || (selected !== null && selected !== id)) continue
+      if (legacy.order !== null && !legacy.order.some((engine) => providers.has(engine))) continue
+      legacyRegistered.add(id)
+      registerProvider(new AutoSearchProvider({ providers, settings, log, id, title: legacy.title, description: legacy.description, order: legacy.order }))
+    }
+  }
+  registerLegacy(readWebSearchProvider(ctx))
+  // A profile that switches to a legacy id later (the settings page cannot list it, but a patch or the CLI can) gets it.
+  try {
+    ctx.on?.('settings/document-updated', (ns) => {
+      if (ns !== 'web') return
+      const selected = readWebSearchProvider(ctx)
+      if (typeof selected === 'string') registerLegacy(selected)
+    })
+  } catch {
+    // An older Host without settings events keeps what was registered at start.
   }
 
-  const engines = [DEFAULT_ENGINE, ...(korea.available() ? [KOREA_ENGINE] : []), ...settings.providers]
-  const lookup = (engine) => (engine === DEFAULT_ENGINE ? auto : engine === KOREA_ENGINE ? korea : providers.get(engine))
+  const engines = [DEFAULT_ENGINE, ...Object.keys(koreaEngines), ...settings.providers]
+  const lookup = (engine) => (engine === DEFAULT_ENGINE ? auto : koreaEngines[engine] ?? providers.get(engine))
   // The count a /search, /exa or /brave command sets for one search; the tools follow only this.
   const grants = createCountGrants()
   registerTool(createEngineSearchTool({ engines, lookup, grants }))

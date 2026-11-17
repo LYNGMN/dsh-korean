@@ -35,7 +35,14 @@ export const ENGINE_ALIASES = Object.freeze({
   한국: 'korea',
   국내: 'korea',
   kr: 'korea',
+  ko: 'korea',
   korean: 'korea',
+  'ko-group': 'korea-group',
+  'kr-group': 'korea-group',
+  '한국묶음': 'korea-group',
+  'ko-seq': 'korea-seq',
+  'kr-seq': 'korea-seq',
+  '한국순서': 'korea-seq',
   free: 'auto',
   무료: 'auto',
   자동: 'auto'
@@ -92,7 +99,9 @@ const SOURCE_SCHEMA = {
     url: { type: 'string' },
     title: { type: 'string' },
     snippet: { type: 'string' },
-    publishedAt: { type: 'string' }
+    publishedAt: { type: 'string' },
+    from: { type: 'array', items: { type: 'string' } },
+    group: { type: 'string' }
   },
   required: ['url']
 }
@@ -133,17 +142,37 @@ function sourceLabel(source) {
   }
 }
 
-/** The model-facing text for one search result, in the same layout as web_search. */
+/** The short name people type for an engine in /search (korea → ko). */
+export function shortEngineName(engine) {
+  return engine === 'korea' || engine.startsWith('korea-') ? `ko${engine.slice('korea'.length)}` : engine
+}
+
+function sourceLine(source) {
+  const meta = []
+  if (Array.isArray(source.from) && source.from.length > 0) meta.push(`[${source.from.join(' + ')}]`)
+  if (source.snippet) meta.push(source.snippet)
+  if (source.publishedAt) meta.push(`(${source.publishedAt})`)
+  return `- [${sourceLabel(source)}](${source.url})${meta.length > 0 ? ` — ${meta.join(' ')}` : ''}`
+}
+
+/**
+ * The model-facing text for one search result, in the same layout as web_search.
+ * A combined engine adds a one-line `summary` and marks each source with the
+ * engines that found it; a grouped one lists the sources under each engine.
+ */
 export function formatToolOutput(engine, value) {
   const parts = [EXTERNAL_NOTICE, `Results from ${engine}.`]
-  if (value.sources.length > 0) {
-    const lines = value.sources.map((source) => {
-      const meta = []
-      if (source.snippet) meta.push(source.snippet)
-      if (source.publishedAt) meta.push(`(${source.publishedAt})`)
-      return `- [${sourceLabel(source)}](${source.url})${meta.length > 0 ? ` — ${meta.join(' ')}` : ''}`
-    })
-    parts.push(`Sources:\n${lines.join('\n')}`)
+  if (typeof value.summary === 'string' && value.summary !== '') parts.push(`Found: ${value.summary}.`)
+  if (value.sources.length > 0 && value.sources.some((source) => typeof source.group === 'string')) {
+    const groups = new Map()
+    for (const source of value.sources) {
+      const name = source.group ?? 'Other'
+      if (!groups.has(name)) groups.set(name, [])
+      groups.get(name).push(sourceLine(source))
+    }
+    for (const [name, lines] of groups) parts.push(`${name} results:\n${lines.join('\n')}`)
+  } else if (value.sources.length > 0) {
+    parts.push(`Sources:\n${value.sources.map(sourceLine).join('\n')}`)
   } else {
     parts.push('No results found.')
   }
@@ -154,8 +183,12 @@ export function formatToolOutput(engine, value) {
 
 function cleanSource(source) {
   const out = { url: source.url }
-  for (const key of ['title', 'snippet', 'publishedAt']) {
+  for (const key of ['title', 'snippet', 'publishedAt', 'group']) {
     if (typeof source[key] === 'string' && source[key] !== '') out[key] = source[key]
+  }
+  if (Array.isArray(source.from)) {
+    const from = source.from.filter((name) => typeof name === 'string' && name !== '')
+    if (from.length > 0) out.from = from
   }
   return out
 }
@@ -169,7 +202,7 @@ export function createEngineSearchTool({ engines, lookup, grants, timeoutMs = 60
     name: TOOL_NAME,
     description:
       'Search the web with the Search plugin engines. engine "auto" (the default) tries them in the order the user set; ' +
-      'engine "korea" searches Naver and Kakao together for Korean pages; any other engine searches that one only. ' +
+      'engine "korea" searches Naver and Kakao together (pages both found first, each marked with its engines), "korea-group" lists them engine by engine, "korea-seq" uses Kakao only when Naver fails or finds nothing; any other engine searches that one only. ' +
       'The user sets how many results each engine returns; pass "count" only when a /search instruction names one. Use it when the user names an engine ' +
       `(for example through the /${COMMAND_NAME} command), or when web_search fails. Returns source URLs with snippets.`,
     parameters: {
@@ -188,7 +221,8 @@ export function createEngineSearchTool({ engines, lookup, grants, timeoutMs = 60
         properties: {
           engine: { type: 'string' },
           sources: { type: 'array', items: SOURCE_SCHEMA },
-          truncated: { type: 'boolean' }
+          truncated: { type: 'boolean' },
+          summary: { type: 'string' }
         },
         required: ['engine', 'sources', 'truncated']
       },
@@ -201,10 +235,15 @@ export function createEngineSearchTool({ engines, lookup, grants, timeoutMs = 60
       const provider = lookup(engine)
       if (provider === undefined) throw new Error(`engine "${engine}" is not available`)
       const userCount = grants?.allow(engine, count)
-      const result = await provider.search(userCount === undefined ? request : { ...request, userCount }, exec?.signal)
+      const wanted = userCount === undefined ? request : { ...request, userCount }
+      // A combined engine keeps which engine found each source for this tool.
+      const result = typeof provider.searchDetailed === 'function'
+        ? await provider.searchDetailed(wanted, exec?.signal)
+        : await provider.search(wanted, exec?.signal)
       const sources = Array.isArray(result?.sources) ? result.sources.filter((s) => typeof s?.url === 'string').map(cleanSource) : []
       const answeredBy = typeof result?.answeredBy === 'string' ? result.answeredBy : provider.title
-      return { engine: answeredBy, sources, truncated: result?.truncated === true }
+      const summary = typeof result?.summary === 'string' && result.summary !== '' ? { summary: result.summary } : {}
+      return { engine: answeredBy, sources, truncated: result?.truncated === true, ...summary }
     }
   }
 }
@@ -243,8 +282,8 @@ export function commandPrompt(question, engine, count) {
 /** User-facing text of the slash command, by DSH language. */
 export const COMMAND_TEXT = Object.freeze({
   en: {
-    description: 'Search the web with a chosen engine for this request only (/search auto, /search naver 30 …)',
-    hint: '<auto|korea|naver|kakao|you|…> [max|count] <question>',
+    description: 'Search the web with a chosen engine for this request only (/search auto, /search naver 30)',
+    hint: '<engine> [max|count] <question>',
     usage: 'Usage: /search <engine> [max|count] <question>. Engines: {engines}. A question that starts with a number 1–100 needs a count in front: /search naver 10 3 idiots.',
     failed: '/search failed: {message}',
     searching: 'Searching with {engine}.',
@@ -256,8 +295,8 @@ export const COMMAND_TEXT = Object.freeze({
     singleFailed: '/{command} failed: {message}'
   },
   ko: {
-    description: '이번 요청만 고른 엔진으로 웹검색해요(/search auto, /search naver 30 …)',
-    hint: '<auto|korea|naver|kakao|you|…> [max|개수] <질문>',
+    description: '이번 요청만 고른 엔진으로 웹검색해요(/search auto, /search naver 30)',
+    hint: '<엔진> [max|개수] <질문>',
     usage: '사용법: /search <엔진> [max|개수] <질문>. 엔진: {engines}. 1~100 숫자로 시작하는 질문은 앞에 개수를 하나 더 써요: /search naver 10 3 idiots',
     failed: '/search 실패: {message}',
     searching: '{engine}로 검색해요.',
@@ -292,7 +331,7 @@ export function registerSearchCommand(ctx, { engines, titles, grants, maxFor = (
     input: { hint: t('hint', undefined, locale) },
     handler: (invocation) => {
       const { engine, count, question } = parseCommandInput(invocation?.rawInput, engines)
-      if (question === '') return { kind: 'error', text: t('usage', { engines: engines.join(', ') }) }
+      if (question === '') return { kind: 'error', text: t('usage', { engines: engines.map(shortEngineName).join(', ') }) }
       try {
         invocation.agent.steer(Object.freeze({
           role: 'user',

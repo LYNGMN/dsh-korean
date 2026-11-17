@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { Config, AutoSearchProvider, KoreaSearchProvider, LEGACY_ORDERS, QUOTA_COOLDOWN_MS, apply, errorDetail, readKeyFile } from '../index.js'
+import { Config, AutoSearchProvider, KoreaSearchProvider, KOREA_MODES, LEGACY_ORDERS, QUOTA_COOLDOWN_MS, apply, errorDetail, readKeyFile, readWebSearchProvider } from '../index.js'
 import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -65,7 +65,7 @@ test('apply registers every engine, the automatic and the Korean one, the legacy
     assert.ok(p.description.en)
   }
   assert.deepEqual(tools.map((tool) => tool.name), ['engine_search', 'exa_search', 'brave_search'])
-  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', 'korea', ...PROVIDER_IDS])
+  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', 'korea', 'korea-group', 'korea-seq', ...PROVIDER_IDS])
   assert.equal(tools[1].parameters.properties.engine, undefined)
   assert.deepEqual(commands.map((command) => command.name), ['search', 'exa', 'brave'])
 })
@@ -116,7 +116,7 @@ test('the automatic order is a volatile setting: no language priority, read agai
 
 test('the bundle patch picks the automatic engine for web_search and names every key', async () => {
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  assert.match(patch, /^- id: web\n  config:\n    searchProvider: auto$/m)
+  assert.match(patch, /^- id: web\n  config:\n    searchProvider: auto\n    fetchProvider: http$/m)
   for (const names of Object.values(SETTINGS.keyNames)) for (const name of names) assert.match(patch, new RegExp(name))
 })
 
@@ -424,7 +424,9 @@ test('korea searches Naver and Kakao together, alternating results and merging U
   ])
   const korea = new KoreaSearchProvider({ providers })
   const result = await korea.search({ query: '서울' })
-  assert.deepEqual(result.sources.map((s) => s.url), ['https://a.kr', 'https://x.kr', 'https://b.kr/', 'https://c.kr'])
+  // A page both engines found comes first; the rest alternate, one from each engine.
+  assert.deepEqual(result.sources.map((s) => s.url), ['https://b.kr/', 'https://a.kr', 'https://x.kr', 'https://c.kr'])
+  assert.deepEqual(result.sources.map((s) => s.snippet), ['[NAVER + KAKAO]', '[NAVER]', '[KAKAO]', '[NAVER]'])
   assert.equal(result.answeredBy, 'NAVER + KAKAO')
   assert.equal(providers.get('naver').calls, 1)
   assert.equal(providers.get('kakao').calls, 1)
@@ -442,6 +444,76 @@ test('korea searches Naver and Kakao together, alternating results and merging U
     ['kakao', fake('kakao', fails('kakao needs a key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))]
   ]) })
   await assert.rejects(none.search({ query: 'q' }), (error) => error.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' && /naver needs a key; kakao: kakao needs a key/.test(error.message))
+})
+
+test('korea modes: the detailed answer marks finders and counts, korea-group lists by engine, korea-seq goes in turn', async () => {
+  const two = (urls) => () => ({ sources: urls.map((url) => ({ url, snippet: 's' })), truncated: false })
+  const map = () => new Map([
+    ['naver', fake('naver', two(['https://a.kr', 'https://b.kr/', 'https://c.kr']))],
+    ['kakao', fake('kakao', two(['https://x.kr', 'https://B.kr']))]
+  ])
+  const merged = await new KoreaSearchProvider({ providers: map() }).searchDetailed({ query: '서울' })
+  assert.equal(merged.layout, 'merged')
+  assert.equal(merged.summary, 'NAVER 3, KAKAO 2, in both 1')
+  assert.deepEqual(merged.sources[0].from, ['NAVER', 'KAKAO'])
+  assert.equal(merged.sources[0].snippet, 's')
+
+  const grouped = await new KoreaSearchProvider({ providers: map(), mode: 'group' }).searchDetailed({ query: '서울' })
+  assert.equal(grouped.layout, 'grouped')
+  assert.deepEqual(grouped.sources.map((s) => [s.group, s.url]), [
+    ['NAVER', 'https://a.kr'], ['NAVER', 'https://b.kr/'], ['NAVER', 'https://c.kr'], ['KAKAO', 'https://x.kr']
+  ])
+  assert.equal(new KoreaSearchProvider({ providers: map(), mode: 'group' }).id, KOREA_MODES.group)
+
+  // One engine without a key: the summary says so.
+  const half = new KoreaSearchProvider({ providers: new Map([
+    ['naver', fake('naver', fails('no key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))],
+    ['kakao', fake('kakao', two(['https://x.kr']))]
+  ]) })
+  assert.equal((await half.searchDetailed({ query: 'q' })).summary, 'KAKAO 1, NAVER has no key')
+
+  // korea-seq is an automatic engine over Naver then Kakao: Kakao only when Naver finds nothing.
+  const { tools, providers } = register()
+  assert.ok(!providers.some((p) => p.id === 'korea-group' || p.id === 'korea-seq'), 'only korea is a web_search provider')
+  assert.ok(tools[0].parameters.properties.engine.enum.includes('korea-seq'))
+  const seqMap = new Map([['naver', fake('naver', nothing)], ['kakao', fake('kakao', found('https://k.kr'))]])
+  const seq = new AutoSearchProvider({ providers: seqMap, settings: normalizeSettings({}), now: () => 0, id: KOREA_MODES.sequence, order: ['naver', 'kakao'] })
+  const answer = await seq.search({ query: 'q' })
+  assert.deepEqual(answer.sources.map((s) => s.url), ['https://k.kr'])
+  assert.equal(seqMap.get('naver').calls, 1)
+})
+
+test('the legacy order names follow web.searchProvider: only the picked one, or all when it cannot be read', () => {
+  const describe = (value) => ({ get: (name) => (name === 'settings' ? { describe: () => [{ ns: 'search', value: {} }, { ns: 'web', value }] } : undefined) })
+  assert.equal(readWebSearchProvider(describe({ searchProvider: 'exa-brave' })), 'exa-brave')
+  assert.equal(readWebSearchProvider(describe({})), undefined)
+  assert.equal(readWebSearchProvider({ get: () => undefined }), null)
+  assert.equal(readWebSearchProvider({ get: () => { throw new Error('not ready') } }), null)
+
+  const ids = (value) => {
+    const found = []
+    const listeners = []
+    const onUpdate = (...args) => listeners.forEach((listener) => listener(...args))
+    apply({
+      ...describe(value),
+      on: (name, listener) => { if (name === 'settings/document-updated') listeners.push(listener) },
+      web: { registerSearchProvider: (p) => found.push(p.id) },
+      tools: { register() {} },
+      commands: { register() {} }
+    }, {})
+    return { found, onUpdate }
+  }
+  const picked = ids({ searchProvider: 'brave-exa' })
+  assert.deepEqual(picked.found.filter((id) => id in LEGACY_ORDERS), ['brave-exa'])
+  const plain = ids({ searchProvider: 'auto' })
+  assert.deepEqual(plain.found.filter((id) => id in LEGACY_ORDERS), [])
+  // Switching later (a patch or the CLI) registers the one now picked.
+  const later = { searchProvider: 'auto' }
+  const live = ids(later)
+  later.searchProvider = 'exa-brave'
+  live.onUpdate('web', 2)
+  live.onUpdate('web', 3)
+  assert.deepEqual(live.found.filter((id) => id in LEGACY_ORDERS), ['exa-brave'])
 })
 
 test('korea is registered as a provider and an engine of the tool, but not part of auto', () => {

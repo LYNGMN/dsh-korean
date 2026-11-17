@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply } from '../index.js'
-import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseSingleInput, parseToolArgs } from '../search-tool.js'
+import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseSingleInput, parseToolArgs, shortEngineName } from '../search-tool.js'
 
 const ENGINES = ['auto', 'you', 'naver', 'kakao', 'bing']
 
@@ -57,7 +57,7 @@ test('/search steers the agent to engine_search with the engine and refuses an e
   assert.match(steered[0].content[0].text, /engine_search tool, engine "naver", instead/)
   const empty = search.handler({ rawInput: 'auto', agent: { steer: () => assert.fail('must not steer') } })
   assert.equal(empty.kind, 'error')
-  assert.match(empty.text, /auto, korea, exa, brave, you, parallel/)
+  assert.match(empty.text, /auto, ko, ko-group, ko-seq, exa, brave, you, parallel/)
   assert.ok(COMMAND_TEXT.ko.hint.includes('<질문>'))
 })
 
@@ -170,4 +170,27 @@ test('/brave and brave_search keep their names and follow a count the user set',
   await tool.execute({ query: 'q', count: '5' }, {})
   await tool.execute({ query: 'q', engine: 'exa' }, {})
   assert.deepEqual(counts, ['20', '10', '10'], 'the granted count (held to 20), then the page setting; engine cannot be switched')
+})
+
+test('ko is short for korea, and the Korean modes show their finders and groups to the model', () => {
+  const engines = ['auto', 'korea', 'korea-group', 'korea-seq', 'naver']
+  assert.equal(parseCommandInput('ko 서울 날씨', engines).engine, 'korea')
+  assert.equal(parseCommandInput('ko-group 30 서울 날씨', engines).engine, 'korea-group')
+  assert.equal(parseCommandInput('ko-group 30 서울 날씨', engines).count, 30)
+  assert.equal(parseCommandInput('ko-seq max 서울', engines).engine, 'korea-seq')
+  assert.equal(parseCommandInput('korea-seq 서울', engines).engine, 'korea-seq')
+  assert.deepEqual(['korea', 'korea-group', 'korea-seq', 'naver'].map(shortEngineName), ['ko', 'ko-group', 'ko-seq', 'naver'])
+
+  const merged = formatToolOutput('NAVER + KAKAO', {
+    sources: [{ url: 'https://b.kr', title: 'B', from: ['NAVER', 'KAKAO'], snippet: 's' }, { url: 'https://a.kr', from: ['NAVER'] }],
+    truncated: false,
+    summary: 'NAVER 2, KAKAO 1, in both 1'
+  })
+  assert.match(merged, /Found: NAVER 2, KAKAO 1, in both 1\./)
+  assert.match(merged, /- \[B\]\(https:\/\/b\.kr\) — \[NAVER \+ KAKAO\] s/)
+  const grouped = formatToolOutput('NAVER + KAKAO', {
+    sources: [{ url: 'https://a.kr', group: 'NAVER', from: ['NAVER'] }, { url: 'https://x.kr', group: 'KAKAO', from: ['KAKAO'] }],
+    truncated: false
+  })
+  assert.match(grouped, /NAVER results:\n- .*a\.kr.*\n\nKAKAO results:\n- .*x\.kr/)
 })
