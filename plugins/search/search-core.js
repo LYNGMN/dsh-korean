@@ -6,11 +6,13 @@
  * (https://github.com/DDDMUC/dsh-free-search, MIT, lib/engines/*.js) and the
  * services' own API documents (Naver Search API webkr, Kakao Daum search
  * v2/search/web), and checked against the live services on 2026-11-17 where no
- * key was needed; the code here is new.
+ * key was needed; the code here is new. The Exa and Brave requests come from the
+ * kit's own earlier @lyngmn/dsh-search-exa and @lyngmn/dsh-search-brave bundles,
+ * merged into this one on 2026-11-18.
  */
 
 /** Provider ids. */
-export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
+export const PROVIDER_IDS = Object.freeze(['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
 
 /**
  * The default order of the automatic "auto" provider, the same for every
@@ -19,10 +21,19 @@ export const PROVIDER_IDS = Object.freeze(['you', 'parallel', 'keenable', 'tavil
  */
 export const DEFAULT_AUTO_ORDER = PROVIDER_IDS
 
+/**
+ * The engines of 1.1, before Exa and Brave joined. A saved order without
+ * `autoKnown` was saved against this list, so an engine missing from both is
+ * new to that user rather than unchecked.
+ */
+export const LEGACY_KNOWN_ENGINES = Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing'])
+
 /** Providers that return nothing without a key; they fail fast instead of calling out. */
-export const REQUIRES_KEY = Object.freeze(['tinyfish', 'jina', 'naver', 'kakao'])
+export const REQUIRES_KEY = Object.freeze(['exa', 'brave', 'tinyfish', 'jina', 'naver', 'kakao'])
 
 export const ENDPOINTS = Object.freeze({
+  exa: 'https://api.exa.ai/search',
+  brave: 'https://api.search.brave.com/res/v1/web/search',
   tavily: 'https://api.tavily.com/search',
   youFree: 'https://api.you.com/v1/agents/search',
   youKeyed: 'https://ydc-index.io/v1/search',
@@ -42,11 +53,22 @@ export const ENDPOINTS = Object.freeze({
 })
 
 /**
+ * Key files read after the credential store and the launch environment, for
+ * keys saved the way the earlier Exa and Brave bundles documented (chmod 600).
+ */
+export const DEFAULT_KEY_FILES = Object.freeze({
+  exa: '~/.dsh/exa-api-key',
+  brave: '~/.dsh/brave-api-key'
+})
+
+/**
  * Credential names each provider looks up. Naver needs two (client id and
  * secret); every other provider needs one. A missing optional key means the
  * keyless tier.
  */
 export const DEFAULT_KEY_NAMES = Object.freeze({
+  exa: Object.freeze(['EXA_API_KEY']),
+  brave: Object.freeze(['BRAVE_API_KEY']),
   you: Object.freeze(['YDC_API_KEY']),
   parallel: Object.freeze(['PARALLEL_API_KEY']),
   keenable: Object.freeze(['KEENABLE_API_KEY']),
@@ -67,7 +89,9 @@ export const DEFAULT_KEY_NAMES = Object.freeze({
  * - `param: false`: the API takes no count, so the results are cut after they
  *   arrive and `max` is what it returns at most. `keylessParam: false` is the
  *   same for the keyless tier only.
- * Sources: Naver HUB webkr `display` 1–100; Kakao web `size` 1–50; You.com
+ * Sources: Exa `numResults` 1–100 (the base price covers 10, each further
+ * result is billed; checked 2026-11-18); Brave `count` up to 20 (2026-11-18);
+ * Naver HUB webkr `display` 1–100; Kakao web `size` 1–50; You.com
  * `count` 1–100 (keyless agents/search answers 402 above 50, probed); Parallel
  * `advanced_settings.max_results` up to 20 (keyless MCP has no count and
  * returns 10); Keenable `max_results` 1–50; Tavily `max_results` 0–20;
@@ -75,6 +99,8 @@ export const DEFAULT_KEY_NAMES = Object.freeze({
  * 1–100; Bing's results page ignores `count` and shows 10.
  */
 export const RESULT_LIMITS = Object.freeze({
+  exa: Object.freeze({ max: 100, param: true }),
+  brave: Object.freeze({ max: 20, param: true }),
   you: Object.freeze({ max: 100, keylessMax: 50, param: true }),
   parallel: Object.freeze({ max: 20, keylessMax: 10, param: true, keylessParam: false }),
   keenable: Object.freeze({ max: 50, param: true }),
@@ -91,6 +117,8 @@ export const RESULT_LIMITS = Object.freeze({
 export const DEFAULT_COUNT = 10
 const DEFAULT_TIMEOUT_MS = 20000
 const SNIPPET_CHARS = 300
+const EXA_SNIPPET_CHARS = 400
+const EXA_TYPES = Object.freeze(['auto', 'fast', 'neural', 'keyword', 'deep'])
 
 function text(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
@@ -112,9 +140,12 @@ export function normalizeSettings(config = {}) {
   }
   // `autoOrder` is a live setting: under DSH it is a volatile reference read on
   // every search, so a change on the plugin page applies to the next search.
-  const autoOrder = () => normalizeOrder(readVolatile(config.autoOrder), providers)
+  const autoOrder = () => normalizeOrder(readVolatile(config.autoOrder), providers, readVolatile(config.autoKnown))
   // `counts` is live as well: results per engine, set on the plugin page.
   const countFor = (id) => clampCount(id, readVolatile(config.counts)?.[id] ?? count)
+  const keyFiles = {}
+  for (const [id, file] of Object.entries(DEFAULT_KEY_FILES)) keyFiles[id] = text(config.keyFiles?.[id]) ?? file
+  const rawChars = Number(config.exa?.snippetChars)
   return {
     count,
     countFor,
@@ -122,7 +153,17 @@ export function normalizeSettings(config = {}) {
     providers,
     keyNames,
     autoOrder,
+    keyFiles,
     bingMarket: text(config.bingMarket),
+    brave: {
+      country: text(config.brave?.country),
+      searchLang: text(config.brave?.searchLang),
+      uiLang: text(config.brave?.uiLang)
+    },
+    exa: {
+      type: EXA_TYPES.includes(config.exa?.type) ? config.exa.type : 'auto',
+      snippetChars: Number.isInteger(rawChars) && rawChars > 0 ? Math.min(rawChars, 2000) : EXA_SNIPPET_CHARS
+    },
     safeSearch: ['off', 'moderate', 'strict'].includes(config.safeSearch) ? config.safeSearch : 'moderate'
   }
 }
@@ -175,6 +216,23 @@ export function buildRequest(id, { query, count: wanted, keys = [], settings }) 
   const bounded = clampCount(id, wanted)
   const count = apiKey === '' && keylessMax !== undefined ? Math.min(bounded, keylessMax) : bounded
   switch (id) {
+    case 'exa':
+      return jsonPost(
+        ENDPOINTS.exa,
+        { query, numResults: count, type: settings.exa.type, contents: { highlights: { maxCharacters: settings.exa.snippetChars } } },
+        { 'x-api-key': apiKey }
+      )
+    case 'brave': {
+      const url = new URL(ENDPOINTS.brave)
+      url.searchParams.set('q', query)
+      url.searchParams.set('count', String(count))
+      url.searchParams.set('text_decorations', 'false')
+      url.searchParams.set('safesearch', settings.safeSearch)
+      if (settings.brave.country) url.searchParams.set('country', settings.brave.country)
+      if (settings.brave.searchLang) url.searchParams.set('search_lang', settings.brave.searchLang)
+      if (settings.brave.uiLang) url.searchParams.set('ui_lang', settings.brave.uiLang)
+      return { url: url.toString(), init: { method: 'GET', headers: { accept: 'application/json', 'accept-encoding': 'gzip', 'x-subscription-token': apiKey } } }
+    }
     case 'tavily':
       return jsonPost(
         ENDPOINTS.tavily,
@@ -259,10 +317,28 @@ export function readVolatile(value) {
 /**
  * The engines the automatic provider uses, in order: known, registered and
  * listed once. An absent list means the default order; an empty one means none.
+ * `known` lists the engines that existed when the order was saved (absent or
+ * empty: LEGACY_KNOWN_ENGINES); an engine added since then joins the saved
+ * order at its default place, so a new engine is not taken as unchecked.
  */
-export function normalizeOrder(raw, providers = PROVIDER_IDS) {
-  const wanted = Array.isArray(raw) ? raw.map((id) => String(id).trim()) : DEFAULT_AUTO_ORDER
+export function normalizeOrder(raw, providers = PROVIDER_IDS, known) {
+  const wanted = Array.isArray(raw) ? withNewEngines(raw.map((id) => String(id).trim()), known) : DEFAULT_AUTO_ORDER
   return [...new Set(wanted)].filter((id) => providers.includes(id))
+}
+
+/** Put engines that are not in `known` into `order` at their place in the default order. */
+export function withNewEngines(order, known) {
+  // An empty order is a choice to use no engine; a new one does not change it.
+  if (order.length === 0) return []
+  const seen = new Set(Array.isArray(known) && known.length > 0 ? known.map((id) => String(id).trim()) : LEGACY_KNOWN_ENGINES)
+  const result = [...order]
+  for (const [index, id] of DEFAULT_AUTO_ORDER.entries()) {
+    if (seen.has(id) || result.includes(id)) continue
+    // Before the first engine that follows it in the default order, else last.
+    const next = DEFAULT_AUTO_ORDER.slice(index + 1).find((other) => result.includes(other))
+    result.splice(next === undefined ? result.length : result.indexOf(next), 0, id)
+  }
+  return result
 }
 
 /** A response that arrived but carries the service's own error. */
@@ -278,11 +354,21 @@ export class ProviderResponseError extends Error {
  * Parse a provider's response body into DSH search sources.
  * @param {string} id
  * @param {string} body raw response text
- * @param {{ query: string, count: number, keyed: boolean }} options
+ * @param {{ query: string, count: number, keyed: boolean, snippetChars?: number }} options
  */
-export function parseResponse(id, body, { query, count, keyed }) {
+export function parseResponse(id, body, { query, count, keyed, snippetChars = EXA_SNIPPET_CHARS }) {
   let sources
   switch (id) {
+    case 'exa':
+      sources = (parseJson(body)?.results ?? []).map((r) => {
+        const highlights = Array.isArray(r?.highlights) ? r.highlights.filter((h) => typeof h === 'string' && h.trim() !== '') : []
+        const snippet = highlights.length > 0 ? highlights.join(' … ') : r?.summary ?? r?.text
+        return source(r?.url, r?.title, snippet, r?.publishedDate, snippetChars)
+      })
+      break
+    case 'brave':
+      sources = (parseJson(body)?.web?.results ?? []).map((r) => source(r?.url, r?.title, r?.description, r?.page_age))
+      break
     case 'tavily':
       sources = (parseJson(body)?.results ?? []).map((r) => source(r?.url, r?.title, r?.content))
       break
@@ -440,12 +526,12 @@ export function decodeBingUrl(href) {
   }
 }
 
-function source(url, title, snippet, publishedAt) {
+function source(url, title, snippet, publishedAt, snippetChars = SNIPPET_CHARS) {
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return undefined
   const result = { url }
   const cleanTitle = typeof title === 'string' ? cleanText(title) : ''
   if (cleanTitle) result.title = cleanTitle
-  const cleanSnippet = typeof snippet === 'string' ? clip(cleanText(snippet), SNIPPET_CHARS) : ''
+  const cleanSnippet = typeof snippet === 'string' ? clip(cleanText(snippet), snippetChars) : ''
   if (cleanSnippet) result.snippet = cleanSnippet
   if (typeof publishedAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(publishedAt)) result.publishedAt = publishedAt
   return result

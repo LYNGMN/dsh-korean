@@ -13,7 +13,7 @@ async function loadClient() {
   return { id: loaded.id, module: loaded.factory((name) => ({ react: React })[name]) }
 }
 
-const DEFAULT = ['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
+const DEFAULT = ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
 
 function fakeCtx({ configured = {}, withCommandUi = true, autoOrder } = {}) {
   const calls = { decorations: [], drafts: [], focus: 0, slots: [] }
@@ -73,9 +73,10 @@ test('a bare /search opens an engine picker: auto first, then the engines in the
   assert.deepEqual({ ...decoration.ui.searchLabels() }, { placeholder: '엔진 찾기', empty: '엔진이 없어요', noResults: '맞는 엔진이 없어요' })
 
   const options = [...await decoration.ui.options({ sessionId: 's1' }, new AbortController().signal)]
-  assert.deepEqual(options.map((o) => o.id), ['auto', 'korea', 'bing', 'kakao', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
+  // Saved before Exa and Brave existed (no autoKnown), so they join at their default place.
+  assert.deepEqual(options.map((o) => o.id), ['auto', 'korea', 'bing', 'kakao', 'exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver'])
   assert.equal(options[0].active, true)
-  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'auto', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
+  assert.deepEqual(options.map((o) => o.group.name), ['auto', 'auto', 'used', 'used', 'used', 'used', 'used', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused', 'unused'])
   assert.equal(options[2].group.label, '자동에 쓰는 순서')
   // No Naver or Kakao key is set here, so the Korean engine says so.
   assert.equal(options[1].detail, '🇰🇷 네이버나 카카오 키가 필요해요')

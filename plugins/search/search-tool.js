@@ -9,8 +9,9 @@ import { createText, registerLocalized } from './host-locale.js'
  * `/search auto …`) and lets the agent retry on a chosen engine when
  * `web_search` fails.
  *
- * Adapted from search-brave/search-tool.js (one tool per engine) to one tool
- * with an `engine` argument. The file is copied on purpose: a bundle must not
+ * Adapted from the earlier Brave bundle's search-tool.js (one tool per engine)
+ * to one tool with an `engine` argument; `exa_search` and `brave_search` keep
+ * the one-engine form. The file is copied on purpose: a bundle must not
  * depend on another bundle, and linked profile packages cannot import the
  * installation's @deepseek-ai/dsh-tools, so the tool object is written in the
  * raw shape `ctx.tools.register` accepts (JSON Schema subset, output.render).
@@ -249,7 +250,10 @@ export const COMMAND_TEXT = Object.freeze({
     searching: 'Searching with {engine}.',
     searchingCount: 'Searching with {engine}, up to {count} results.',
     searchingMax: 'Searching with {engine}, as many results as each engine allows.',
-    searchingCapped: 'Searching with {engine}, at most {count} results (its maximum).'
+    searchingCapped: 'Searching with {engine}, at most {count} results (its maximum).',
+    singleHint: '[max|count] <question>',
+    singleUsage: 'Usage: /{command} [max|count] <question>',
+    singleFailed: '/{command} failed: {message}'
   },
   ko: {
     description: '이번 요청만 고른 엔진으로 웹검색해요(/search auto, /search naver 30 …)',
@@ -259,7 +263,10 @@ export const COMMAND_TEXT = Object.freeze({
     searching: '{engine}로 검색해요.',
     searchingCount: '{engine}로 {count}개까지 검색해요.',
     searchingMax: '{engine}로 엔진마다 최대 개수로 검색해요.',
-    searchingCapped: '{engine}로 최대 {count}개 검색해요.'
+    searchingCapped: '{engine}로 최대 {count}개 검색해요.',
+    singleHint: '[max|개수] <질문>',
+    singleUsage: '사용법: /{command} [max|개수] <질문>',
+    singleFailed: '/{command} 실패: {message}'
   }
 })
 
@@ -300,4 +307,84 @@ export function registerSearchCommand(ctx, { engines, titles, grants, maxFor = (
       return { kind: 'success', text: startText(t, titles[engine] ?? engine, count, maxFor(engine)) }
     }
   }))
+}
+
+/**
+ * A tool that searches one engine only, such as `brave_search` and
+ * `exa_search`, which the earlier Brave and Exa bundles registered. Same
+ * arguments as engine_search without `engine`.
+ * @param {{ toolName: string, engine: string, title: string, provider: { title: string, search: Function }, grants?: ReturnType<typeof createCountGrants>, timeoutMs?: number }} options
+ */
+export function createSingleEngineTool({ toolName, engine, title, provider, grants, timeoutMs }) {
+  const base = createEngineSearchTool({ engines: [engine], lookup: () => provider, grants, timeoutMs })
+  const { engine: _engine, ...properties } = base.parameters.properties
+  const command = toolName.replace(/_search$/, '')
+  return {
+    ...base,
+    name: toolName,
+    description:
+      `Search the web with ${title} only. Use it when the user asks for ${title} (for example through the /${command} command), ` +
+      `or when web_search fails and this engine may still answer. The user sets how many results it returns; pass "count" only when a /${command} instruction names one. ` +
+      'Returns source URLs with snippets.',
+    parameters: { ...base.parameters, properties },
+    execute: (args, exec) => base.execute(args !== null && typeof args === 'object' && !Array.isArray(args) ? { ...args, engine } : args, exec)
+  }
+}
+
+/** Split `/<engine command>` input into an optional count and a question. */
+export function parseSingleInput(raw) {
+  const text = String(raw ?? '').trim()
+  const first = splitWord(text)
+  const count = first === undefined ? undefined : parseCount(first.word)
+  return count === undefined ? { question: text } : { count, question: first.rest }
+}
+
+/** The steering text `/brave` and `/exa` hand to the agent. */
+export function singlePrompt(question, toolName, count) {
+  const countPart = count === undefined ? '' : ` and count "${count}"`
+  return `${question}\n\n(Search instruction for this request: do the web searches with the ${toolName} tool${countPart}, instead of web_search. You may still use web_fetch to read a result.)`
+}
+
+function localized(value, locale) {
+  if (typeof value === 'string') return value
+  return value?.[locale] ?? value?.en ?? ''
+}
+
+/**
+ * Register `/<command> [max|count] <question>` for one engine (`/brave`, `/exa`).
+ * A registration the Host refuses (the name is already taken, say by an older
+ * bundle still installed) goes to `onError` instead of failing the whole bundle.
+ * @param {{ commandName: string, toolName: string, engine: string, title: string, description: string | { en: string, ko?: string },
+ *   grants?: ReturnType<typeof createCountGrants>, max?: number, onError?: (error: unknown) => void }} options
+ */
+export function registerSingleEngineCommand(ctx, { commandName, toolName, engine, title, description, grants, max, onError }) {
+  const t = createText(ctx, COMMAND_TEXT)
+  return registerLocalized(ctx, (locale) => {
+    try {
+      return ctx.commands.register({
+        name: commandName,
+        description: localized(description, locale),
+        input: { hint: t('singleHint', undefined, locale) },
+        handler: (invocation) => {
+          const { count, question } = parseSingleInput(invocation?.rawInput)
+          if (question === '') return { kind: 'error', text: t('singleUsage', { command: commandName }) }
+          try {
+            invocation.agent.steer(Object.freeze({
+              role: 'user',
+              id: randomUUID(),
+              content: Object.freeze([Object.freeze({ type: 'text', text: singlePrompt(question, toolName, count) })]),
+              source: Object.freeze({ kind: 'user' })
+            }))
+          } catch (error) {
+            return { kind: 'error', text: t('singleFailed', { command: commandName, message: error instanceof Error ? error.message : String(error) }) }
+          }
+          grants?.set(engine, count)
+          return { kind: 'success', text: startText(t, title, count, max) }
+        }
+      })
+    } catch (error) {
+      onError?.(error)
+      return undefined
+    }
+  })
 }

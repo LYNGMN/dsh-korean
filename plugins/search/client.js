@@ -39,6 +39,8 @@ window.__ModuleLoader__.load({
     /** Dictionary keys of the card's engine list, one line each. */
     const ENGINE_LIST_KEYS = ['engineKeyless', 'engineKeyed', 'engineCombined']
     const ENGINES = [
+      { id: 'exa', costNote: true, country: 'US', name: 'Exa', note: true, mode: 'required', results: { max: 100, param: true }, refs: ['EXA_API_KEY'], keyLink: 'https://dashboard.exa.ai/api-keys', priceLink: 'https://exa.ai/pricing' },
+      { id: 'brave', country: 'US', name: 'Brave', note: true, mode: 'required', results: { max: 20, param: true }, refs: ['BRAVE_API_KEY'], keyLink: 'https://api-dashboard.search.brave.com/register', priceLink: 'https://brave.com/search/api/' },
       { id: 'you', country: 'US', name: 'You.com', mode: 'optional', results: { max: 100, keylessMax: 50, param: true }, refs: ['YDC_API_KEY'], keyLink: 'https://you.com/platform', priceLink: 'https://you.com/plans' },
       { id: 'parallel', costNote: true, country: 'US', name: 'Parallel', mode: 'optional', results: { max: 20, keylessMax: 10, param: true, keylessParam: false }, refs: ['PARALLEL_API_KEY'], keyLink: 'https://platform.parallel.ai/', priceLink: 'https://parallel.ai/pricing' },
       { id: 'keenable', country: 'US', name: 'Keenable', mode: 'optional', results: { max: 50, param: true }, refs: ['KEENABLE_API_KEY'], keyLink: 'https://app.keenable.ai/console', priceLink: 'https://keenable.ai/pricing' },
@@ -62,7 +64,7 @@ window.__ModuleLoader__.load({
       title: 'Search',
       summary: 'Engine order and keys. A key raises the limit, and some engines need one.',
       engineKeyless: 'Engines without a key: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing',
-      engineKeyed: 'Engines that need a key: Naver, Kakao (Daum), TinyFish, Jina',
+      engineKeyed: 'Engines that need a key: Exa, Brave, Naver, Kakao (Daum), TinyFish, Jina',
       engineCombined: 'Combined: Korea (Naver + Kakao, /search korea)',
       commandCount: 'Set the number of results for one search in the command: a number such as /search naver 30 …, or the maximum with /search korea max ….',
       description: 'Choose which engines the automatic engine uses and in what order, and add an API key per engine. Leave a key empty to search without one on a small quota; a key raises the limit. Engines that need a sign-up are skipped by the automatic engine until you add a key. Keys are stored in the DSH credential store, never shown again, and apply from the next search.',
@@ -101,6 +103,10 @@ window.__ModuleLoader__.load({
       pricing: 'Pricing and limits',
       'free.naver': 'Not available',
       'keyed.naver': '25,000 a day (all Naver search APIs together)',
+      'free.exa': 'Not available',
+      'keyed.exa': '$10 in credits a month (about 1,400 searches)',
+      'free.brave': 'Not available',
+      'keyed.brave': '$5 in credits a month (about 1,000 searches)',
       'free.kakao': 'Not available',
       'keyed.kakao': '30,000 web searches a day',
       'free.you': '100 a day',
@@ -128,6 +134,8 @@ window.__ModuleLoader__.load({
       'briefFree.tavily': 'a little',
       'briefFree.firecrawl': 'a little',
       'briefKeyed.naver': '25,000/day',
+      'briefKeyed.exa': '~1,400/month',
+      'briefKeyed.brave': '~1,000/month',
       'briefKeyed.kakao': '30,000/day',
       'briefKeyed.you': '~20,000 in 60 days',
       'briefKeyed.parallel': '~5,000/month',
@@ -137,6 +145,8 @@ window.__ModuleLoader__.load({
       'briefKeyed.jina': '~1,000 on sign-up',
       'briefKeyed.firecrawl': '500/month',
       'note.naver': 'New keys come from NAVER API HUB (NAVER Cloud) since 2026-07-31.',
+      'note.exa': 'A key saved in ~/.dsh/exa-api-key also works.',
+      'note.brave': 'A key saved in ~/.dsh/brave-api-key also works.',
       'note.firecrawl': 'Without a key it may be refused behind a VPN or proxy.',
       'note.kakao': 'In Kakao Developers, open your app → Platform keys and copy the "REST API key". The admin, JavaScript and native app keys do not work here.',
       'country.KR': 'Korea',
@@ -180,6 +190,7 @@ window.__ModuleLoader__.load({
       countKeyless: 'up to {n} without a key',
       countKeylessFixed: 'fixed at {n} without a key',
       'countCost.parallel': 'With a key, more than 10 results add $1 per 1,000 searches.',
+      'countCost.exa': 'Up to 10 results are in the base price; each further result costs $1 per 1,000.',
       'countCost.jina': 'Each search uses tokens (from 10,000).',
       'countCost.firecrawl': 'Every 10 results use 2 credits.',
       countRange: 'Enter a whole number from 1 to {max}.',
@@ -195,7 +206,7 @@ window.__ModuleLoader__.load({
       title: '검색',
       summary: '엔진 순서와 키예요. 키를 넣으면 한도가 늘고, 일부 엔진은 키가 있어야 써요.',
       engineKeyless: '키 없이 쓰는 엔진: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing',
-      engineKeyed: '키가 있어야 쓰는 엔진: 네이버·카카오(다음)·TinyFish·Jina',
+      engineKeyed: '키가 있어야 쓰는 엔진: Exa·Brave·네이버·카카오(다음)·TinyFish·Jina',
       engineCombined: '묶음 엔진: 한국(네이버+카카오, /search korea)',
       commandCount: '이번 검색만 결과 수를 바꾸려면 명령에 적어요. /search naver 30 …처럼 개수를, /search korea max …처럼 최대를 쓸 수 있어요.',
       description: '자동 엔진이 어떤 엔진을 어떤 순서로 쓸지 고르고, 엔진마다 API 키를 넣을 수 있어요. 키를 비워 두면 키 없이 적은 한도로 검색하고, 키를 넣으면 한도가 늘어요. 가입해야 쓰는 엔진은 키를 넣기 전까지 자동 엔진이 건너뛰어요. 키는 DSH 자격 증명 저장소에 보관되고 다시 표시되지 않으며, 다음 검색부터 적용돼요.',
@@ -234,6 +245,10 @@ window.__ModuleLoader__.load({
       pricing: '요금·한도',
       'free.naver': '쓸 수 없어요',
       'keyed.naver': '하루 25,000회(네이버 검색 API 합산)',
+      'free.exa': '쓸 수 없어요',
+      'keyed.exa': '매달 10달러 크레딧(검색 약 1,400회)',
+      'free.brave': '쓸 수 없어요',
+      'keyed.brave': '매달 5달러 크레딧(검색 약 1,000회)',
       'free.kakao': '쓸 수 없어요',
       'keyed.kakao': '웹문서 검색 하루 30,000회',
       'free.you': '하루 100회',
@@ -261,6 +276,8 @@ window.__ModuleLoader__.load({
       'briefFree.tavily': '소량',
       'briefFree.firecrawl': '소량',
       'briefKeyed.naver': '하루 2.5만 회',
+      'briefKeyed.exa': '월 약 1,400회',
+      'briefKeyed.brave': '월 약 1천 회',
       'briefKeyed.kakao': '하루 3만 회',
       'briefKeyed.you': '60일 약 2만 회',
       'briefKeyed.parallel': '월 약 5천 회',
@@ -270,6 +287,8 @@ window.__ModuleLoader__.load({
       'briefKeyed.jina': '가입 때 약 1천 회',
       'briefKeyed.firecrawl': '월 500회',
       'note.naver': '2026-07-31부터 새 키는 NAVER API HUB(네이버 클라우드)에서 받아요.',
+      'note.exa': '~/.dsh/exa-api-key 파일에 넣은 키도 읽어요.',
+      'note.brave': '~/.dsh/brave-api-key 파일에 넣은 키도 읽어요.',
       'note.firecrawl': '키 없이 쓰면 VPN·프록시에서 막힐 수 있어요.',
       'note.kakao': '카카오 디벨로퍼스에서 앱 → 플랫폼 키 페이지의 "REST API 키"를 복사해 넣어요. 어드민 키·JavaScript 키·네이티브 앱 키는 쓰지 않아요.',
       'country.KR': '한국',
@@ -313,6 +332,7 @@ window.__ModuleLoader__.load({
       countKeyless: '키 없이는 최대 {n}개',
       countKeylessFixed: '키 없이는 {n}개로 정해져 있어요',
       'countCost.parallel': '키를 넣고 10개를 넘기면 1,000번 검색마다 $1이 더 붙어요.',
+      'countCost.exa': '10개까지는 기본 요금이고, 넘는 결과는 1천 개당 1달러가 더 붙어요.',
       'countCost.jina': '검색마다 토큰을 써요(1만 토큰부터).',
       'countCost.firecrawl': '결과 10개마다 2크레딧을 써요.',
       countRange: '1부터 {max}까지 정수로 넣어 주세요.',
@@ -461,10 +481,28 @@ window.__ModuleLoader__.load({
       return fill(t('brief.optional'), { free: t(`briefFree.${engine.id}`), keyed })
     }
 
-    /** Known engine ids, each once, in the given order. */
-    function cleanOrder(raw) {
+    /**
+     * The engines of 1.1, before Exa and Brave joined; the same list as
+     * LEGACY_KNOWN_ENGINES in search-core.js.
+     */
+    const LEGACY_KNOWN = ['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
+
+    /**
+     * Known engine ids, each once, in the given order. Engines that did not
+     * exist when the order was saved (`known`) join it at their default place,
+     * the same way the server reads it (normalizeOrder in search-core.js).
+     */
+    function cleanOrder(raw, known) {
       if (!Array.isArray(raw)) return DEFAULT_ORDER.slice()
-      return [...new Set(raw.map((id) => String(id).trim()))].filter((id) => ENGINE_BY_ID.has(id))
+      const order = [...new Set(raw.map((id) => String(id).trim()))].filter((id) => ENGINE_BY_ID.has(id))
+      if (raw.length === 0) return order
+      const seen = new Set(Array.isArray(known) && known.length > 0 ? known.map((id) => String(id).trim()) : LEGACY_KNOWN)
+      for (const [index, id] of DEFAULT_ORDER.entries()) {
+        if (seen.has(id) || order.includes(id)) continue
+        const next = DEFAULT_ORDER.slice(index + 1).find((other) => order.includes(other))
+        order.splice(next === undefined ? order.length : order.indexOf(next), 0, id)
+      }
+      return order
     }
 
     /** Per-engine result counts as saved: whole numbers of 1 or more, known engines only. */
@@ -500,7 +538,7 @@ window.__ModuleLoader__.load({
         ns: String(own.ns),
         revision: own.revision,
         writable: response.value?.writable !== false,
-        order: cleanOrder(own.value.autoOrder),
+        order: cleanOrder(own.value.autoOrder, own.value.autoKnown),
         counts: cleanCounts(own.value.counts)
       }
     }
@@ -847,7 +885,8 @@ window.__ModuleLoader__.load({
         setBusy(true)
         setMessage(null)
         try {
-          await store.write(() => ({ autoOrder: next }))
+          // `autoKnown` records which engines existed, so a later one is not read as unchecked.
+          await store.write(() => ({ autoOrder: next, autoKnown: DEFAULT_ORDER.slice() }))
           setMessage({ tone: 'success', text: announce ? `${announce} ${t('orderSaved')}` : t('orderSaved') })
         } catch (error) {
           const detail = typeof error?.message === 'string' ? error.message.trim() : ''
