@@ -94,10 +94,12 @@ test('사실이 오면 단계 줄·지금 단계 설명·다음 할 일·지금 
   const todos = [{ content: 'npm test 돌리기', status: 'completed' }, { content: 'PR 열기', status: 'in_progress' }]
   const out = text(render(slots['conversation.view'], mod, FACTS, todos))
   assert.match(out, /공유 단계 · 3\/6 · 승인 필요/)
-  assert.match(out, /4단계 공유\(푸시·PR\) 자세히/)
+  // 지금 단계를 고른 동안에는 지금 카드가 설명이라 아래 설명 칸을 또 그리지 않는다.
+  assert.doesNotMatch(out, /자세히/)
+  assert.match(out, /4\. 공유\(푸시·PR\)\s+승인 필요\s+GitHub에 올리고\(푸시\)/)
   assert.match(out, /4\s+공유\s+승인 필요/)
   assert.match(out, /승인하면 GitHub에 올리고/)
-  assert.match(out, /지금 하는 일\s+PR 열기/)
+  assert.match(out, /하는 일\s+PR 열기/)
   assert.match(out, /app · claude\/feat\/x/)
   const chip = text(slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos }))
   assert.match(chip, /작업 단계 공유 단계 · 3\/6 · 승인 필요/)
@@ -189,12 +191,43 @@ test('지금 단계의 요청 문장을 입력창에 넣기만 하고, 보내지
   const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
   const props = { sessionId: 's1', useSession: s => s({ running: false }), useProjection: key => (key === 'todos' ? todos : undefined), inputActions }
   const tree = slots['conversation.view'].Component(props)
-  assert.match(text(tree), /이렇게 요청해 보세요\s+푸시하고 검토 요청\(PR\)을 초안으로 열어 주세요\./)
+  assert.match(text(tree), /이렇게 요청해 보세요\s+테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청\(PR\)을 초안으로 열어 주세요\./)
   const button = find(tree, node => node.type === 'button' && node.children.join('') === '입력창에 넣기')
   button.props.onClick()
-  assert.deepEqual(calls, ['capture', ['insert', '푸시하고 검토 요청(PR)을 초안으로 열어 주세요.', 1]])
+  assert.deepEqual(calls, ['capture', ['insert', '테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.', 1]])
 
   // 입력창 기능을 받지 못한 화면에는 단추가 없다.
   const bare = slots['conversation.view'].Component({ ...props, inputActions: undefined })
   assert.equal(find(bare, node => node.type === 'button' && node.children.join('') === '입력창에 넣기'), null)
+})
+
+test('지금 카드가 맨 위에 상태·다음·요청을 한 번만 보이고, 칩은 승인 차례를 글자 배지로 알린다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
+  const tree = render(slots['conversation.view'], mod, FACTS, todos)
+  const now = find(tree, node => node.props?.className === 'dgs-now')
+  assert.equal(now.props['data-tone'], 'approval')
+  assert.match(text(now), /지금\s+4\. 공유\(푸시·PR\)\s+승인 필요/)
+  assert.match(text(now), /올라가는 것\s+저장 2개/)
+  const out = text(tree)
+  assert.equal(out.match(/승인하면 GitHub에 올리고/g).length, 1, '다음 할 일은 지금 카드에만')
+  assert.match(out, /에 읽음 · 10초마다 새로 읽음 · 보기 전용/)
+  assert.ok(find(tree, node => node.type === 'button' && node.children.join('') === '지금 다시 읽기'))
+
+  const chip = slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos })
+  assert.equal(find(chip, node => node.props?.className === 'dgs-chip-badge').children.join(''), '승인')
+})
+
+test('에이전트가 일하는 중이면 배지를 달고, 검증 단계에서는 끝나기를 기다리라고 말한다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const tree = slots['conversation.view'].Component({ sessionId: 's1', useSession: s => s({ running: true }), useProjection: key => (key === 'todos' ? [] : undefined) })
+  const now = text(find(tree, node => node.props?.className === 'dgs-now'))
+  assert.match(now, /3\. 검증\s+에이전트 작업 중/)
+  assert.match(now, /다음\s+에이전트가 일하는 중이에요\. 기다렸다가, 끝나면 테스트·빌드를 요청해요\./)
 })

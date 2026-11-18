@@ -4,6 +4,8 @@
 const OUTPUT_LIMIT = 4_000
 const INPUT_LIMIT = 2_000
 const DIFF_TEXT_LIMIT = 20_000
+/** Ceiling of the on-demand "show all" read; a result longer than this is cut again and says so. */
+export const FULL_OUTPUT_LIMIT = 1_000_000
 
 /** Host bookkeeping a phone never shows. */
 const SILENT = new Set([
@@ -51,6 +53,17 @@ function capDiff(d) {
     oldText: d.oldText === null || d.oldText === undefined ? null : d.oldText.slice(0, DIFF_TEXT_LIMIT),
     newText: typeof d.newText === 'string' ? d.newText.slice(0, DIFF_TEXT_LIMIT) : '',
   }
+}
+
+/**
+ * The whole text of one tool result (up to FULL_OUTPUT_LIMIT), for the phone's "show all" button.
+ * @param {{type?: string, data?: any}} event
+ * @returns {{output: string, truncated: boolean} | null} null when the event is not a tool result
+ */
+export function fullOutputOf(event) {
+  if (event?.type !== 'tool/result') return null
+  const out = cap(textParts(event.data?.message?.content), FULL_OUTPUT_LIMIT)
+  return { output: out.text, truncated: out.truncated }
 }
 
 /**
@@ -221,16 +234,36 @@ export function workStateOf(projections) {
 }
 
 const SHELL_TOOLS = new Set(['bash', 'pwsh'])
+const EDIT_TOOLS = new Set(['edit', 'write'])
+// DSH's shell tool appends "[exit code: N]" to the result text when N is not 0.
+const EXIT_TAG = /exit code: (\d+)\]\s*$/
+
+function resultText(content) {
+  if (typeof content === 'string') return content
+  return Array.isArray(content) ? content.map((part) => (typeof part?.text === 'string' ? part.text : '')).join('\n') : ''
+}
+
+/** Whether a shell result succeeded: no error flag and no non-zero exit tag. Null when unknown. */
+export function resultOkOf(data) {
+  const message = data?.message ?? data
+  if (message?.isError === true) return false
+  const text = resultText(message?.content ?? data?.content ?? data?.output)
+  const tag = EXIT_TAG.exec(text)
+  if (tag) return tag[1] === '0'
+  return message?.isError === false || text !== '' ? true : null
+}
 
 /**
  * Shell commands a session ran and the folder each ran in (DSH puts the resolved folder in the
  * tool result's meta.cwd), oldest first. terminal_open counts as moving into its cwd.
+ * ok says whether the result succeeded (null for background runs or no result), at is when it came back.
  * @param {Array<{event?: object}>} records session/events records
- * @returns {Array<{command: string, cwd: string|null}>}
+ * @returns {Array<{command: string, cwd: string|null, ok: boolean|null, at: number|null}>}
  */
 export function commandsOf(records) {
   const list = []
   const byCall = new Map()
+  const background = new Set()
   for (const record of Array.isArray(records) ? records : []) {
     const event = record?.event
     const data = event?.data ?? {}
@@ -238,17 +271,36 @@ export function commandsOf(records) {
       const args = parseArgs(data.arguments)
       const id = data.callId ?? data.subCallId
       if (SHELL_TOOLS.has(data.name) && typeof args.command === 'string') {
-        const item = { command: args.command, cwd: null }
+        const item = { command: args.command, cwd: null, ok: null, at: null }
         list.push(item)
         if (id) byCall.set(id, item)
+        if (id && args.run_in_background === true) background.add(id)
       } else if (data.name === 'terminal_open' && typeof args.cwd === 'string') {
-        list.push({ command: `cd ${JSON.stringify(args.cwd)}`, cwd: null })
+        list.push({ command: `cd ${JSON.stringify(args.cwd)}`, cwd: null, ok: null, at: null })
       }
     } else if (event?.type === 'tool/result' || event?.type === 'tool/ptc-dispatch') {
       const id = data.message?.toolCallId ?? data.subCallId
-      const cwd = data.meta?.cwd
-      if (id && typeof cwd === 'string' && byCall.has(id)) byCall.get(id).cwd = cwd
+      const item = id ? byCall.get(id) : undefined
+      if (item === undefined) continue
+      if (typeof data.meta?.cwd === 'string') item.cwd = data.meta.cwd
+      if (background.has(id)) continue
+      item.ok = resultOkOf(data)
+      item.at = typeof event.time === 'number' ? event.time : null
     }
+  }
+  return list
+}
+
+/** Files the agent changed (edit, write tools) and when, to tell whether tests ran after the last edit. */
+export function editsOf(records) {
+  const list = []
+  for (const record of Array.isArray(records) ? records : []) {
+    const event = record?.event
+    const data = event?.data ?? {}
+    if (event?.type !== 'tool/call' || !EDIT_TOOLS.has(data.name)) continue
+    const args = parseArgs(data.arguments)
+    const path = args.file_path ?? args.path
+    if (typeof path === 'string') list.push({ path, at: typeof event.time === 'number' ? event.time : null })
   }
   return list
 }

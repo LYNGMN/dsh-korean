@@ -1,0 +1,65 @@
+// 화면 글자는 한곳에 모은다. 나중에 언어를 늘릴 때 이 파일만 고치면 된다.
+export const TEXT = {
+  menu: '작업공간 이동',
+  deleteMenu: '세션 삭제',
+  deleteTitle: '세션 삭제',
+  deleteDesc: title => `‘${title}’ 세션을 삭제할까요?`,
+  deleteWarn: '기록이 휴지통으로 이동하고 목록에서 사라져요. 세션 보관과 달리 되돌리기 버튼은 없어요. 지금 열려 있는 세션이라면 목록에서는 바로 숨기고, 열려 있는 화면은 앱을 다시 켤 때 사라져요.',
+  deleteAction: '삭제',
+  deleting: '삭제하는 중…',
+  deletedDone: '세션을 삭제했어요. 기록은 휴지통으로 옮겼어요.',
+  title: '작업공간 이동',
+  desc: title => (title === '' ? '옮길 작업공간을 골라 주세요.' : `‘${title}’ 대화를 옮길 작업공간을 골라 주세요.`),
+  unnamed: '이름 없는 대화',
+  currentNone: '지금은 어느 작업공간에도 속해 있지 않아요.',
+  current: name => `지금 작업공간: ${name}`,
+  loading: '확인하는 중…',
+  empty: '옮길 다른 작업공간이 없어요. 먼저 작업공간을 하나 더 만들어 주세요.',
+  noteDirectory: '작업 폴더를 바꾼 기록이 있는 대화는 옮긴 뒤 작업 폴더도 대상 작업공간으로 맞춰요.',
+  move: '옮기기',
+  queueNote: '이 대화는 이번 실행에서 한 번 열려서, DSH가 앱이 끝날 때까지 기록 파일을 잡고 있어요. 지금 쓰고 있지 않아도 마찬가지예요. “다시 켜고 그대로 이동”을 누르면 앱을 껐다 켤 때 같은 세션 id로 자동으로 옮겨집니다.',
+  queueAction: '다시 켜고 그대로 이동',
+  queuedDone: workspace => `‘${workspace}’ 작업공간으로 이동을 예약했어요.`,
+  queuedTarget: workspace => `옮길 작업공간: ${workspace}`,
+  queuedHint: 'DeepSeek Harness를 ⌘Q로 완전히 끈 뒤 다시 열면 자동으로 옮겨집니다. 세션 id와 기록은 그대로, 원본은 남지 않아요.',
+  cancelQueued: '예약 취소',
+  cancelledQueued: '이동 예약을 취소했어요.',
+  resultDesc: '요청한 이동의 결과예요.',
+  moveNote: '이 대화는 그대로 이동해요. 세션 id와 기록이 유지되고 원본 로그는 지워져요.',
+  moving: '옮기는 중…',
+  cancel: '취소',
+  close: '닫기',
+  confirm: '확인',
+  undo: '되돌리기',
+  undoing: '되돌리는 중…',
+  done: workspace => `‘${workspace}’ 작업공간에 옮겼어요.`,
+  undone: workspace => `‘${workspace}’ 작업공간에 되돌렸어요.`,
+  doneHint: '대화 기록과 제목은 그대로예요.',
+  openMoved: '옮긴 대화 열기',
+  staleHost: '앱 화면만 새 코드이고 앱 서버는 예전 코드예요. DeepSeek Harness를 ⌘Q로 완전히 끈 뒤 다시 열어 주세요.',
+  errorCode: code => `오류 코드: ${code}`,
+  failedTitle: '옮기지 못했어요',
+  retry: '다시 시도',
+  targetLabel: '옮길 작업공간',
+}
+
+const ERRORS = {
+  'session-open': '이 대화는 열려 있어요. … 메뉴에서 “다시 켜고 그대로 이동”을 골라 주세요.',
+  'session-subagent': '하위 에이전트 대화는 옮길 수 없어요.',
+  'same-workspace': '이미 그 작업공간에 있어요.',
+  'workspace-not-found': '그 작업공간을 찾지 못했어요. 앱을 다시 시작한 뒤 시도해 주세요.',
+  'workspace-missing-dir': '대상 작업공간의 폴더가 없어요. 폴더를 확인해 주세요.',
+  'too-large': '대화 기록이 너무 커서 옮길 수 없어요.',
+  'recovery-required': '이전 이동이 끝나지 않았어요. 앱을 다시 시작한 뒤 시도해 주세요.',
+  'storage-failed': '대화 기록을 옮기지 못했어요. 원래 상태로 되돌렸어요.',
+  'registry-failed': '대화는 옮겼지만 목록을 갱신하지 못했어요. 앱을 다시 시작해 주세요.',
+  'bad-request': '요청을 처리하지 못했어요.',
+  unauthorized: '이 창에서 옮길 권한을 확인하지 못했어요. 앱을 새로 고친 뒤 시도해 주세요.',
+  network: '앱과 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+}
+
+export function errorText(error) {
+  const code = error && typeof error === 'object' ? error.code : undefined
+  if (typeof code === 'string' && Object.hasOwn(ERRORS, code)) return ERRORS[code]
+  return '옮기지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+}

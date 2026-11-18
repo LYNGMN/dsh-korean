@@ -1,6 +1,6 @@
 {
   "name": "dsh-korean-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "한국어 DeepSeek Harness 키트: 한국어 언어팩과 LYNGMN이 만든 DSH 플러그인 모음",
   "author": "LYNGMN",
@@ -12,7 +12,8 @@
   "scripts": {
     "test": "node --test test/*.test.mjs && npm test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run check --workspace plugins/korean"
+    "check": "npm run check --workspace plugins/korean",
+    "sync": "node scripts/sync-copies.mjs"
   },
   "engines": {
     "node": ">=22.15"

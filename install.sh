@@ -85,9 +85,22 @@ fi
 INSTALLED="$(installed_names)"
 has() { printf '%s\n' "$INSTALLED" | grep -qxF "$1"; }
 
+# 폴더 이름을 바꾸거나 합친 플러그인의 예전 폴더 이름들(공백으로 나눔).
+# search-free는 무료만이 아니라서 search로 바꿈. search-brave·search-exa·search-fallback은
+# 2026-11-18 search로 합침(그 전 이름은 brave-search·exa-search).
+previous_folders() {
+  case "$1" in
+    search) echo search-free search-brave search-exa search-fallback brave-search exa-search ;;
+  esac
+}
+
 if [ "$MODE" = remove ]; then
   TARGETS=()
   for name in "${NAMES[@]}"; do has "$name" && TARGETS+=("$name"); done
+  # 합치기 전 이름으로 남은 같은 플러그인도 함께 뺀다(예: search-brave).
+  for folder in "${FOLDERS[@]}"; do
+    for previous in $(previous_folders "$folder"); do has "@lyngmn/dsh-$previous" && TARGETS+=("@lyngmn/dsh-$previous"); done
+  done
   if [ ${#TARGETS[@]} -eq 0 ]; then
     echo "프로필 '$PROFILE'에 키트 플러그인이 없어요."
     exit 0
@@ -131,25 +144,18 @@ if [ -n "${MISSING// /}" ]; then
   fi
 fi
 
-# 폴더 이름을 바꾼 플러그인의 바꾸기 전 폴더 이름(DSH 목록이 패키지 이름 순이라 검색 플러그인을 search-로 모음).
-previous_folder() {
-  case "$1" in
-    search-brave) echo brave-search ;;
-    search-exa) echo exa-search ;;
-  esac
-}
-
-# 같은 플러그인의 다른 이름: @local/<폴더>, dsh-<폴더>, 바꾸기 전 폴더의 세 이름
+# 같은 플러그인의 다른 이름: @local/<폴더>, dsh-<폴더>, 예전 폴더마다 세 이름
 OLD=()
 for folder in "${FOLDERS[@]}"; do
   candidates=("@local/$folder" "dsh-$folder")
-  previous="$(previous_folder "$folder")"
-  if [ -n "$previous" ]; then candidates+=("@lyngmn/dsh-$previous" "@local/$previous" "dsh-$previous"); fi
+  for previous in $(previous_folders "$folder"); do
+    candidates+=("@lyngmn/dsh-$previous" "@local/$previous" "dsh-$previous")
+  done
   for old in "${candidates[@]}"; do has "$old" && OLD+=("$old"); done
 done
 if [ ${#OLD[@]} -gt 0 ]; then
   echo "다른 이름으로 깔린 같은 플러그인이 있어요: ${OLD[*]}"
-  echo "그대로 두면 새 이름과 겹쳐요. 설정과 키는 남아요."
+  echo "그대로 두면 새 이름과 겹쳐요. 키는 그대로 남지만, 예전 항목의 설정은 새 플러그인으로 옮겨지지 않아요."
   if ask "그 플러그인을 먼저 뺄까요?"; then
     run remove "${OLD[@]}"
   else

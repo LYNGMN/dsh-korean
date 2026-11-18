@@ -3,7 +3,7 @@
 window.__ModuleLoader__.load({
   id: '@lyngmn/dsh-korean',
   factory(require) {
-    const PACK = {"version":"1.0.0","appVersion":"0.2.2-rc.2"}
+    const PACK = {"version":"1.0.1","appVersion":"0.2.2-rc.2"}
     const LANGUAGE = { id: 'ko', label: '한국어', fallback: 'en' }
     const DICTIONARIES = {
       "account.notifications": {

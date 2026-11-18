@@ -4,7 +4,7 @@
 
 # Korean DeepSeek Harness Kit
 
-**DeepSeek Harness in Korean, and on your phone.**<br>14 plugins, including a Korean language pack, installed with one command.
+**DeepSeek Harness in Korean, and on your phone.**<br>13 plugins, including a Korean language pack, installed with one command.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,73 +30,83 @@
 
 </div>
 
-A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 14 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
+A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 13 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
 
 Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plugins screen, where you can turn it on or off.
 
 ## Plugins
 
 <table>
-<thead><tr><th width="220">Name</th><th align="left">What it does</th></tr></thead>
+<thead><tr><th width="72">Icon</th><th align="left" width="220">Name</th><th align="left">What it does</th></tr></thead>
 <tbody>
 <tr>
-<td align="center"><img src="plugins/korean/icon.svg" width="40" height="40" alt=""><br><strong>Korean language pack</strong></td>
+<td align="center"><img src="plugins/korean/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Korean language pack</strong></td>
 <td>Translates DSH into Korean and adds font pickers for body text, code and the terminal.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""><br><strong>Phone workspace</strong></td>
+<td align="center"><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Phone workspace</strong></td>
 <td>Follow sessions and send messages from an app on your phone. Approval requests arrive as notifications, and you allow or deny each one yourself.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""><br><strong>Subagent tree</strong></td>
+<td align="center"><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Move conversation to workspace</strong></td>
+<td>Moves a conversation to another workspace or deletes an unneeded one from the sidebar. Moves keep the title, history and session id; deletes send the record to the Trash.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Subagent tree</strong></td>
 <td>Nests subagents under their parent session in the sidebar.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""><br><strong>Enter key setting</strong></td>
-<td>Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing.</td>
+<td align="center"><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Plan view</strong></td>
+<td>Adds a Plan tab to the conversation views that keeps the agent's todo list and submitted plans on one screen. A stopped plan resumes with one button.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""><br><strong>Plan view</strong></td>
-<td>Adds a Plan tab to the conversation views that keeps the agent's todo list and submitted plans on one screen.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""><br><strong>Work stages</strong></td>
+<td align="center"><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Work stages</strong></td>
 <td>Adds a Work stages tab to the conversation views that shows where the session's Git work stands, from branch to deploy, and what needs your approval next.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""><br><strong>Code Map</strong></td>
-<td>Shows relevant code locations and change-impact candidates in a conversation tab next to Work stages. Requires the Codebase Memory executable. <a href="plugins/code-map/README.md">Setup</a></td>
+<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Code Map</strong></td>
+<td>Shows relevant code locations and change-impact candidates in a conversation tab next to Work stages, and says which parts the map could not read. Requires the Codebase Memory executable. <a href="plugins/code-map/README.md">Setup</a></td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>Footnote preview</strong></td>
-<td>Shows a footnote's text when you hover over its number.</td>
+<td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Search</strong></td>
+<td>Adds web search engines, Exa, Brave, Naver and Kakao among them, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page.<br>To change a single search, write <code>/search naver 30 서울 날씨</code> or <code>/search exa max 서울 날씨</code>.<br>No key needed: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing<br>Key required: Exa, Brave, Naver, Kakao, TinyFish, Jina<br>Group: Korea (Naver + Kakao) <code>/search ko</code>, <code>ko-group</code>, <code>ko-seq</code><br>It replaces the old Brave Search, Exa Search and search fallback plugins. <code>/brave</code>, <code>/exa</code>, <code>brave_search</code> and <code>exa_search</code> keep working.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""><br><strong>Skill hints</strong></td>
-<td>Shows each skill's argument hint in the composer.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""><br><strong>Antigravity commands</strong></td>
+<td align="center"><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Antigravity commands</strong></td>
 <td>Adds <code>/agy</code> commands for plans, goals, interviews, boosts and teamwork.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""><br><strong>Spare model keys</strong></td>
+<td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Enter key setting</strong></td>
+<td>Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Skill hints</strong></td>
+<td>Shows each skill's argument hint in the composer.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Footnote preview</strong></td>
+<td>Shows a footnote's text when you hover over its number.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Spare model keys</strong></td>
 <td>Switches to a spare API key when the current one stops working.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/search-brave/icon.svg" width="40" height="40" alt=""><br><strong>Brave Search</strong></td>
-<td>Uses the Brave Search API for web search. Requires an API key.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/search-exa/icon.svg" width="40" height="40" alt=""><br><strong>Exa Search</strong></td>
-<td>Uses the Exa Search API for web search. Requires an API key.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/search-fallback/icon.svg" width="40" height="40" alt=""><br><strong>Search fallback</strong></td>
-<td>When a search provider fails, retries with the next one.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>
+<td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Auto review recovery</strong></td>
 <td>Retries an Auto review that hit a rate limit, then asks for your approval if it still fails.</td>
 </tr>
 </tbody>
@@ -192,7 +202,7 @@ Shows what the installer would do without changing anything: which plugins it wo
 
 ### 4. Check
 
-Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 14 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
+Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 13 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
 
 ### Installing a single plugin
 

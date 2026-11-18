@@ -44,7 +44,11 @@ test('키트 플러그인 모두를 한 번에 link:로 넣는다', () => {
   const result = run([])
   assert.equal(result.status, 0, result.stderr)
   const links = FOLDERS.map((folder) => `link:${join(ROOT, 'plugins', folder)}`)
-  assert.deepEqual(calls(), [`plugin --profile desktop add ${links.join(' ')}`])
+  const made = calls()
+  assert.equal(made.length, 1)
+  assert.ok(made[0].startsWith('plugin --profile desktop add '))
+  // The shell's glob order and JavaScript's sort may differ; the order does not matter.
+  assert.deepEqual(made[0].slice('plugin --profile desktop add '.length).split(' ').sort(), links.sort())
 })
 
 test('다른 이름으로 깔린 같은 플러그인은 허락을 받고 먼저 뺀다', () => {
@@ -61,6 +65,15 @@ test('폴더 이름을 바꾼 플러그인은 바꾸기 전 이름도 먼저 뺀
   assert.equal(result.status, 0, result.stderr)
   assert.equal(calls()[0], 'plugin --profile desktop remove @lyngmn/dsh-brave-search @lyngmn/dsh-exa-search')
   assert.match(calls()[1], /^plugin --profile desktop add /)
+})
+
+test('검색 플러그인에 합친 Brave·Exa·검색 자동 전환은 허락을 받고 먼저 뺀다', () => {
+  const { run, calls } = setup({ '@lyngmn/dsh-search-brave': 'link:/b', '@lyngmn/dsh-search-exa': 'link:/e', '@lyngmn/dsh-search-fallback': 'link:/f', other: '1.0.0' })
+  const result = run([], 'y\n')
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(calls()[0], 'plugin --profile desktop remove @lyngmn/dsh-search-brave @lyngmn/dsh-search-exa @lyngmn/dsh-search-fallback')
+  assert.match(calls()[1], /^plugin --profile desktop add /)
+  assert.ok(!calls()[1].includes('search-brave'))
 })
 
 test('다른 이름 플러그인을 빼지 말라고 하면 겹치지 않게 아무것도 넣지 않고 멈춘다', () => {
@@ -86,6 +99,13 @@ test('--remove는 깔려 있는 키트 플러그인만 뺀다', () => {
   const result = run(['--remove', '--yes'])
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(calls(), ['plugin --profile desktop remove @lyngmn/dsh-korean @lyngmn/dsh-skill-hints'])
+})
+
+test('--remove는 합치기 전 이름으로 남은 검색 플러그인도 함께 뺀다', () => {
+  const { run, calls } = setup({ '@lyngmn/dsh-search': 'link:/a', '@lyngmn/dsh-search-brave': 'link:/b', '@lyngmn/dsh-search-fallback': 'link:/c' })
+  const result = run(['--remove', '--yes'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(calls(), ['plugin --profile desktop remove @lyngmn/dsh-search @lyngmn/dsh-search-brave @lyngmn/dsh-search-fallback'])
 })
 
 test('플러그인이 쓰는 npm 패키지가 없으면 키트 폴더에서 먼저 받고 넣는다', () => {

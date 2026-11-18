@@ -4,7 +4,7 @@
 
 # 한국어 DeepSeek Harness 키트
 
-**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 14개를 명령 한 번으로 설치합니다.
+**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 13개를 명령 한 번으로 설치합니다.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,73 +30,83 @@
 
 </div>
 
-DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 14개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
+DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 13개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
 
 플러그인 이름은 모두 `@lyngmn/dsh-<이름>`입니다. DSH 플러그인 화면에 플러그인마다 카드가 생기고, 하나씩 켜고 끌 수 있습니다.
 
 ## 플러그인
 
 <table>
-<thead><tr><th>이름</th><th align="left">하는 일</th></tr></thead>
+<thead><tr><th width="72">아이콘</th><th align="left" width="220">이름</th><th align="left">하는 일</th></tr></thead>
 <tbody>
 <tr>
-<td align="center" nowrap><img src="plugins/korean/icon.svg" width="40" height="40" alt=""><br><strong>한국어 언어팩</strong></td>
+<td align="center"><img src="plugins/korean/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>한국어 언어팩</strong></td>
 <td>화면을 한국어로 바꾸고, 본문·코드·터미널 글꼴을 고르게 해요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""><br><strong>휴대폰 작업 공간</strong></td>
+<td align="center"><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>휴대폰 작업 공간</strong></td>
 <td>휴대폰 앱으로 세션을 이어 보고 메시지를 보내요. 승인 요청을 알림으로 받아 직접 허락하거나 거부해요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""><br><strong>하위 에이전트 트리</strong></td>
+<td align="center"><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>작업공간 대화 옮기기</strong></td>
+<td>대화를 다른 작업공간으로 옮기거나, 필요 없는 대화를 삭제해요. 옮길 때는 기록·제목·세션 id를 그대로 가져가고, 삭제한 기록은 휴지통으로 보내요.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>하위 에이전트 트리</strong></td>
 <td>사이드바에서 하위 에이전트를 부모 세션 아래에 묶어 보여 줘요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""><br><strong>엔터 키 설정</strong></td>
-<td>입력창에서 엔터 키를 누르면 바로 보낼지 줄을 바꿀지 골라요. 한글을 치다가 누른 엔터 키도 한 번에 처리해요.</td>
+<td align="center"><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>계획 보기</strong></td>
+<td>대화 보기 방식에 '계획' 탭을 더해 할 일 목록과 제출된 계획을 한 화면에 띄워 둬요. 멈춘 계획은 단추 하나로 이어서 진행해요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""><br><strong>계획 보기</strong></td>
-<td>대화 보기 방식에 '계획' 탭을 더해 할 일 목록과 제출된 계획을 한 화면에 띄워 둬요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""><br><strong>작업 단계</strong></td>
+<td align="center"><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>작업 단계</strong></td>
 <td>대화 보기 방식에 '작업 단계' 탭을 더해 작업실 만들기부터 배포까지 Git 작업이 어디쯤인지, 다음에 무엇을 승인해야 하는지 보여 줘요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""><br><strong>코드 지도</strong></td>
-<td>작업 단계 옆에서 관련 코드와 변경 뒤 함께 확인할 곳을 보여 줘요. Codebase Memory 실행 파일이 필요해요. <a href="plugins/code-map/README.md">설치 안내</a></td>
+<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>코드 지도</strong></td>
+<td>작업 단계 옆에서 관련 코드와 변경 뒤 함께 확인할 곳을 보여 주고, 지도가 읽지 못한 범위도 알려 줘요. Codebase Memory 실행 파일이 필요해요. <a href="plugins/code-map/README.md">설치 안내</a></td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>각주 미리보기</strong></td>
-<td>각주 번호에 마우스를 올리면 내용을 미리 보여 줘요.</td>
+<td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>검색</strong></td>
+<td>Exa·Brave·네이버·카카오를 비롯한 여러 웹검색 엔진과, 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 엔진별 키·순서·결과 수는 플러그인 페이지에서 정해요.<br>이번 검색만 바꾸려면 <code>/search naver 30 서울 날씨</code>나 <code>/search exa max 서울 날씨</code>처럼 써요.<br>키 없이: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing<br>키 필요: Exa·Brave·네이버·카카오·TinyFish·Jina<br>묶음: 한국(네이버+카카오) <code>/search ko</code>·<code>ko-group</code>·<code>ko-seq</code><br>예전 Brave Search·Exa Search·검색 자동 전환을 합쳤어요. <code>/brave</code>·<code>/exa</code>와 <code>brave_search</code>·<code>exa_search</code>는 그대로 써요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""><br><strong>스킬 힌트</strong></td>
-<td>스킬의 세부 명령 안내를 입력창에 보여 줘요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""><br><strong>Antigravity 명령</strong></td>
+<td align="center"><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>Antigravity 명령</strong></td>
 <td>계획·목표·인터뷰·부스트·팀워크용 <code>/agy</code> 명령이에요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""><br><strong>모델 예비 키</strong></td>
+<td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>엔터 키 설정</strong></td>
+<td>입력창에서 엔터 키를 누르면 바로 보낼지 줄을 바꿀지 골라요. 한글을 치다가 누른 엔터 키도 한 번에 처리해요.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>스킬 힌트</strong></td>
+<td>스킬의 세부 명령 안내를 입력창에 보여 줘요.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>각주 미리보기</strong></td>
+<td>각주 번호에 마우스를 올리면 내용을 미리 보여 줘요.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>모델 예비 키</strong></td>
 <td>쓰던 API 키가 막히면 예비 키로 넘어가요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/search-brave/icon.svg" width="40" height="40" alt=""><br><strong>Brave Search</strong></td>
-<td>웹 검색에 Brave Search API를 연결해요. API 키가 필요해요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/search-exa/icon.svg" width="40" height="40" alt=""><br><strong>Exa Search</strong></td>
-<td>웹 검색에 Exa Search API를 연결해요. API 키가 필요해요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/search-fallback/icon.svg" width="40" height="40" alt=""><br><strong>검색 자동 전환</strong></td>
-<td>검색 공급자가 실패하면 다음 공급자로 다시 찾아요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>자동 검토 복구</strong></td>
+<td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>자동 검토 복구</strong></td>
 <td>자동 검토가 레이트 리밋으로 실패하면 다시 시도하고, 그래도 안 되면 직접 승인을 물어요.</td>
 </tr>
 </tbody>
@@ -188,7 +198,7 @@ cd ~/dsh-korean && ./install.sh --dry-run
 
 ### 4. 확인
 
-DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 14개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
+DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 13개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
 
 ### 하나만 설치하기
 

@@ -1,0 +1,11 @@
+# 작업공간 대화 옮기기. 서버 쪽은 인증된 /api/workspace-move 한 곳만 열고,
+# 화면 쪽은 세션 줄 메뉴와 확인 창(shell.overlay)을 쓴다.
+- insert:
+    - id: dsh-workspace-move
+      name: '@lyngmn/dsh-workspace-move'
+      config:
+        # 한 번에 옮길 수 있는 세션 로그 크기(압축된 파일 기준, 바이트).
+        # 넘으면 옮기지 않고 이유를 보여 준다.
+        maxArtifactBytes: 16777216
+        # 이동 전에 남기는 백업을 몇 개까지 보관할지.
+        keepBackups: 5

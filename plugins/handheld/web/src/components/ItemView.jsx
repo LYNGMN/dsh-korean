@@ -2,8 +2,10 @@
 import { Component } from 'preact'
 import { Markdown } from '../lib/markdown.jsx'
 import { update } from '../store.js'
+import { api, sessionPath } from '../api.js'
 import { Icon } from './Icon.jsx'
 import { t } from '../lib/i18n.js'
+import { isLongMessage } from '../lib/fold.js'
 
 const OUTCOME = { completed: 'state.done', cancelled: 'state.stopped', interrupted: 'state.stopped', error: 'outcome.error', failed: 'outcome.error' }
 
@@ -15,14 +17,50 @@ export function diffsOf(row) {
   return [...(row.call?.diffs ?? []), ...(row.result?.diffs ?? [])]
 }
 
-class ToolRow extends Component {
+class UserMessage extends Component {
   constructor() {
     super()
     this.state = { open: false }
   }
 
-  render({ row }, { open }) {
+  render({ item }, { open }) {
+    const long = isLongMessage(item.text)
+    const id = `msg-${String(item.seq)}`
+    return (
+      <div class="msg msg-user" data-seq={item.seq}>
+        <p class={`user-text${long && !open ? ' folded' : ''}`} id={id}>{item.text}{item.images ? <span class="muted small">{t('msg.images', { count: item.images })}</span> : null}</p>
+        {long ? (
+          <button type="button" class="fold-btn" aria-expanded={open} aria-controls={id} onClick={() => this.setState({ open: !open })}>
+            {t(open ? 'msg.less' : 'msg.more')}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+}
+
+class ToolRow extends Component {
+  constructor() {
+    super()
+    this.state = { open: false, full: null, fullState: 'idle', fullError: '' }
+  }
+
+  /** The list cuts a result at 4,000 characters; fetch the whole text when asked. */
+  loadFull = async () => {
+    const { row, sessionId } = this.props
+    this.setState({ fullState: 'loading', fullError: '' })
+    try {
+      const full = await api(`${sessionPath(sessionId)}/items/${String(row.result.seq)}/output`)
+      this.setState({ full, fullState: 'done' })
+    } catch (error) {
+      this.setState({ fullState: 'error', fullError: error?.message ?? '' })
+    }
+  }
+
+  render({ row }, { open, full, fullState, fullError }) {
     const { call, result } = row
+    const output = full?.output ?? result?.output
+    const cut = full ? full.truncated : result?.truncated === true
     const status = !result ? (row.ended ? 'stopped' : 'running') : result.isError ? 'error' : 'done'
     const diffs = diffsOf(row)
     const id = `tool-${String((call ?? result).seq)}`
@@ -42,9 +80,19 @@ class ToolRow extends Component {
         {open ? (
           <div class="tool-body" id={id}>
             {call?.input ? <pre class="pre" role="group" tabIndex={0} aria-label={t('toolcall.input')}>{call.input}</pre> : null}
-            {result?.output ? <pre class={`pre${result.isError ? ' pre-error' : ''}`} role="group" tabIndex={0} aria-label={t('toolcall.output')}>{result.output}</pre> : null}
-            {result?.truncated ? <p class="muted small">{t('toolcall.truncated')}</p> : null}
-            {!call?.input && !result?.output ? <p class="muted small">{t('toolcall.nothing')}</p> : null}
+            {output ? <pre class={`pre${result?.isError ? ' pre-error' : ''}`} role="group" tabIndex={0} aria-label={t('toolcall.output')}>{output}</pre> : null}
+            {cut ? (
+              <div class="tool-more" aria-live="polite">
+                <p class="muted small">{t(full ? 'toolcall.truncatedFull' : 'toolcall.truncated')}</p>
+                {!full ? (
+                  <button type="button" class="link-btn" disabled={fullState === 'loading'} onClick={this.loadFull}>
+                    {t(fullState === 'loading' ? 'toolcall.loading' : fullState === 'error' ? 'toolcall.retry' : 'toolcall.showAll')}
+                  </button>
+                ) : null}
+                {fullState === 'error' && fullError ? <p class="muted small" role="alert">{fullError}</p> : null}
+              </div>
+            ) : null}
+            {!call?.input && !output ? <p class="muted small">{t('toolcall.nothing')}</p> : null}
           </div>
         ) : null}
       </div>
@@ -71,14 +119,14 @@ export class ItemView extends Component {
     return next.row !== this.props.row
   }
 
-  render({ row }) {
+  render({ row, sessionId }) {
     switch (row.kind) {
       case 'user':
-        return <div class="msg msg-user" data-seq={row.item.seq}><p class="user-text">{row.item.text}{row.item.images ? <span class="muted small">{t('msg.images', { count: row.item.images })}</span> : null}</p></div>
+        return <UserMessage item={row.item} />
       case 'assistant':
         return <div data-seq={row.item.seq}><Assistant item={row.item} /></div>
       case 'tool':
-        return <div data-seq={(row.call ?? row.result).seq}><ToolRow row={row} /></div>
+        return <div data-seq={(row.call ?? row.result).seq}><ToolRow row={row} sessionId={sessionId} /></div>
       case 'approval': {
         const { phase, decision, tool } = row.item
         const allowed = decision === 'allowed-once' || decision === 'allowed'

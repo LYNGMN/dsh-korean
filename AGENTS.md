@@ -6,7 +6,7 @@ DeepSeek Harness(DSH) 플러그인을 모은 키트입니다. 구조는 [docs/ar
 
 - `/Applications/DeepSeek Harness.app` 안의 파일은 읽기만 합니다.
 - 플러그인 이름은 `@lyngmn/dsh-<폴더>`, `author`는 `LYNGMN`, `repository.directory`는 `plugins/<폴더>`입니다. `cordis.patch.yml`의 플러그인 `id`와 데이터 폴더 이름은 처음 정한 그대로 둡니다(사용자 설정이 id로 저장됨).
-- 플러그인 카드에는 아이콘과 한국어 설명을 꼭 넣습니다. 아이콘은 Lucide 아이콘을 36칸 SVG로 옮겨 DSH 파란색 그라데이션(`#3D94EE`→`#3F77D8`)으로 칠하고, 외부 서비스를 잇는 플러그인은 그 서비스의 공식 로고를 씁니다. 출처는 SVG 주석에 남기고, 다른 플러그인 아이콘과 보이는 크기·중심을 `measure-icon-optics.mjs`로 맞춥니다. 제목·설명은 `locale/ko.json`(`meta.title`, `meta.description`, 해요체)과 `locale/en.json`에 두고 `exports`에 `./icon`, `./locale/*.json`을 엽니다. — 2026-11-14 사용자 — 지키는 방법: `test/plugin-card.test.mjs`
+- 플러그인 카드에는 아이콘과 한국어 설명을 꼭 넣습니다. 아이콘은 Lucide 아이콘을 36칸 SVG로 옮겨 DSH 파란색 그라데이션(`#3D94EE`→`#3F77D8`)으로 칠하고, 외부 서비스를 잇는 플러그인은 그 서비스의 공식 로고를 씁니다. 한국어 언어팩만 예외로 고딕체 한글 "가"(Pretendard SemiBold 윤곽을 경로로 옮김, OFL-1.1)를 씁니다. 직접 그린 획은 어색하다는 사용자 판단입니다(2026-11-18). 출처는 SVG 주석에 남기고, 다른 플러그인 아이콘과 보이는 크기·중심을 `measure-icon-optics.mjs`로 맞춥니다. 제목·설명은 `locale/ko.json`(`meta.title`, `meta.description`, 해요체)과 `locale/en.json`에 두고 `exports`에 `./icon`, `./locale/*.json`을 엽니다. — 2026-11-14 사용자 — 지키는 방법: `test/plugin-card.test.mjs`
 - 카드 설명은 끝에 같은 문장으로 DeepSeek 공식 플러그인이 아님을 밝힙니다. 한국어는 "DeepSeek 공식 플러그인이 아니에요.", 영어는 "Not an official DeepSeek plugin."이고, `package.json` `description`은 영어 카드 설명과 같게 둡니다. — 2026-11-15 사용자 — 지키는 방법: `test/plugin-card.test.mjs`
 - 승인·질문 답은 사람이 직접 누를 때만 보냅니다. 자동 승인 코드를 넣지 않습니다.
 - API 키·토큰·쿠키는 로그·화면·저장소에 내보내지 않습니다.
@@ -30,6 +30,7 @@ DeepSeek Harness(DSH) 플러그인을 모은 키트입니다. 구조는 [docs/ar
 | 전체 시험(키트 규칙 + 모든 플러그인) | `npm test` |
 | 빌드(필요한 플러그인만) | `npm run build` |
 | 한국어 번역 검사 | `npm run check` |
+| 휴대폰 앱 사본 맞추기(`git-stage`의 단계 규칙·Git 읽기를 고친 뒤) | `npm run sync` |
 | 설치 미리 보기 | `./install.sh --dry-run` |
 
 ## 작업·배포 흐름

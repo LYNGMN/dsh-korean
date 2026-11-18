@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Search",
+    "description": "Adds web search engines (Exa, Brave and more), an automatic engine that searches in the order you set, and the /search command for picking one. Keys, order and result counts per engine are set on this page. Not an official DeepSeek plugin."
+  }
+}

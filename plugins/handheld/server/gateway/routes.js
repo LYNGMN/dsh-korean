@@ -53,6 +53,15 @@ export function createRoutes({ hub, store, notifier, version }) {
       },
     },
     {
+      method: 'GET',
+      pattern: /^\/sessions\/([^/]+)\/items\/(\d{1,12})\/output$/,
+      handle: async ({ params }) => {
+        const full = await hub.toolOutput(sessionIdOf(params[0]), Number(params[1]))
+        if (full === null) throw new RouteError(404, 'no-output', '이 결과를 찾지 못했습니다')
+        return full
+      },
+    },
+    {
       method: 'POST',
       pattern: /^\/sessions\/([^/]+)\/prompt$/,
       handle: async ({ params, body }) => {

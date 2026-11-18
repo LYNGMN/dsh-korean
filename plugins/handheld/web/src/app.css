@@ -434,6 +434,8 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .stage-dot[data-status='done'] { border-color: var(--brand); background: var(--brand); }
 .stage-dot[data-status='current'] { width: 10px; height: 10px; border: 2.5px solid var(--brand); }
 .stage-dot[data-status='unknown'] { border-style: dashed; }
+/* 좁은 폭에서는 점 대신 요약 글(지금 단계 · n/6 · 승인 필요)을 끝까지 보입니다. */
+@media (max-width: 359px) { .stage-btn .stage-dots { display: none; } }
 .mono-line { margin: 0 0 8px; font-family: var(--mono); overflow-wrap: anywhere; word-break: normal; }
 .stage-doing, .stage-next { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
 .stage-next { margin: 4px 0 0; }
@@ -452,6 +454,7 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .stage-detail { padding: 0 12px 12px 44px; }
 .stage-detail p { margin: 0; }
 .stage-facts { margin: 6px 0 0; padding-left: 18px; font-size: 15px; line-height: 1.5; }
+.stage-facts li, .stage-next > span:last-child, .stage-out li { text-wrap: pretty; }
 .stage-out { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2, var(--bg)); border: 1px solid var(--line, transparent); }
 .stage-out-title { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
 .stage-out-list { margin: 0 0 4px; padding-left: 20px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -495,6 +498,9 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 :root[data-bubble="solid"] .msg-user ::selection { background: var(--on-brand); color: var(--brand-ink); }
 .msg-user .muted { color: inherit; opacity: 0.85; }
 .msg-user + div, div + .msg-user { margin-top: 4px; }
+.msg-user .fold-btn { display: block; min-height: 44px; margin: 0 0 -6px -4px; padding: 0 4px; border: 0; background: transparent; color: var(--brand-ink); font-size: 14.5px; font-weight: 600; line-height: 20px; }
+:root[data-bubble="solid"] .msg-user .fold-btn { color: var(--on-brand); text-decoration: underline; text-underline-offset: 3px; }
+.user-text.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; /* FOLD_LINES in lib/fold.js */ overflow: hidden; }
 .user-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: calc(16px * var(--read)); line-height: 1.5; }
 .msg-assistant { font-size: calc(16px * var(--read)); line-height: 1.7; }
 .msg-stream { position: relative; }
@@ -541,6 +547,9 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .tool-chevron { color: var(--muted); transition: transform 0.15s var(--ease); }
 .tool-chevron.up { transform: rotate(180deg); }
 .tool > .link-btn { display: flex; width: fit-content; margin: 8px 0 4px 26px; }
+.tool-more { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.tool-more .link-btn { padding: 0 4px; }
+.link-btn:disabled { color: var(--muted); }
 .tool-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; animation: unfold 0.2s var(--ease); }
 .pre { margin: 0; padding: 10px 12px; max-height: 50vh; overflow: auto; background: var(--surface-2); border-radius: var(--r-sm); font-family: var(--mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
 .pre-error { background: var(--del-bg); color: var(--del-text); }
