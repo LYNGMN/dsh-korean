@@ -15,6 +15,7 @@ DeepSeek Harness(DSH) Desktop 대화 머리의 보기 탭에 **작업 단계** �
 - `@deepseek-ai/dsh-client-ui-primitives` 같은 Harness Client 패키지를 `require`하지 않습니다. 공용 모듈로 받는 것은 `react`·`react-dom`뿐입니다.
 - `lib/client.js`는 빌드 결과물입니다. `src/` 파일을 고친 뒤 `node scripts/build.mjs`로 다시 만듭니다.
 - npm 의존성을 들이지 않습니다.
+- 코드는 여기서 분석하지 않습니다. 코드 지도 플러그인(`/api/dsh-code-map`, `src/code-summary.js`)이 읽은 숫자만 빌려 보입니다. 지도가 읽지 못한 범위(미인덱스·부분 파싱·파싱 불가)는 0이어도 늘 보이고, 값을 모르면 0이 아니라 "확인 안 됨"으로 씁니다. 그 라우트가 없거나 실패해도 작업 단계 읽기는 실패하지 않습니다. — 2026-11-18 사용자 — 지키는 방법: `test/code-summary.test.mjs`, `test/client.test.mjs`
 - 화면 글자는 한국어 해요체, `word-break: keep-all`입니다. 단계 칸은 같은 폭 격자(넓으면 6칸, 좁으면 3칸 두 줄)입니다.
 - 화면을 바꾸면 `test/preview.html`을 `ui-visual-qa`로 320·375·1280, 밝음·어두움에서 잽니다(`--theme-attr data-theme --open ".dgs-chip"`).
 - 플러그인 카드 아이콘·한국어 설명과 이름 규칙은 키트 루트 `AGENTS.md`를 따릅니다.

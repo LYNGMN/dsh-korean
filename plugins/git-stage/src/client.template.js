@@ -29,15 +29,29 @@ window.__ModuleLoader__.load({
     const memoryPicks = new Map()
     const pickOf = sessionId => (memoryPicks.has(sessionId) ? memoryPicks.get(sessionId) : readPick(sessionId))
 
+    // 코드 지도 플러그인이 없거나 꺼져 있으면(404·꺼짐) 조용히 null. 작업 단계 읽기는 이 일로 실패하지 않는다.
+    async function readCodeMap(sessionId) {
+      try {
+        const response = await fetch(codeRouteOf(sessionId), { cache: 'no-store' })
+        return response.ok ? codeSummaryOf(await response.json()) : null
+      } catch {
+        return null
+      }
+    }
+
     const sources = new Map()
     function sourceOf(sessionId) {
       let source = sources.get(sessionId)
       if (!source) {
         source = createStageSource({
           load: async () => {
-            const response = await fetch(routeOf(sessionId, pickOf(sessionId)), { cache: 'no-store' })
+            const [response, code] = await Promise.all([
+              fetch(routeOf(sessionId, pickOf(sessionId)), { cache: 'no-store' }),
+              readCodeMap(sessionId),
+            ])
             if (!response.ok) throw Object.assign(new Error('stage route'), { code: response.status })
-            return (await response.json()).facts
+            const facts = (await response.json()).facts
+            return facts && code ? { ...facts, code } : facts
           },
           every: (fn, ms) => { const timer = setInterval(fn, ms); return () => clearInterval(timer) },
           visible: () => document.visibilityState !== 'hidden',
@@ -249,6 +263,28 @@ window.__ModuleLoader__.load({
         h('button', { type: 'button', className: 'dgs-link', onClick: () => void refresh() }, '지금 다시 읽기'))
     }
 
+    // 코드 지도가 켜진 저장소에서만, 코드 지도가 읽은 숫자를 빌려 보인다. 새로 분석하지 않는다.
+    function CodeMapSummary({ code }) {
+      const titleId = useId()
+      if (!code) return null
+      if (code.kind === 'message') {
+        return h('section', { className: 'dgs-code', 'aria-labelledby': titleId },
+          h('h3', { className: 'dgs-code-title', id: titleId }, '코드 지도'),
+          h('p', { className: 'dgs-code-note' }, code.line))
+      }
+      return h('section', { className: 'dgs-code', 'aria-labelledby': titleId, 'aria-busy': code.indexing || undefined },
+        h('div', { className: 'dgs-code-head' },
+          h('h3', { className: 'dgs-code-title', id: titleId }, '코드 지도'),
+          h('span', { className: 'dgs-meta' }, code.indexing ? '지도 준비 중' : '마지막 코딩 요청 기준')),
+        h('p', { className: 'dgs-code-line', role: 'status' }, code.request),
+        code.gaps
+          ? h('ul', { className: 'dgs-code-gaps', 'aria-label': '지도에서 읽지 못한 범위' },
+            code.gaps.map(gap => h('li', { key: gap.key, className: 'dgs-code-gap', 'data-warn': gap.warn ? '' : undefined }, gap.label)))
+          : null,
+        h('p', { className: 'dgs-code-note' },
+          '지도에 없는 파일이나 실행할 때만 이어지는 호출은 빠져요. 자세한 위치와 사용처는 코드 지도 탭에서 볼 수 있어요.'))
+    }
+
     function StageView(props) {
       const { snapshot, source, refresh, running, choose } = useStages(props)
       const detailId = useId()
@@ -270,6 +306,7 @@ window.__ModuleLoader__.load({
               h(NowCard, { snapshot, facts, running, inputActions: props.inputActions, id: selected === snapshot.current ? detailId : undefined }),
               h(Stepper, { snapshot, selected, onSelect: setPicked, detailId }),
               selected === snapshot.current ? null : h(StageDetail, { stage: snapshot.stages[selected], index: selected, id: detailId })),
+          snapshot.kind === 'ok' ? h(CodeMapSummary, { code: facts?.code }) : null,
           snapshot.kind === 'ok' ? h(Foot, { source, refresh }) : null))
     }
 

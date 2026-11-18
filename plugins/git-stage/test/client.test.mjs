@@ -17,12 +17,21 @@ const React = {
 }
 const ReactDOM = { createPortal: node => ({ portal: node }) }
 
-function loadBundle(facts, { urls = [], storage } = {}) {
+function loadBundle(facts, { urls = [], codeUrls = [], storage, code } = {}) {
   let registered
   const sandbox = {
     window: { __ModuleLoader__: { load: entry => { registered = entry } }, localStorage: storage },
     document: { createElement: () => ({ dataset: {} }), head: { appendChild: () => {} }, visibilityState: 'visible' },
-    fetch: async url => { urls.push(url); return { ok: true, json: async () => ({ facts }) } },
+    fetch: async url => {
+      if (String(url).startsWith('api/dsh-code-map')) {
+        codeUrls.push(url)
+        if (code === undefined) return { ok: false, status: 404, json: async () => ({}) }
+        if (code instanceof Error) throw code
+        return { ok: true, json: async () => code }
+      }
+      urls.push(url)
+      return { ok: true, json: async () => ({ facts }) }
+    },
     setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, encodeURIComponent, Promise, Error, Object, String,
   }
   vm.runInNewContext(build(), sandbox)
@@ -230,4 +239,44 @@ test('에이전트가 일하는 중이면 배지를 달고, 검증 단계에서�
   const now = text(find(tree, node => node.props?.className === 'dgs-now'))
   assert.match(now, /3\. 검증\s+에이전트 작업 중/)
   assert.match(now, /다음\s+에이전트가 일하는 중이에요\. 기다렸다가, 끝나면 테스트·빌드를 요청해요\./)
+})
+
+const CODE_MAP = {
+  state: 'ready', enabled: true, repo: 'app',
+  requestImpact: { status: 'ready', files: ['a.js', 'b.js'], candidates: [{ name: 'load', file: 'c.js' }], partial: false },
+  coverage: { notIndexed: 88, partial: 8, unusable: 0, skipped: 0 },
+}
+
+async function shown(code) {
+  const urls = []
+  const { mod } = loadBundle(FACTS, { code, codeUrls: urls })
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  return { out: text(render(slots['conversation.view'], mod, FACTS, [])), urls }
+}
+
+test('코드 지도가 켜져 있으면 요청 범위와 읽지 못한 범위를 보여 준다', async () => {
+  const { out, urls } = await shown(CODE_MAP)
+  assert.ok(urls.some(url => url === 'api/dsh-code-map?sessionId=s1'), '코드 지도 라우트도 같은 세션으로 읽는다')
+  assert.match(out, /코드 지도\s+마지막 코딩 요청 기준/)
+  assert.match(out, /이번 요청에서 바뀐 파일 2개 · 함께 확인할 곳 1곳/)
+  assert.match(out, /미인덱스 88개/)
+  assert.match(out, /부분 파싱 8개/)
+  assert.match(out, /파싱 불가 0개/, '0이어도 늘 보인다')
+  assert.match(out, /실행할 때만 이어지는 호출은 빠져요/)
+})
+
+test('코드 지도가 없거나 꺼져 있거나 실패해도 작업 단계는 그대로 그린다', async () => {
+  for (const code of [undefined, new Error('offline'), { state: 'off', enabled: false }, { state: 'no-repo', focus: [] }]) {
+    const { out } = await shown(code)
+    assert.match(out, /단계 · \d\/6/)
+    assert.doesNotMatch(out, /마지막 코딩 요청 기준|미인덱스/)
+  }
+})
+
+test('읽지 못한 범위를 모를 때는 0이 아니라 확인 안 됨으로 쓴다', async () => {
+  const { out } = await shown({ ...CODE_MAP, coverage: { notIndexed: null, partial: 0 } })
+  assert.match(out, /미인덱스 확인 안 됨/)
+  assert.match(out, /파싱 불가 확인 안 됨/)
 })
