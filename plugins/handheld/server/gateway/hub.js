@@ -143,6 +143,10 @@ export class Hub extends EventEmitter {
     return this.api.history(sessionId, { beforeSeq })
   }
 
+  toolOutput(sessionId, seq) {
+    return this.api.toolOutput(sessionId, seq)
+  }
+
   prompt(sessionId, text, mode) {
     if (typeof text !== 'string' || text.trim().length === 0) throw new HubError('prompt/empty', '보낼 글이 비어 있습니다')
     if (text.length > 100_000) throw new HubError('prompt/too-long', '글이 너무 깁니다')

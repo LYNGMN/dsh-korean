@@ -544,6 +544,9 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-
 .tool-chevron { color: var(--muted); transition: transform 0.15s var(--ease); }
 .tool-chevron.up { transform: rotate(180deg); }
 .tool > .link-btn { display: flex; width: fit-content; margin: 8px 0 4px 26px; }
+.tool-more { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.tool-more .link-btn { padding: 0 4px; }
+.link-btn:disabled { color: var(--muted); }
 .tool-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; animation: unfold 0.2s var(--ease); }
 .pre { margin: 0; padding: 10px 12px; max-height: 50vh; overflow: auto; background: var(--surface-2); border-radius: var(--r-sm); font-family: var(--mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
 .pre-error { background: var(--del-bg); color: var(--del-text); }
