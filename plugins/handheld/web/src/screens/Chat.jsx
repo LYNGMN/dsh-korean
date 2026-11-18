@@ -391,7 +391,7 @@ export function Chat({ sessionId }) {
         ) : null}
         {!feed.synced ? <p class="muted center pad">{t('loading')}</p> : null}
         {feed.synced && rows.length === 0 && !feed.stream ? <p class="muted center pad">{parentId ? t('chat.emptySub') : t('chat.empty')}</p> : null}
-        {rows.map((r) => <ItemView key={r.key} row={r} />)}
+        {rows.map((r) => <ItemView key={r.key} row={r} sessionId={sessionId} />)}
         <StreamBubble stream={feed.stream} />
       </main>
       {showDown || far ? (

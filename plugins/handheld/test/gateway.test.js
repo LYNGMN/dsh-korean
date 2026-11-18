@@ -108,6 +108,27 @@ test('approvals are answered through POST /h/api/pending/:id', async (t) => {
   assert.equal(again.status, 409)
 })
 
+test('a cut-short tool result can be read whole through GET /h/api/sessions/:id/items/:seq/output', async (t) => {
+  const { base, dsh } = await setup(t)
+  const long = 'x'.repeat(9_000)
+  dsh.pushEvent(SID, 'assistant/message', { turn: 1, message: { content: [{ type: 'text', text: '실행합니다' }] } })
+  dsh.pushEvent(SID, 'tool/call', { callId: 'c1', name: 'bash', arguments: { command: 'cat big.txt' } })
+  const result = dsh.pushEvent(SID, 'tool/result', { message: { toolCallId: 'c1', isError: false, content: [{ type: 'text', text: long }] } })
+  const url = (seq) => `${base}/h/api/sessions/${SID}/items/${String(seq)}/output`
+
+  assert.equal((await fetch(url(result.seq))).status, 401)
+  const history = await (await fetch(`${base}/h/api/sessions/${SID}/history`, { headers: asTunnel() })).json()
+  const cut = history.items.find((i) => i.kind === 'toolResult')
+  assert.equal(cut.truncated, true)
+  assert.ok(cut.output.length < long.length)
+
+  const full = await (await fetch(url(cut.seq), { headers: asTunnel() })).json()
+  assert.deepEqual(full, { output: long, truncated: false })
+  assert.equal((await fetch(url(0), { headers: asTunnel() })).status, 404, 'a user message has no output')
+  assert.equal((await fetch(url(999), { headers: asTunnel() })).status, 404)
+  assert.equal((await fetch(`${base}/h/api/sessions/${SID}/items/abc/output`, { headers: asTunnel() })).status, 404)
+})
+
 test('push subscriptions only accept browser push services', async (t) => {
   const { base, store } = await setup(t)
   const headers = { ...asTunnel(), origin: PUBLIC, 'content-type': 'application/json' }

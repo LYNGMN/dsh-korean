@@ -1,7 +1,7 @@
 // Gateway operations expressed as DSH calls. Outside server/dsh/ nobody sees
 // DSH endpoint names, argument wrappers or event names.
 import { randomUUID } from 'node:crypto'
-import { commandsOf, editsOf, normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
+import { commandsOf, editsOf, fullOutputOf, normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
 
 const HISTORY_PAGE_MESSAGES = 20
 const WORK_HISTORY_MESSAGES = 30
@@ -161,6 +161,21 @@ export class DshApi {
     if (typeof beforeSeq === 'number') request.beforeSeq = beforeSeq
     const page = await this.client.rpc('session/events', { request })
     return { items: itemsOf(page.records), range: seqRange(page.records), hasMore: page.hasMore === true, cursor: page.cursor }
+  }
+
+  /**
+   * The whole text of the tool result at `seq` (the list view cuts results short).
+   * Reads the few events up to and including `seq`; widens the window once when it is not in the first page.
+   * @returns {Promise<{output: string, truncated: boolean} | null>} null when `seq` is not a tool result
+   */
+  async toolOutput(sessionId, seq) {
+    for (const maxMessages of [1, 4]) {
+      const page = await this.client.rpc('session/events', { request: { address: sessionAddress(sessionId), beforeSeq: seq + 1, maxMessages } })
+      const record = (page.records ?? []).find((r) => r?.event?.seq === seq)
+      if (record) return fullOutputOf(record.event)
+      if (page.hasMore !== true) break
+    }
+    return null
   }
 
   /**

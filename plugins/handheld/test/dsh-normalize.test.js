@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { normalizeEvent, StreamAssembler, summarizeSession } from '../server/dsh/normalize.js'
+import { fullOutputOf, FULL_OUTPUT_LIMIT, normalizeEvent, StreamAssembler, summarizeSession } from '../server/dsh/normalize.js'
 
 const load = (name) => JSON.parse(fs.readFileSync(new URL(`./fixtures/0.2.2-rc.3/${name}`, import.meta.url), 'utf8'))
 const edit = load('edit-session.json')
@@ -53,6 +53,16 @@ test('tool results are capped in size', () => {
   const big = normalizeEvent({ type: 'tool/result', seq: 9, time: 1, data: { message: { toolCallId: 'c', isError: false, content: [{ type: 'text', text: 'x'.repeat(50_000) }] } } })
   assert.ok(big.output.length <= 4_100)
   assert.equal(big.truncated, true)
+})
+
+test('fullOutputOf returns the whole result text, and only for tool results', () => {
+  const event = (text) => ({ type: 'tool/result', seq: 9, time: 1, data: { message: { toolCallId: 'c', isError: false, content: [{ type: 'text', text }] } } })
+  const text = 'y'.repeat(50_000)
+  assert.deepEqual(fullOutputOf(event(text)), { output: text, truncated: false })
+  const huge = fullOutputOf(event('z'.repeat(FULL_OUTPUT_LIMIT + 5)))
+  assert.equal(huge.output.length, FULL_OUTPUT_LIMIT)
+  assert.equal(huge.truncated, true)
+  assert.equal(fullOutputOf({ type: 'user/message', seq: 1, time: 1, data: {} }), null)
 })
 
 test('approval asked/decided and turn outcome', () => {

@@ -23,7 +23,8 @@ export const STREAM_FLUSH_MS = 100
  *   user       { text, images: number }
  *   assistant  { turn, text, reasoning? }
  *   tool       { callId, name, title, input?, diffs?: Diff[] }      a tool call was made
- *   toolResult { callId, isError, output, truncated?, diffs?: Diff[] } its result (pairs by callId)
+ *   toolResult { callId, isError, output, truncated?, diffs?: Diff[] } its result (pairs by callId); output is cut at 4,000 characters,
+ *     GET /sessions/:id/items/:seq/output returns the whole text (up to 1,000,000)
  *   turn       { phase: 'start'|'end', turn, outcome? }
  *   approval   { phase: 'asked', id, tool, reason? } | { phase: 'decided', id, decision }
  *   changes    { turn }                                            files changed during that turn

@@ -4,6 +4,8 @@
 const OUTPUT_LIMIT = 4_000
 const INPUT_LIMIT = 2_000
 const DIFF_TEXT_LIMIT = 20_000
+/** Ceiling of the on-demand "show all" read; a result longer than this is cut again and says so. */
+export const FULL_OUTPUT_LIMIT = 1_000_000
 
 /** Host bookkeeping a phone never shows. */
 const SILENT = new Set([
@@ -51,6 +53,17 @@ function capDiff(d) {
     oldText: d.oldText === null || d.oldText === undefined ? null : d.oldText.slice(0, DIFF_TEXT_LIMIT),
     newText: typeof d.newText === 'string' ? d.newText.slice(0, DIFF_TEXT_LIMIT) : '',
   }
+}
+
+/**
+ * The whole text of one tool result (up to FULL_OUTPUT_LIMIT), for the phone's "show all" button.
+ * @param {{type?: string, data?: any}} event
+ * @returns {{output: string, truncated: boolean} | null} null when the event is not a tool result
+ */
+export function fullOutputOf(event) {
+  if (event?.type !== 'tool/result') return null
+  const out = cap(textParts(event.data?.message?.content), FULL_OUTPUT_LIMIT)
+  return { output: out.text, truncated: out.truncated }
 }
 
 /**
