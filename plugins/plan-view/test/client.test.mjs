@@ -75,6 +75,21 @@ const text = node => (node == null || node === false ? '' : typeof node === 'str
   : node.portal ? text(node.portal)
   : [node.props?.['aria-label'] ?? '', node.props?.['aria-valuetext'] ?? '', node.props?.text ?? '', ...(node.children ?? []).map(text)].join(' '))
 
+// 계획 카드 한 장의 글자만 고른다(같은 문자열이 다른 칸에도 있으므로).
+function planCardText(tree, title) {
+  const cards = []
+  const walk = node => {
+    if (node == null || typeof node !== 'object') return
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (typeof node.type === 'function') return walk(node.type(node.props))
+    if (node.portal) return walk(node.portal)
+    if (typeof node.props?.className === 'string' && node.props.className.split(' ').includes('dpv-plan')) cards.push(text(node))
+    ;(node.children ?? []).forEach(walk)
+  }
+  walk(tree)
+  return cards.find(card => card.includes(title)) ?? ''
+}
+
 function render(slot, { projection, running = true, inspectCall } = {}) {
   const injected = slot.opts.inject('s1')
   return slot.Component({
@@ -85,9 +100,10 @@ function render(slot, { projection, running = true, inspectCall } = {}) {
   })
 }
 
-const PLAN = { callId: 'p1', seq: 1, title: '로그인 고치기', markdown: '# 로그인 고치기\n\n- 구조 읽기\n- 탭 만들기' }
+const PLAN = { callId: 'p1', seq: 1, turn: 1, title: '로그인 고치기', markdown: '# 로그인 고치기\n\n- 구조 읽기\n- 탭 만들기' }
 const MATCHES = [
-  write(2, 1000, 1, [['옛 일', 'completed']]),
+  // 계획(seq 1)보다 앞선 턴의 목록이라 이 계획의 실행 기록으로 세지 않는다.
+  write(0, 1000, 1, [['옛 일', 'completed']]),
   write(3, 2000, 2, [['구조 읽기', 'in_progress'], ['탭 만들기', 'pending']]),
   write(4, 62000, 2, [['구조 읽기', 'completed'], ['탭 만들기', 'in_progress']]),
 ]
@@ -117,6 +133,17 @@ test('보기 탭과 채팅 머리 칩 두 자리, 이벤트 정의 둘, 보기 �
   assert.equal(folded.writes.length, 2)
 })
 
+test('계획 노드는 제출된 턴을 함께 남겨 실행 범위를 가릴 수 있게 한다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({}))
+  mod.apply(f.ctx)
+  const planDef = f.events.find(d => d.kind === 'dsh-plan-view.plan')
+  const event = { type: 'tool/call', seq: 9, data: { name: 'exit_plan_mode', callId: 'c9', arguments: JSON.stringify({ plan: '# 턴 계획' }) } }
+  const state = planDef.start({}, { event, location: at(3) })
+  assert.equal(state.turn, 3)
+  assert.equal(state.callId, 'c9')
+})
+
 test('탭은 진행 막대·체크·경과 시간·지난 턴·계획 단계 체크를 보여 준다', () => {
   const { mod } = loadBundle()
   const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
@@ -129,7 +156,7 @@ test('탭은 진행 막대·체크·경과 시간·지난 턴·계획 단계 체
   assert.match(out, /탭 만들기\s*, 진행 중\s*[^,]*째/)
   assert.match(out, /지난 할 일/)
   assert.match(out, /턴 1/)
-  assert.match(out, /단계 1\/2 완료/)
+  assert.match(out, /계획 뒤 할 일 1\/2 완료/)
   assert.match(out, /완료: \s*구조 읽기/, '계획 문서 단계가 체크된다')
   assert.match(out, /대기: \s*탭 만들기/)
   assert.doesNotMatch(out, /직전 턴 목록/)
@@ -174,6 +201,100 @@ test('비어 있으면 안내 문구를 내고, DSH 공용 부품을 불러오�
   assert.equal(warnings.length, 0)
 })
 
+// 계획 문서의 줄과 할 일 문구가 달라도, "이 계획 뒤 할 일"이 얼마나 끝났는지는 보여 준다.
+const LONG_PLAN = {
+  callId: 'p3', seq: 10, turn: 1, title: '긴 계획',
+  markdown: '# 긴 계획\n\n## A. RSS 파서 (`12_RSSService.gs`)\n\n- `media:starRating@count`를 좋아요로 옮기고 빈칸을 채운다\n- 설명 승격 규칙을 정리한다\n',
+}
+
+test('계획 줄과 문구가 달라 체크가 없어도, 계획 뒤 할 일이 모두 끝났으면 완료로 보여 준다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({
+    plans: [LONG_PLAN],
+    matches: [write(11, 1000, 1, [['RSS 파서 정리', 'completed'], ['회귀 테스트', 'completed']])],
+  }))
+  mod.apply(f.ctx)
+  const out = text(render(f.slots['conversation.view'], { projection: null }))
+  assert.match(out, /모두 완료/)
+  assert.match(out, /계획 뒤 할 일 2개를 모두 끝냈어요/)
+  assert.doesNotMatch(out, /단계 \d+\/\d+/, '짝이 없으면 단계 수를 말하지 않는다')
+})
+
+test('일부만 끝났으면 진행 수치만 보여 주고 완료 배지는 붙이지 않는다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({
+    plans: [LONG_PLAN],
+    matches: [write(11, 1000, 1, [['RSS 파서 정리', 'completed'], ['회귀 테스트', 'in_progress']])],
+  }))
+  mod.apply(f.ctx)
+  const card = planCardText(render(f.slots['conversation.view'], { projection: null }), '긴 계획')
+  assert.match(card, /할 일 1\/2/, '계획 카드 머리에 진행 수치가 붙는다')
+  assert.match(card, /계획 뒤 할 일 1\/2 완료/)
+  assert.doesNotMatch(card, /모두 완료/)
+})
+
+test('계획 뒤에 남은 할 일 기록이 없으면 그 사실을 알린다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({
+    plans: [LONG_PLAN],
+    matches: [write(5, 1000, 0, [['계획 전 할 일', 'completed']])],
+  }))
+  mod.apply(f.ctx)
+  const out = text(render(f.slots['conversation.view'], { projection: null }))
+  assert.match(out, /계획 뒤에 남긴 할 일 기록이 없어/)
+  assert.doesNotMatch(out, /모두 완료/)
+  assert.doesNotMatch(out, /할 일 0\/0/)
+})
+
+test('계획을 실행한 턴과 바로 다음 턴의 할 일만 세고, 뒤에 온 새 요청은 세지 않는다', () => {
+  const { mod } = loadBundle()
+  // 계획(턴 1) → 같은 턴 실행 → 승인 뒤 턴 2 실행 → 한참 뒤 턴 5의 다른 요청
+  const f = fakeCtx(snapshotOf({
+    plans: [LONG_PLAN],
+    matches: [
+      write(11, 1000, 1, [['RSS 파서 정리', 'completed']]),
+      write(12, 2000, 2, [['RSS 파서 정리', 'completed'], ['회귀 테스트', 'completed']]),
+      write(50, 3000, 5, [['다른 요청 일', 'pending']]),
+    ],
+  }))
+  mod.apply(f.ctx)
+  const card = planCardText(render(f.slots['conversation.view'], { projection: null }), '긴 계획')
+  assert.match(card, /계획 뒤 할 일 2개를 모두 끝냈어요/)
+  assert.doesNotMatch(card, /3개/)
+  assert.doesNotMatch(card, /할 일 2\/3/)
+})
+
+test('옛 계획은 다음 계획을 실행한 할 일을 자기 것으로 세지 않는다', () => {
+  const oldPlan = { callId: 'old', seq: 10, turn: 1, title: '옛 계획', markdown: '# 옛 계획\n\n- 옛 작업' }
+  const newPlan = { callId: 'new', seq: 30, turn: 3, title: '새 계획', markdown: '# 새 계획\n\n- 새 작업' }
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({
+    plans: [oldPlan, newPlan],
+    matches: [
+      write(11, 1000, 1, [['옛 작업', 'completed']]),
+      write(31, 2000, 3, [['새 작업', 'completed']]),
+      write(32, 3000, 4, [['새 작업', 'completed'], ['새 뒤 작업', 'pending']]),
+    ],
+  }))
+  mod.apply(f.ctx)
+  const tree = render(f.slots['conversation.view'], { projection: null })
+  const oldCard = planCardText(tree, '옛 계획')
+  const newCard = planCardText(tree, '새 계획')
+  assert.match(oldCard, /계획 뒤 할 일 1개를 모두 끝냈어요/)
+  assert.doesNotMatch(oldCard, /2\/2/, '다음 계획의 실행 기록을 세지 않는다')
+  assert.match(newCard, /할 일 1\/2/)
+  assert.doesNotMatch(newCard, /모두 완료/)
+})
+
+test('턴을 모르는 옛 계획은 seq만으로 실행 기록을 고른다', () => {
+  const old = { callId: 'old', seq: 10, title: '옛 계획', markdown: '# 옛 계획' }
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [old], matches: [write(11, 1000, 4, [['옛 작업', 'completed']])] }))
+  mod.apply(f.ctx)
+  const card = planCardText(render(f.slots['conversation.view'], { projection: null }), '옛 계획')
+  assert.match(card, /계획 뒤 할 일 1개를 모두 끝냈어요/)
+})
+
 test('계획 문서는 원문 표시 없이 제목·굵게·코드·목록 요소로 그린다', () => {
   const plan = { callId: 'p2', seq: 1, title: '마크다운 고치기', markdown: '# 마크다운 고치기\n\n**배경**: `MarkdownText`가 없어요.\n\n## 단계\n\n1. 해석기 만들기\n2. 스타일 맞추기\n\n| 파일 | 할 일 |\n|---|---|\n| a.js | 고침 |' }
   const { mod } = loadBundle()
@@ -195,4 +316,102 @@ test('계획 문서는 원문 표시 없이 제목·굵게·코드·목록 요�
   const out = text(tree)
   assert.doesNotMatch(out, /\*\*|^#|\n#|\|---/)
   assert.match(out, /배경/)
+})
+
+// 나무에서 조건에 맞는 요소를 모두 찾는다(함수 컴포넌트는 펼쳐 본다).
+function findAll(tree, pick) {
+  const found = []
+  const walk = node => {
+    if (node == null || typeof node !== 'object') return
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (typeof node.type === 'function') return walk(node.type(node.props))
+    if (node.portal) return walk(node.portal)
+    if (pick(node)) found.push(node)
+    ;(node.children ?? []).forEach(walk)
+  }
+  walk(tree)
+  return found
+}
+const hasClass = name => node => typeof node.props?.className === 'string' && node.props.className.split(' ').includes(name)
+
+function fakeInputActions() {
+  const calls = []
+  return {
+    calls,
+    setDraft: value => calls.push(['setDraft', value]),
+    submit: () => calls.push(['submit']),
+    captureInsertion: () => ({ draftRev: 3 }),
+    insertText: (value, span) => { calls.push(['insertText', value, span]); return true },
+  }
+}
+
+function renderWith(slot, { running, draft = '', inputActions, session = {} }) {
+  const injected = slot.opts.inject('s1')
+  return slot.Component({
+    useProjection: () => null,
+    usePlanState: select => select(injected.hooks.planState.getSnapshot()),
+    useSession: select => select({ running, pendingSubmissions: [], subagent: null, lastAgentError: null, ...session }),
+    useInput: select => select({ draft, phase: 'plain', attachmentIds: [] }),
+    inputActions,
+  })
+}
+
+test('남은 할 일이 있는데 멈췄으면 탭에 "이어서 진행" 단추를 보이고, 누르면 빈 입력창에 채워 보낸다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const actions = fakeInputActions()
+  const tree = renderWith(f.slots['conversation.view'], { running: false, inputActions: actions })
+  const [bar] = findAll(tree, hasClass('dpv-resume'))
+  assert.ok(bar, '단추 줄이 있어야 함')
+  assert.match(text(bar), /남은 할 일 1개가 있는데 멈췄어요/)
+  const [button] = findAll(bar, hasClass('dpv-resume-btn'))
+  assert.match(text(button), /이어서 진행/)
+  button.props.onClick()
+  assert.equal(actions.calls[0][0], 'setDraft')
+  assert.match(actions.calls[0][1], /^멈춘 곳부터 남은 할 일을 이어서 진행해 주세요\.\n- 탭 만들기 \(진행 중에 멈춤\)$/)
+  assert.deepEqual(actions.calls[1], ['submit'])
+})
+
+test('입력창에 쓰던 글이 있으면 보내지 않고 덧붙이기만 한다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const actions = fakeInputActions()
+  const tree = renderWith(f.slots['conversation.view'], { running: false, draft: '쓰던 글', inputActions: actions })
+  findAll(tree, hasClass('dpv-resume-btn'))[0].props.onClick()
+  assert.deepEqual(actions.calls.map(([name]) => name), ['insertText'])
+})
+
+test('세션이 돌고 있거나, 다 끝났거나, 입력 동작이 없으면 단추를 그리지 않는다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const view = f.slots['conversation.view']
+  assert.equal(findAll(renderWith(view, { running: true, inputActions: fakeInputActions() }), hasClass('dpv-resume')).length, 0)
+  assert.equal(findAll(renderWith(view, { running: false, inputActions: undefined }), hasClass('dpv-resume')).length, 0)
+  const done = fakeCtx(snapshotOf({ matches: [write(3, 2000, 2, [['구조 읽기', 'completed']])] }))
+  mod.apply(done.ctx)
+  assert.equal(findAll(renderWith(done.slots['conversation.view'], { running: false, inputActions: fakeInputActions() }), hasClass('dpv-resume')).length, 0)
+})
+
+test('오류로 멈췄으면 그 이유를 알린다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const tree = renderWith(f.slots['conversation.view'], { running: false, inputActions: fakeInputActions(), session: { lastAgentError: '요청 한도 초과' } })
+  assert.match(text(findAll(tree, hasClass('dpv-resume'))[0]), /오류로 멈췄어요/)
+})
+
+test('칩은 멈춤을 이름과 점으로 알린다', () => {
+  const { mod } = loadBundle()
+  const f = fakeCtx(snapshotOf({ plans: [PLAN], matches: MATCHES }))
+  mod.apply(f.ctx)
+  const chip = f.slots['conversation.session.header.utilities']
+  const tree = renderWith(chip, { running: false, inputActions: fakeInputActions() })
+  const [button] = findAll(tree, hasClass('dpv-chip'))
+  assert.match(button.props['aria-label'], /멈춤 · 이어서 진행할 수 있어요/)
+  assert.equal(findAll(button, hasClass('dpv-chip-dot')).length, 1)
+  const live = findAll(renderWith(chip, { running: true, inputActions: fakeInputActions() }), hasClass('dpv-chip'))[0]
+  assert.equal(findAll(live, hasClass('dpv-chip-dot')).length, 0)
 })

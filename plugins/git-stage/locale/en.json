@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Work stages",
+    "description": "Adds a Work stages tab to the conversation views that shows where the session's Git work stands, from branch to deploy, and what needs your approval next. Not an official DeepSeek plugin."
+  }
+}

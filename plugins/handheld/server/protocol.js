@@ -66,6 +66,10 @@ export const STREAM_FLUSH_MS = 100
  * Question:   { id, question, header?, detail?, options?: string[], multiSelect: boolean, review? }
  *             `review: { approve, revise }` marks a plan review: `detail` is the plan (markdown) and the answer
  *             selects one of the two option values; `revise` may carry the person's feedback as `custom`
+ * Stages:     { facts: GitFacts, todos: Array<{ content, status }>|null }   the session's Git work stage, read-only.
+ *             REST: GET /sessions/:id/stages. GitFacts is { repo: false } or { repo: true, folder, branch, base, isBase,
+ *             changes, ahead, upstream, unpushed, hadCommits, headTime, pr, prError, tag }; web/src/lib/stages.js
+ *             turns it into six stages (same file as plugins/git-stage/src/stages.js)
  * Settings:   { notifyTurnEnd: boolean, lang: 'ko'|'en'|'ja'|'zh-CN'|'zh-TW' }   lang words the notifications
  */
 

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Move conversation to workspace",
+    "description": "Moves a conversation to another workspace or deletes an unneeded one from the sidebar. Moves keep the title, history and session id; deletes send the record to the Trash. Not an official DeepSeek plugin.",
+    "detail": "docs/DETAIL.md"
+  }
+}

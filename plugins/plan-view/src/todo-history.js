@@ -23,7 +23,7 @@ export function matchTodoEvent(event) {
   return null
 }
 
-function turnOf(location) {
+export function turnOf(location) {
   const turn = location?.turn?.turn
   return typeof turn === 'number' ? turn : null
 }
@@ -102,10 +102,12 @@ export function currentTodos(history, projection) {
 }
 
 // 계획이 제출된 뒤(seq가 더 큰) 쓰기에 나온 항목들의 최신 상태.
-export function todosAfter(writes, seq) {
+// until(다음 계획의 seq)을 주면 그 앞까지만 본다 — 다음 계획의 실행 기록과 섞지 않는다.
+export function todosAfter(writes, seq, until) {
+  const end = until ?? Infinity
   const latest = new Map()
   for (const write of writes ?? []) {
-    if (write.seq <= seq) continue
+    if (write.seq <= seq || write.seq >= end) continue
     for (const todo of write.todos) latest.set(todo.content, todo.status)
   }
   return [...latest].map(([content, status]) => ({ content, status }))

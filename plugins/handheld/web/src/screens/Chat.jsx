@@ -12,6 +12,8 @@ import { buildRows, ItemView } from '../components/ItemView.jsx'
 import { Sheet } from '../components/Sheet.jsx'
 import { t } from '../lib/i18n.js'
 import { pendingIcon, pendingStripText } from '../lib/pending.js'
+import { stagesOf } from '../lib/stages.js'
+import { stageAsk, stageFacts, stageNext, stageOutgoing, stagePlain, stageStep, stageSummary, statusText } from '../lib/stage-view.js'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -85,6 +87,132 @@ function SubagentSheet({ items, onClose }) {
   )
 }
 
+const STAGE_POLL_RUNNING_MS = 8000
+const STAGE_POLL_IDLE_MS = 30_000
+
+/** Git work stage of the session's folder; asked again while it works and once more when it stops. */
+function useStages(sessionId, running) {
+  const [state, setState] = useState({ facts: null, todos: null, error: null })
+  // When the session's folder holds several repositories, the one picked here (remembered per session).
+  const [pick, setPick] = useState(() => storageGet(`stage-repo:${sessionId}`))
+  useEffect(() => { setPick(storageGet(`stage-repo:${sessionId}`)) }, [sessionId])
+  useEffect(() => {
+    let alive = true
+    const query = pick ? `?repo=${encodeURIComponent(pick)}` : ''
+    const load = () => api(`${sessionPath(sessionId)}/stages${query}`).then((r) => {
+      if (alive) setState({ facts: r.facts, todos: r.todos, error: null })
+    }).catch((error) => {
+      if (alive) setState((s) => ({ ...s, error: error.message }))
+    })
+    void load()
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') void load() }, running ? STAGE_POLL_RUNNING_MS : STAGE_POLL_IDLE_MS)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [sessionId, running, pick])
+  useEffect(() => { setState({ facts: null, todos: null, error: null }) }, [sessionId])
+  const choose = (name) => {
+    storageSet(`stage-repo:${sessionId}`, name || null)
+    setPick(name || null)
+  }
+  return { snapshot: stagesOf(state.facts, { todos: state.todos }), facts: state.facts, error: state.error, choose }
+}
+
+// The repository being read is named on the line right below, so the follow option carries no name.
+function RepoPicker({ within, choose }) {
+  return (
+    <div class="stage-repo">
+      <label class="setting-choice-label" for="stage-repo-select">{t('stage.repoIn', { folder: within.folder })}</label>
+      <div class="select-wrap">
+        <select id="stage-repo-select" class="select" value={within.auto ? '' : within.picked} onChange={(e) => choose(e.currentTarget.value)}>
+          <option value="">{t('stage.repoAuto')}</option>
+          {within.repos.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <Icon name="chevron" size={18} />
+      </div>
+    </div>
+  )
+}
+
+function StageDots({ snapshot }) {
+  return (
+    <span class="stage-dots" aria-hidden="true">
+      {snapshot.stages.map((stage) => <span key={stage.key} class="stage-dot" data-status={stage.status} />)}
+    </span>
+  )
+}
+
+/** Before approving share or merge: commit titles going up, and unsaved changes that stay behind. */
+function StageOutgoing({ stage }) {
+  const out = stageOutgoing(stage)
+  if (!out) return null
+  return (
+    <div class="stage-out">
+      <h3 class="stage-out-title">{out.title}</h3>
+      <ol class="stage-out-list">{out.commits.map((subject, i) => <li key={i}>{subject}</li>)}</ol>
+      {out.more ? <p class="muted small">{out.more}</p> : null}
+      {out.files ? <p class="muted small">{out.files}</p> : null}
+      {out.left ? (
+        <details class="stage-out-left">
+          <summary class="muted small">{out.left}</summary>
+          <ul class="stage-out-files mono-line">{out.pending.map((line) => <li key={line}>{line}</li>)}</ul>
+        </details>
+      ) : null}
+    </div>
+  )
+}
+
+/** A request for the current stage. The button puts it in the message box and never sends it. */
+function StageAsk({ stage, facts, onAsk }) {
+  const ask = onAsk ? stageAsk(stage, facts?.within ? facts.folder : null) : null
+  if (!ask) return null
+  return (
+    <div class="stage-ask">
+      <p class="muted small">{t('stage.ask.label')}</p>
+      <p class="stage-ask-text">{ask}</p>
+      <button type="button" class="btn btn-ghost btn-small stage-ask-btn" onClick={() => onAsk(ask)}>{t('stage.ask.put')}</button>
+    </div>
+  )
+}
+
+function StageSheet({ snapshot, facts, running, choose, onAsk, onClose }) {
+  return (
+    <Sheet title={t('stage.title')} onClose={onClose} labelId="stage-sheet-title">
+      {facts?.within ? <RepoPicker within={facts.within} choose={choose} /> : null}
+      {facts?.repo ? <p class="muted small mono-line">{`${facts.folder} · ${facts.branch ?? t('stage.noBranch')}`}</p> : null}
+      {facts?.within && facts.within.reason !== 'picked' ? <p class="muted small stage-why">{t(`stage.why.${facts.within.reason === 'session' ? 'session' : 'recent'}`)}</p> : null}
+      {snapshot.doing ? <p class="stage-doing"><span class="stage-label">{t('stage.doing')}</span><span>{snapshot.doing}</span></p> : null}
+      <ol class="stage-list">
+        {snapshot.stages.map((stage, i) => {
+          const next = stageNext(stage, { running })
+          return (
+            <li key={stage.key} class="stage-item" data-status={stage.status} aria-current={stage.status === 'current' ? 'step' : undefined}>
+              <details open={stage.status === 'current'}>
+                <summary class="stage-summary">
+                  <span class="stage-mark" data-status={stage.status} aria-hidden="true">{stage.status === 'done' ? '✓' : String(i + 1)}</span>
+                  <span class="stage-name one-line">{stageStep(stage.key)}</span>
+                  {stage.approval ? <span class="badge badge-attn">{t('stage.approval')}</span> : null}
+                  {stage.blocked ? <span class="badge badge-danger">{t(stage.blocked === 'checks' ? 'stage.blockedChecks' : 'stage.blocked')}</span> : null}
+                  <span class="badge badge-quiet">{statusText(stage.status)}</span>
+                </summary>
+                <div class="stage-detail">
+                  <p class="muted small">{stagePlain(stage.key)}</p>
+                  <ul class="stage-facts">{stageFacts(stage).map((line) => <li key={line}>{line}</li>)}</ul>
+                  <StageOutgoing stage={stage} />
+                  {next ? <p class="stage-next"><span class="stage-label">{t('stage.next')}</span><span>{next}</span></p> : null}
+                  <StageAsk stage={stage} facts={facts} onAsk={onAsk} />
+                </div>
+              </details>
+            </li>
+          )
+        })}
+      </ol>
+      <p class="muted small">{t('stage.note')}</p>
+    </Sheet>
+  )
+}
+
 function StreamBubble({ stream }) {
   if (!stream) return null
   return (
@@ -113,8 +241,17 @@ export function Chat({ sessionId }) {
   const running = row?.running === true
   const subagents = useSubagents(sessionId, running, parentId === null)
   const [showSubagents, setShowSubagents] = useState(false)
+  const stages = useStages(sessionId, running)
+  const [showStages, setShowStages] = useState(false)
   const activeSubagents = subagents.filter((s) => s.state === 'running').length
   const [announcement, setAnnouncement] = useState('')
+  // A stage request waiting to go into the message box; n changes on every tap so the same text can go in twice.
+  const [fill, setFill] = useState(null)
+  const askInBox = (text) => {
+    setFill((prev) => ({ text, n: (prev?.n ?? 0) + 1 }))
+    setShowStages(false)
+    setAnnouncement(t('stage.ask.done'))
+  }
   const before = useRef({ running, waiting: pending.length })
 
   // Screen readers do not see the status dot or the request strip appear.
@@ -222,6 +359,17 @@ export function Chat({ sessionId }) {
         </div>
       ) : null}
 
+      {stages.snapshot.kind !== 'no-repo' && !(stages.snapshot.kind === 'loading' && stages.error) ? (
+        <div class="sub-strip stage-strip">
+          <button type="button" class="sub-btn stage-btn" disabled={stages.snapshot.kind !== 'ok'} onClick={() => setShowStages(true)}>
+            <Icon name="stages" size={18} />
+            {stages.snapshot.kind === 'ok' ? <StageDots snapshot={stages.snapshot} /> : null}
+            <span class="one-line">{stageSummary(stages.snapshot, stages.error)}</span>
+            {stages.snapshot.kind === 'ok' ? <span class="pending-go">{t('view')}</span> : null}
+          </button>
+        </div>
+      ) : null}
+
       {subagents.length > 0 ? (
         <div class="sub-strip">
           <button type="button" class="sub-btn" onClick={() => setShowSubagents(true)}>
@@ -252,8 +400,9 @@ export function Chat({ sessionId }) {
       </div>
 
       <p class="visually-hidden" role="status">{announcement}</p>
-      {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} />}
+      {parentId ? <p class="view-only">{t('sub.viewOnly')}</p> : <Composer sessionId={sessionId} running={running} fill={fill} />}
       {showSubagents ? <SubagentSheet items={subagents} onClose={() => setShowSubagents(false)} /> : null}
+      {showStages && stages.snapshot.kind === 'ok' ? <StageSheet snapshot={stages.snapshot} facts={stages.facts} running={running} choose={stages.choose} onAsk={parentId ? null : askInBox} onClose={() => setShowStages(false)} /> : null}
     </div>
   )
 }

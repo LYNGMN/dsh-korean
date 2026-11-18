@@ -1,0 +1,233 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import vm from 'node:vm'
+import { build } from '../scripts/build.mjs'
+import { createStageSource, routeOf } from '../src/source.js'
+
+// 가짜 React: 컴포넌트를 함수로 불러 나온 나무만 본다. 훅은 처음 값만 돌려준다.
+let ids = 0
+const Fragment = Symbol('Fragment')
+const React = {
+  Fragment,
+  createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
+  useState: init => [typeof init === 'function' ? init() : init, () => {}],
+  useRef: init => ({ current: init ?? null }),
+  useEffect: () => {},
+  useId: () => `id${++ids}`,
+}
+const ReactDOM = { createPortal: node => ({ portal: node }) }
+
+function loadBundle(facts, { urls = [], storage } = {}) {
+  let registered
+  const sandbox = {
+    window: { __ModuleLoader__: { load: entry => { registered = entry } }, localStorage: storage },
+    document: { createElement: () => ({ dataset: {} }), head: { appendChild: () => {} }, visibilityState: 'visible' },
+    fetch: async url => { urls.push(url); return { ok: true, json: async () => ({ facts }) } },
+    setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, encodeURIComponent, Promise, Error, Object, String,
+  }
+  vm.runInNewContext(build(), sandbox)
+  const mod = registered.factory(name => {
+    if (name === 'react') return React
+    if (name === 'react-dom') return ReactDOM
+    throw new Error(`unexpected require ${name}`)
+  })
+  return { id: registered.id, mod }
+}
+
+function slotsOf(mod) {
+  const slots = {}
+  mod.apply({
+    slots: { inject: (_name, fn) => fn(), register: (opts, Component) => { slots[opts.name] = { opts, Component } } },
+    effect: fn => { fn() },
+  })
+  return slots
+}
+
+const text = node => (node == null || node === false ? '' : typeof node === 'string' || typeof node === 'number' ? String(node)
+  : typeof node.type === 'function' ? text(node.type(node.props))
+  : node.portal ? text(node.portal)
+  : [node.props?.['aria-label'] ?? '', ...(node.children ?? []).map(text)].join(' '))
+
+const FACTS = {
+  repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 2,
+  upstream: null, unpushed: 0, hadCommits: true, headTime: 1, pr: null, prError: null, tag: null,
+}
+
+function render(slot, mod, facts, todos) {
+  // 시험에서는 화면이 구독하기 전에 사실을 채워 둔다(가짜 useState는 처음 값만 준다).
+  const source = mod.internals.sources.get('s1') ?? null
+  if (source === null) {
+    slot.Component({ sessionId: 's1', useSession: s => s({ running: false }), useProjection: () => todos })
+  }
+  return slot.Component({ sessionId: 's1', useSession: s => s({ running: false }), useProjection: key => (key === 'todos' ? todos : undefined) })
+}
+
+test('번들은 플러그인 이름으로 등록되고 자리 서비스만 받는다', () => {
+  const { id, mod } = loadBundle(FACTS)
+  assert.equal(id, '@lyngmn/dsh-git-stage')
+  assert.deepEqual([...mod.inject], ['slots'])
+  assert.doesNotMatch(build(), /require\('@deepseek-ai/, 'Harness Client 패키지를 require하지 않는다')
+})
+
+test('보기 탭(계획 뒤)과 채팅 머리 칩 두 자리를 등록한다', () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  assert.deepEqual(Object.keys(slots).sort(), ['conversation.session.header.utilities', 'conversation.view'])
+  assert.equal(slots['conversation.view'].opts.id, 'dsh-git-stage')
+  assert.equal(slots['conversation.view'].opts.label(), '작업 단계')
+  assert.ok(slots['conversation.view'].opts.order > 20, '계획(20) 뒤에 온다')
+})
+
+test('사실을 읽기 전에는 읽는 중이라고 쓰고 칩은 숨는다', () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  const out = text(render(slots['conversation.view'], mod, FACTS, []))
+  assert.match(out, /작업 단계를 읽는 중이에요/)
+  assert.equal(slots['conversation.session.header.utilities'].Component({ sessionId: 's2', useSession: s => s({}), useProjection: () => null }), null)
+})
+
+test('사실이 오면 단계 줄·지금 단계 설명·다음 할 일·지금 하는 일을 그린다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const todos = [{ content: 'npm test 돌리기', status: 'completed' }, { content: 'PR 열기', status: 'in_progress' }]
+  const out = text(render(slots['conversation.view'], mod, FACTS, todos))
+  assert.match(out, /공유 단계 · 3\/6 · 승인 필요/)
+  // 지금 단계를 고른 동안에는 지금 카드가 설명이라 아래 설명 칸을 또 그리지 않는다.
+  assert.doesNotMatch(out, /자세히/)
+  assert.match(out, /4\. 공유\(푸시·PR\)\s+승인 필요\s+GitHub에 올리고\(푸시\)/)
+  assert.match(out, /4\s+공유\s+승인 필요/)
+  assert.match(out, /승인하면 GitHub에 올리고/)
+  assert.match(out, /하는 일\s+PR 열기/)
+  assert.match(out, /app · claude\/feat\/x/)
+  const chip = text(slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos }))
+  assert.match(chip, /작업 단계 공유 단계 · 3\/6 · 승인 필요/)
+})
+
+test('createStageSource는 보는 화면이 있을 때만 주기적으로 읽고, 실패는 오류 코드로 남긴다', async () => {
+  let loads = 0
+  let tick = null
+  let stopped = 0
+  const source = createStageSource({
+    load: async () => { loads += 1; if (loads === 2) throw Object.assign(new Error('x'), { code: 404 }); return { repo: false } },
+    every: (fn) => { tick = fn; return () => { stopped += 1 } },
+  })
+  const off = source.subscribe(() => {})
+  await source.refresh()
+  assert.equal(loads, 1, '구독할 때 한 번, 진행 중인 읽기는 겹치지 않는다')
+  tick()
+  await new Promise(r => setTimeout(r, 0))
+  assert.equal(source.getSnapshot().error, '404')
+  assert.deepEqual(source.getSnapshot().facts, { repo: false }, '실패해도 지난 사실은 남긴다')
+  off()
+  assert.equal(stopped, 1)
+  assert.equal(routeOf('a b'), 'api/dsh-git-stage?sessionId=a%20b')
+})
+
+// 나무에서 조건에 맞는 첫 노드. 함수 컴포넌트는 불러서 펼친다.
+function find(node, match) {
+  if (node == null || typeof node !== 'object') return null
+  if (typeof node.type === 'function') return find(node.type(node.props), match)
+  if (node.portal) return find(node.portal, match)
+  if (match(node)) return node
+  for (const child of node.children ?? []) {
+    const hit = find(child, match)
+    if (hit) return hit
+  }
+  return null
+}
+
+test('묶음 폴더면 저장소 고르기를 보이고, 고른 저장소를 세션마다 기억해 그 이름으로 다시 읽는다', async () => {
+  const within = { folder: 'Dev', repos: ['DiscordActions', 'dsh-korean'], picked: 'DiscordActions', auto: true, reason: 'session' }
+  const facts = { ...FACTS, folder: 'DiscordActions', within }
+  const urls = []
+  const saved = new Map()
+  const storage = { getItem: k => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: k => saved.delete(k) }
+  const { mod } = loadBundle(facts, { urls, storage })
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, facts, [])
+  await mod.internals.sources.get('s1').refresh()
+  const tree = render(slots['conversation.view'], mod, facts, [])
+  assert.match(text(tree), /DiscordActions · claude\/feat\/x/)
+  const select = find(tree, node => node.type === 'select')
+  assert.equal(select.props.value, '')
+  assert.deepEqual(select.children.map(option => option.props.value), ['', 'DiscordActions', 'dsh-korean'])
+  assert.equal(select.children[0].children.join(''), '자동으로 따라가기')
+  assert.match(text(tree), /이 세션이 명령을 돌린 저장소예요/)
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1')
+
+  select.props.onChange({ target: { value: 'dsh-korean' } })
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(saved.get('dsh-git-stage:repo:s1'), 'dsh-korean')
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1&repo=dsh-korean')
+
+  select.props.onChange({ target: { value: '' } })
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(saved.has('dsh-git-stage:repo:s1'), false)
+  assert.equal(urls.at(-1), 'api/dsh-git-stage?sessionId=s1')
+})
+
+test('저장소 하나만 연 세션에는 저장소 고르기가 없다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  assert.equal(find(render(slots['conversation.view'], mod, FACTS, []), node => node.type === 'select'), null)
+})
+
+test('지금 단계의 요청 문장을 입력창에 넣기만 하고, 보내지 않는다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const calls = []
+  const inputActions = {
+    captureInsertion: () => { calls.push('capture'); return { start: 0, end: 0, draftRev: 1 } },
+    insertText: (value, span) => { calls.push(['insert', value, span.draftRev]); return true },
+    setDraft: () => calls.push('setDraft'),
+    submit: () => calls.push('submit'),
+  }
+  const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
+  const props = { sessionId: 's1', useSession: s => s({ running: false }), useProjection: key => (key === 'todos' ? todos : undefined), inputActions }
+  const tree = slots['conversation.view'].Component(props)
+  assert.match(text(tree), /이렇게 요청해 보세요\s+테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청\(PR\)을 초안으로 열어 주세요\./)
+  const button = find(tree, node => node.type === 'button' && node.children.join('') === '입력창에 넣기')
+  button.props.onClick()
+  assert.deepEqual(calls, ['capture', ['insert', '테스트와 빌드를 돌리고, 통과하면 푸시해서 검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.', 1]])
+
+  // 입력창 기능을 받지 못한 화면에는 단추가 없다.
+  const bare = slots['conversation.view'].Component({ ...props, inputActions: undefined })
+  assert.equal(find(bare, node => node.type === 'button' && node.children.join('') === '입력창에 넣기'), null)
+})
+
+test('지금 카드가 맨 위에 상태·다음·요청을 한 번만 보이고, 칩은 승인 차례를 글자 배지로 알린다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const todos = [{ content: 'npm test 돌리기', status: 'completed' }]
+  const tree = render(slots['conversation.view'], mod, FACTS, todos)
+  const now = find(tree, node => node.props?.className === 'dgs-now')
+  assert.equal(now.props['data-tone'], 'approval')
+  assert.match(text(now), /지금\s+4\. 공유\(푸시·PR\)\s+승인 필요/)
+  assert.match(text(now), /올라가는 것\s+저장 2개/)
+  const out = text(tree)
+  assert.equal(out.match(/승인하면 GitHub에 올리고/g).length, 1, '다음 할 일은 지금 카드에만')
+  assert.match(out, /에 읽음 · 10초마다 새로 읽음 · 보기 전용/)
+  assert.ok(find(tree, node => node.type === 'button' && node.children.join('') === '지금 다시 읽기'))
+
+  const chip = slots['conversation.session.header.utilities'].Component({ sessionId: 's1', useSession: s => s({}), useProjection: () => todos })
+  assert.equal(find(chip, node => node.props?.className === 'dgs-chip-badge').children.join(''), '승인')
+})
+
+test('에이전트가 일하는 중이면 배지를 달고, 검증 단계에서는 끝나기를 기다리라고 말한다', async () => {
+  const { mod } = loadBundle(FACTS)
+  const slots = slotsOf(mod)
+  render(slots['conversation.view'], mod, FACTS, [])
+  await mod.internals.sources.get('s1').refresh()
+  const tree = slots['conversation.view'].Component({ sessionId: 's1', useSession: s => s({ running: true }), useProjection: key => (key === 'todos' ? [] : undefined) })
+  const now = text(find(tree, node => node.props?.className === 'dgs-now'))
+  assert.match(now, /3\. 검증\s+에이전트 작업 중/)
+  assert.match(now, /다음\s+에이전트가 일하는 중이에요\. 기다렸다가, 끝나면 테스트·빌드를 요청해요\./)
+})

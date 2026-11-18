@@ -97,14 +97,16 @@ export async function createFakeDsh({ sessions = [], workspaces = [], onPrompt, 
             projections: { values: { title: s.events.findLast((e) => e.type === 'session/title')?.data.title ?? s.title } },
           })),
         }
-      case 'session/projections':
-        sessionOf(args.request.sessionId)
+      case 'session/projections': {
+        const own = sessionOf(args.request.sessionId)
         return {
           values: {
+            ...(own.projections ?? {}),
             subagentCatalog: [...state.sessions.values()].filter((s) => s.parentSessionId === args.request.sessionId)
               .map((s, n) => ({ id: s.sessionId, createdAt: n + 1, mode: s.mode ?? 'continuable', label: s.label })),
           },
         }
+      }
       case 'session/events': {
         const { address, beforeSeq, maxMessages = 20 } = args.request
         const s = sessionOf(addressedSession(address))

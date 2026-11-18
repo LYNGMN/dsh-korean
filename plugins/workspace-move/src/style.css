@@ -1,0 +1,289 @@
+/* 작업공간 대화 옮기기. 색은 DSH 테마 토큰만 쓰고, 어두운 테마도 그대로 따라간다. */
+.dwm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 38%);
+  pointer-events: auto;
+}
+
+.dwm-dialog {
+  width: min(440px, 100%);
+  max-height: min(84vh, 680px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 32%);
+  word-break: keep-all;
+}
+
+.dwm-dialog:focus {
+  outline: none;
+}
+
+.dwm-title {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.dwm-desc,
+.dwm-current,
+.dwm-note,
+.dwm-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dwm-desc {
+  margin-bottom: 4px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.dwm-current {
+  margin-bottom: 14px;
+}
+
+.dwm-note {
+  margin-top: 10px;
+}
+
+.dwm-hint {
+  margin-top: 4px;
+}
+
+.dwm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 44vh;
+  overflow: auto;
+  margin: 4px 0 0;
+  padding: 2px;
+}
+
+.dwm-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dwm-option:hover {
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.dwm-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--dsw-alias-brand-primary);
+}
+
+.dwm-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dwm-option-title {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dwm-option-path {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dwm-warning,
+.dwm-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.dwm-warning {
+  border: 1px solid var(--dsw-alias-state-warn-primary);
+  color: var(--dsw-alias-label-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent);
+}
+
+.dwm-error {
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-label-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+}
+
+.dwm-status {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dwm-done {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.dwm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dwm-button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dwm-button:hover:not([disabled]) {
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.dwm-button:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.dwm-button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dwm-primary {
+  border-color: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-brand-primary);
+  color: #fff;
+}
+
+.dwm-primary:hover:not([disabled]) {
+  background: var(--dsw-alias-brand-primary);
+  filter: brightness(1.06);
+}
+
+@media (pointer: coarse) {
+  .dwm-button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dwm-primary:hover:not([disabled]) {
+    filter: none;
+  }
+}
+
+.dwm-error-text {
+  display: block;
+}
+
+.dwm-code {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+/* 다른 작업공간 줄 위로 끌고 왔을 때의 표시. React가 className을 다시 그려도 남도록 data 속성을 쓴다. */
+[data-dwm-drop="1"] {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
+}
+
+.dwm-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 80;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 26%);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: keep-all;
+  pointer-events: auto;
+}
+
+.dwm-toast-success {
+  border-color: var(--dsw-alias-state-success-primary);
+}
+
+.dwm-toast-error {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.dwm-toast-progress {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* 다음 시작 때 이동할 예약 표시. 세션 줄 끝에 작게 붙는다. */
+.dwm-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 96px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 4px;
+  color: var(--dsw-alias-brand-primary);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 삭제는 되돌리기 어려운 동작이라 버튼을 경고색으로 둔다. */
+.dwm-danger {
+  border-color: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.dwm-danger:hover:not([disabled]) {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+}

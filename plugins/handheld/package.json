@@ -1,6 +1,6 @@
 {
   "name": "@lyngmn/dsh-handheld",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Follow sessions and send messages from an app installed on your phone. Approval requests arrive as notifications for you to allow or deny, and you can review changed code. Not an official DeepSeek plugin.",
   "author": "LYNGMN",

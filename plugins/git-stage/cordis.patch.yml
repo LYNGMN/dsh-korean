@@ -1,0 +1,4 @@
+# 작업 단계. 서버 쪽은 인증 울타리 안 주소 /api/dsh-git-stage 하나를 열고, 화면 쪽 번들(lib/client.js)이 탭과 칩을 그린다.
+- insert:
+    - id: dsh-git-stage
+      name: '@lyngmn/dsh-git-stage'

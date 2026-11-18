@@ -18,6 +18,7 @@
 .dpv-empty, .dpv-note { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
 .dpv-note { font-size: 13px; line-height: 20px; }
 .dpv-badge { flex: none; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: var(--dsw-radius-sm, 6px); color: var(--dsw-alias-label-secondary, #646a73); border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); white-space: nowrap; }
+.dpv-badge[data-done] { color: var(--dsw-alias-state-business-primary, #3d7be0); }
 .dpv-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .dpv-card {
   border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12));
@@ -169,6 +170,26 @@
 .dpv-panel:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); }
 .dpv-panel-list { padding: 0; }
 .dpv-panel .dpv-todo-compact { padding: 5px 2px; }
+
+/* 멈춘 할 일 이어서 진행. 단추는 테마 색 글자 + 카드 바탕이라 밝음·어두움 모두 대비가 남는다. */
+.dpv-resume { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 8px 12px; border-radius: var(--dsw-radius-lg, 12px); background: var(--dsw-alias-state-business-tertiary, rgba(61, 123, 224, 0.1)); }
+.dpv-resume-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.dpv-resume-text { flex: 1 1 12em; min-width: 0; margin: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }
+.dpv-resume[data-compact] .dpv-resume-text { font-size: 13px; line-height: 20px; }
+.dpv-resume-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  box-sizing: border-box; min-height: 44px; padding: 0 14px; margin: 0;
+  border: 0.5px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.12)); border-radius: 10px;
+  background: var(--dsw-alias-card-fill, #fff); color: var(--dsw-alias-state-business-primary, #3d7be0);
+  font: inherit; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+@media (hover: hover) { .dpv-resume-btn:not(:disabled):hover { background: var(--dsw-alias-card-fill-hover, rgba(0, 0, 0, 0.04)); } }
+.dpv-resume-btn:disabled { opacity: 0.55; cursor: default; }
+.dpv-resume-btn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3d7be0); outline-offset: 2px; }
+.dpv-play { flex: none; width: 16px; height: 16px; }
+.dpv-resume-note { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary, #646a73); text-wrap: pretty; }
+.dpv-resume-note:empty { display: none; }
+.dpv-chip-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary, #3d7be0); }
 
 @media (prefers-reduced-motion: reduce) {
   .dpv-spin, .dpv-ring[data-live] .dpv-ring-fill, .dpv-todo[data-just], .dpv-todo[data-added],

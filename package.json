@@ -12,7 +12,8 @@
   "scripts": {
     "test": "node --test test/*.test.mjs && npm test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run check --workspace plugins/korean"
+    "check": "npm run check --workspace plugins/korean",
+    "sync": "node scripts/sync-copies.mjs"
   },
   "engines": {
     "node": ">=22.15"
