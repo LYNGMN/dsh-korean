@@ -130,7 +130,12 @@ export function normalizeSettings(config = {}) {
   const count = Number.isInteger(rawCount) && rawCount > 0 ? rawCount : DEFAULT_COUNT
   const rawTimeout = Number(config.timeoutMs)
   const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000 ? Math.min(rawTimeout, 60000) : DEFAULT_TIMEOUT_MS
-  const listed = Array.isArray(config.providers) ? config.providers.map((p) => String(p).trim()) : PROVIDER_IDS
+  // A list saved before an engine existed (1.1 had no Exa or Brave) gets the
+  // new engine; `providersKnown` names the engines the list was written with,
+  // so a list that leaves one out on purpose keeps it out.
+  const listed = Array.isArray(config.providers)
+    ? withNewEngines(config.providers.map((p) => String(p).trim()), config.providersKnown)
+    : PROVIDER_IDS
   const providers = PROVIDER_IDS.filter((id) => listed.includes(id))
   const keyNames = {}
   for (const [id, names] of Object.entries(DEFAULT_KEY_NAMES)) {

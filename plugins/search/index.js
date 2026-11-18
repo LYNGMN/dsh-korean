@@ -51,6 +51,10 @@ export const inject = ['web', 'tools', 'commands']
  */
 export const Config = z.object({
   providers: z.array(z.string()).default([...PROVIDER_IDS]).description('Engines to register.'),
+  // Left out of this bundle's patch on purpose: a profile that saved the 1.1
+  // list must not inherit a 1.2 "known" list, or Exa and Brave would stay out.
+  providersKnown: z.array(z.string()).default([])
+    .description('Engines that existed when providers was written; an engine added later is registered too. List every engine here to leave a new one out.'),
   autoOrder: z.array(z.string()).default([...DEFAULT_AUTO_ORDER]).volatile()
     .description('Engines the automatic engine uses, in order. Engines left out are not used by auto.'),
   autoKnown: z.array(z.string()).default([]).volatile()

@@ -1034,6 +1034,12 @@ window.__ModuleLoader__.load({
     /** The settings section DSH's Web search and fetch page also edits; its `searchProvider` picks web_search's engine. */
     const WEB_NS = 'web'
     const WEB_FIELD = 'searchProvider'
+    /**
+     * DSH's own search providers, which carry no title: DSH names them from its
+     * page dictionary and lists them first, in this order. The card does the same.
+     */
+    const OFFICIAL_SEARCH = [['deepseek-search-api', 'providerDeepSeek'], ['deepseek-official', 'providerLegacy']]
+    const WEB_PAGE_NS = 'settings.webSearch'
 
     /**
      * A small store for the Host services the web search section needs, which
@@ -1116,11 +1122,21 @@ window.__ModuleLoader__.load({
 
       const base = snapshot.base && typeof snapshot.base === 'object' ? snapshot.base[WEB_FIELD] : undefined
       const current = typeof snapshot.value?.[WEB_FIELD] === 'string' ? snapshot.value[WEB_FIELD] : ''
-      const titleOf = (id) => providers.find((provider) => provider.id === id)?.title ?? id
+      const official = new Map(OFFICIAL_SEARCH)
+      const titleOf = (id) => {
+        const key = official.get(id)
+        const named = key === undefined ? undefined : services.pageText?.(key)
+        if (typeof named === 'string' && named !== '' && named !== key) return named
+        return providers.find((provider) => provider.id === id)?.title ?? id
+      }
+      const ordered = [
+        ...OFFICIAL_SEARCH.flatMap(([id]) => providers.filter((provider) => provider.id === id)),
+        ...providers.filter((provider) => !official.has(provider.id))
+      ]
       const options = []
       // "DSH default" exists only when the profile composes no engine; then DSH picks one itself.
       if (base === undefined) options.push({ value: '', label: t('webDefault') })
-      for (const provider of providers) options.push({ value: provider.id, label: provider.title ?? provider.id })
+      for (const provider of ordered) options.push({ value: provider.id, label: titleOf(provider.id) })
       if (current !== '' && !providers.some((provider) => provider.id === current)) options.push({ value: current, label: fill(t('webMissing'), { id: current }) })
       const locked = !snapshot.writable
 
@@ -1331,6 +1347,8 @@ window.__ModuleLoader__.load({
           scope.effect(() => {
             web.set({
               form: scope.configForms.get(WEB_NS),
+              // DSH's Web search page dictionary, for the names it gives its own providers.
+              pageText: ctx.locale.bind(WEB_PAGE_NS),
               listProviders: () => scope.remote.web.listProviders(),
               onProvidersChanged: (listener) => {
                 const offs = [ctx.remote.$on?.('web/providers-changed', listener), ctx.on?.('connection/reset', listener)]
