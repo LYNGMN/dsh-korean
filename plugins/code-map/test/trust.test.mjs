@@ -139,3 +139,22 @@ test('구글스크립트 확장자를 자바스크립트로 읽도록 엔진 설
   assert.equal(EXTRA_EXTENSIONS['.gs'], 'javascript')
   assert.equal(Object.isFrozen(EXTRA_EXTENSIONS), true)
 })
+
+test('코드 후보 공백이 있으면 일부만 읽은 것으로 알리고 문서·이미지만 빠졌으면 알리지 않는다', async () => {
+  const run = async unmapped => {
+    const service = configured({
+      index: async () => ({ project: 'kit', status: 'indexed', coverage: coverageOf({ not_indexed_files_count: 89 }), not_indexed_files_count: 89 }),
+      gaps: async () => ({ unknownFormats: [], unmapped }),
+    })
+    await service.refresh('session-1', rootPath)
+    return service.snapshot('session-1', rootPath)
+  }
+  const quiet = await run({ look: 0, tests: 76, quiet: 13, lookTop: [] })
+  assert.equal(quiet.partial, false, '엔진이 89개라고 해도 코드가 아닌 파일이면 경고하지 않는다')
+  assert.deepEqual({ ...quiet.coverage.unmapped }, { look: 0, tests: 76, quiet: 13, lookTop: [] })
+  const code = await run({ look: 3, tests: 0, quiet: 0, lookTop: [{ ext: '.gs', files: 3 }] })
+  assert.equal(code.partial, true)
+  const failed = await run(null)
+  assert.equal(failed.partial, true, '조사를 못 했으면 엔진 숫자(89)로 판단해 경고한다')
+  assert.equal(failed.coverage.unmapped, null)
+})

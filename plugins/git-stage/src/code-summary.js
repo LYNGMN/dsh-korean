@@ -8,27 +8,40 @@ export function codeRouteOf(sessionId) {
 const countOf = value => (Number.isSafeInteger(value) && value >= 0 ? value : null)
 
 // 읽지 못한 범위. 0이어도 늘 보여 주고, 값을 모르면 0이 아니라 "확인 안 됨"으로 쓴다.
+// 주황(warn)은 코드가 빠졌을 수 있을 때만, 테스트·문서·이미지처럼 지도 대상이 아닌 것은 회색(idle)이다.
+const amountOf = value => (value === null ? '확인 안 됨' : value === 0 ? '없음' : `${value}개`)
+function chipOf(key, name, raw, calm = false) {
+  const value = countOf(raw)
+  return { key, label: `${name} ${amountOf(value)}`, tone: !calm && value !== 0 ? 'warn' : 'idle' }
+}
+
 export function codeGapsOf(coverage) {
   if (!coverage || typeof coverage !== 'object') return null
-  const gaps = [
-    ['notIndexed', '미인덱스', coverage.notIndexed],
-    ['partial', '부분 파싱', coverage.partial],
-    ['unusable', '파싱 불가', coverage.unusable],
-  ].map(([key, name, raw]) => {
-    const value = countOf(raw)
-    return { key, label: `${name} ${value === null ? '확인 안 됨' : `${value}개`}`, warn: value !== 0 }
-  })
+  const map = coverage.unmapped
+  const gaps = []
+  if (map && typeof map === 'object') {
+    gaps.push(chipOf('look', '지도에 없는 코드', map.look))
+    gaps.push(chipOf('partial', '일부만 읽은 파일', coverage.partial))
+    gaps.push(chipOf('unusable', '읽지 못한 파일', coverage.unusable))
+    gaps.push(chipOf('tests', '테스트 파일', map.tests, true))
+    gaps.push(chipOf('quiet', '문서·설정·이미지', map.quiet, true))
+    return gaps
+  }
+  // 조사를 못 했거나(null) 옛 코드 지도: 엔진이 센 숫자만 있다.
+  gaps.push(chipOf('notIndexed', '지도에 넣지 못한 파일', map === null ? null : coverage.notIndexed))
+  gaps.push(chipOf('partial', '일부만 읽은 파일', coverage.partial))
+  gaps.push(chipOf('unusable', '읽지 못한 파일', coverage.unusable))
   // 지도에 한 개도 없는 파일 형식(예: .gs). 옛 코드 지도는 이 값이 없으니 그때는 그리지 않는다.
   const formats = coverage.unknownFormats
-  if (formats === null) gaps.push({ key: 'formats', label: '형식 모름 확인 안 됨', warn: true })
+  if (formats === null) gaps.push({ key: 'formats', label: '형식 모름 확인 안 됨', tone: 'warn' })
   else if (Array.isArray(formats)) {
     for (const item of formats.slice(0, 3)) {
       const files = countOf(item?.files)
       if (typeof item?.ext === 'string' && files !== null) {
-        gaps.push({ key: `format${item.ext}`, label: `형식 모름 ${item.ext.slice(0, 12)} ${files}개`, warn: true })
+        gaps.push({ key: `format${item.ext}`, label: `형식 모름 ${item.ext.slice(0, 12)} ${files}개`, tone: 'warn' })
       }
     }
-    if (formats.length > 3) gaps.push({ key: 'formats-more', label: `형식 모름 외 ${formats.length - 3}종`, warn: true })
+    if (formats.length > 3) gaps.push({ key: 'formats-more', label: `형식 모름 외 ${formats.length - 3}종`, tone: 'warn' })
   }
   return gaps
 }

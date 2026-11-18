@@ -63,7 +63,7 @@
   const REPOS = ['DiscordActions', 'dsh-korean', 'worktrees/summarize-feed/claude-fix-localized-search-all-languages', 'summarize-meta']
   // ?code=ready 코드 지도 켜짐(읽지 못한 범위 있음), clean 읽지 못한 범위 0, off 꺼짐, indexing 준비 중, missing 분석 도구 없음. 없으면 코드 지도 플러그인이 없는 것처럼 404.
   const CODE = {
-    ready: { state: 'ready', enabled: true, requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js'], candidates: [{ name: 'loadUser' }, { name: 'render' }], partial: true }, coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }, { ext: '.abc', files: 1 }] } },
+    ready: { state: 'ready', enabled: true, requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js'], candidates: [{ name: 'loadUser' }, { name: 'render' }], partial: true }, coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }, { ext: '.abc', files: 1 }], unmapped: { look: 33, tests: 76, quiet: 13, lookTop: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }] } } },
     clean: { state: 'ready', enabled: true, requestImpact: { status: 'ready', files: [], candidates: [] }, coverage: { notIndexed: 0, partial: 0, unusable: 0, skipped: 0 } },
     off: { state: 'off', enabled: false },
     indexing: { state: 'indexing', enabled: true, coverage: null },

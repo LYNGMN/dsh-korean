@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>코드 지도 미리보기</title>
 <!-- 실제 DSH 없이 lib/client.js의 코드 지도 탭을 올려 보는 틀.
-     ?theme=dark 어두운 테마, ?state=ready|gaps|unknown|nochange|pending|indexing|off|missing 화면 상태(없으면 ready).
+     ?theme=dark 어두운 테마, ?state=ready|gaps|unknown|nochange|pending|indexing|off|missing|failed 화면 상태(없으면 ready).
      브라우저 콘솔에서 window.__code = {…}로 바꾸면 2초 안에 화면이 따라 바뀐다(상태 전환 때 위치가 튀는지 잴 때). -->
 <style>
   :root {
@@ -33,7 +33,7 @@
   if (params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark'
   window.__ModuleLoader__ = { load(entry) { window.__entry = entry } }
   const base = { enabled: true, repo: 'DiscordActions', root: '/Users/me/Dev/DiscordActions', focus: [], indexedAt: Date.now() - 20000, indexMs: 400 }
-  const clean = { notIndexed: 0, partial: 0, unusable: 0, skipped: 0, unknownFormats: [] }
+  const clean = { notIndexed: 0, partial: 0, unusable: 0, skipped: 0, unknownFormats: [], unmapped: { look: 0, tests: 76, quiet: 13, lookTop: [] } }
   const rows = [
     { id: 'a', name: 'sendResume', file: 'src/services/resume/send-resume-with-a-very-long-file-name.js', line: 42, hop: 1 },
     { id: 'b', name: 'renderReceipt', file: 'src/views/receipt.js', line: 7, hop: 2 },
@@ -43,16 +43,18 @@
       requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js', 'src/db.js', 'rss-bot/20_DiscordService.gs', 'rss-bot/Settings_Discord.html', 'docs/Review_261115.md', 'docs/Telegram_Review_261115.md'], candidates: rows },
       impact: { changed: 0, total: 0, files: [], candidates: [] } },
     gaps: { ...base, state: 'ready', partial: true,
-      coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }, { ext: '.abc', files: 1 }] },
+      coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }, { ext: '.abc', files: 1 }],
+        unmapped: { look: 32, tests: 76, quiet: 13, lookTop: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }] } },
       requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js', 'src/db.js'], candidates: rows },
       impact: { changed: 3, total: 2, files: ['src/cache.js'], candidates: rows } },
-    unknown: { ...base, state: 'ready', coverage: { notIndexed: 1, partial: 0, unusable: 0, skipped: 0, unknownFormats: null },
+    unknown: { ...base, state: 'ready', coverage: { notIndexed: 1, partial: 0, unusable: 0, skipped: 0, unknownFormats: null, unmapped: null },
       requestImpact: { status: 'ready', files: ['a.js'], candidates: [] } },
     nochange: { ...base, state: 'ready', coverage: clean, impact: { changed: 0, total: 0, files: [], candidates: [] } },
     pending: { ...base, state: 'ready', coverage: clean, requestImpact: { status: 'pending' } },
     indexing: { ...base, state: 'indexing', indexedAt: undefined, indexMs: undefined },
     off: { state: 'off', enabled: false, repo: 'DiscordActions', focus: [] },
     missing: { state: 'engine-missing', enabled: true, repo: 'DiscordActions', focus: [] },
+    failed: { state: 'analysis-failed', enabled: true, repo: 'DiscordActions', focus: [] },
   }
   window.__code = CODE[params.get('state') ?? 'ready']
   window.fetch = async (url, options) => {

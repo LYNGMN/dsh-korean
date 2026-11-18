@@ -279,7 +279,7 @@ window.__ModuleLoader__.load({
         h('p', { className: 'dgs-code-line', role: 'status' }, code.request),
         code.gaps
           ? h('ul', { className: 'dgs-code-gaps', 'aria-label': '지도에서 읽지 못한 범위' },
-            code.gaps.map(gap => h('li', { key: gap.key, className: 'dgs-code-gap', 'data-warn': gap.warn ? '' : undefined }, gap.label)))
+            code.gaps.map(gap => h('li', { key: gap.key, className: 'dgs-code-gap', 'data-tone': gap.tone }, gap.label)))
           : null,
         h('p', { className: 'dgs-code-note' },
           '지도에 없는 파일이나 실행할 때만 이어지는 호출은 빠져요. 자세한 위치와 사용처는 코드 지도 탭에서 볼 수 있어요.'))
