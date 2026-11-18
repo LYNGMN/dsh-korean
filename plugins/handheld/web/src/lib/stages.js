@@ -1,5 +1,5 @@
 // Git 사실 + 할 일 → 작업 단계 6개. 화면·Node 어디서나 도는 순수 함수다.
-// 휴대폰 앱(plugins/handheld/web/src/lib/stages.js)이 같은 파일을 복사해 쓴다. 키트 test/git-stage-copies.test.mjs가 둘이 같은지 본다.
+// 휴대폰 앱이 화면(web/src/lib/stages.js)과 알림 서버(server/gateway/stages.js)에 복사해 쓴다. 고친 뒤 루트에서 npm run sync를 돌린다.
 
 export const STAGE_KEYS = ['branch', 'commit', 'verify', 'share', 'merge', 'deploy']
 
@@ -16,12 +16,15 @@ export function doingOf(todos) {
   return asTodos(todos).find(t => t.status === 'in_progress')?.content ?? null
 }
 
-// 검증 기록: 할 일에서 검증 낱말이 든 완료 항목, 또는 마지막 커밋 뒤에 성공한 시험 실행.
-export function verifyOf(todos, verifiedAt, headTime) {
+// 검증 기록. 세션이 실제로 돌린 시험 기록(run: git-read의 verify)이 있으면 그것만 본다:
+// 통과한 뒤 에이전트가 파일을 고치지 않았으면 끝남, 고쳤으면 다시 돌려야 한다.
+// 기록이 없으면 할 일에서 검증 낱말이 든 완료 항목, 또는 마지막 커밋 뒤에 성공한 시험 시각(verifiedAt)으로 본다.
+export function verifyOf(todos, verifiedAt, headTime, run = null) {
+  if (run && typeof run.at === 'number') return { by: run.editedAfter ? null : 'run', item: null, run }
   const item = asTodos(todos).find(t => t.status === 'completed' && VERIFY_WORDS.test(t.content))
-  if (item) return { by: 'todo', item: item.content }
-  if (typeof verifiedAt === 'number' && (typeof headTime !== 'number' || verifiedAt >= headTime)) return { by: 'run', item: null }
-  return { by: null, item: null }
+  if (item) return { by: 'todo', item: item.content, run: null }
+  if (typeof verifiedAt === 'number' && (typeof headTime !== 'number' || verifiedAt >= headTime)) return { by: 'run', item: null, run: null }
+  return { by: null, item: null, run: null }
 }
 
 /**
@@ -37,7 +40,7 @@ export function stagesOf(facts, extra = {}) {
   const prMerged = pr?.state === 'MERGED'
   const merged = prMerged || (facts.ahead === 0 && facts.hadCommits === true && !facts.isBase)
   const pushed = typeof facts.upstream === 'string' && facts.unpushed === 0
-  const verify = verifyOf(extra.todos, extra.verifiedAt, facts.headTime)
+  const verify = verifyOf(extra.todos, extra.verifiedAt, facts.headTime, facts.verify ?? null)
   // 승인 전에 보여 줄 "이번에 올라가는 것"(원본에 없는 저장 기록·바뀐 파일)과 "올라가지 않는 것"(저장 안 된 변경).
   const outgoing = {
     commits: Array.isArray(facts.commits) ? facts.commits : [],
@@ -53,7 +56,7 @@ export function stagesOf(facts, extra = {}) {
     verify,
     share: { pushed, upstream: facts.upstream, unpushed: facts.unpushed, pr, prError: facts.prError ?? null, outgoing },
     merge: { merged, by: prMerged ? 'pr' : merged ? 'local' : null, pr, base: facts.base, outgoing },
-    deploy: { tag: facts.tag ?? null },
+    deploy: { tag: facts.tag ?? null, kind: facts.deploy ?? 'tag' },
   }
   const reached = {
     branch: facts.branch !== null && !facts.isBase,
@@ -77,7 +80,10 @@ export function stagesOf(facts, extra = {}) {
     else if (current === null) { status = 'current'; current = i }
     else status = 'todo'
     const approval = status === 'current' && APPROVAL.has(key)
-    const blocked = status === 'current' && (key === 'share' || key === 'merge') && facts.prError === 'auth' ? 'gh-auth' : null
+    // 막힘: GitHub 로그인 만료(공유·합치기), PR 검사 실패(합치기).
+    const blocked = status !== 'current' ? null
+      : (key === 'share' || key === 'merge') && facts.prError === 'auth' ? 'gh-auth'
+        : key === 'merge' && pr?.state === 'OPEN' && pr.checks?.failing > 0 ? 'checks' : null
     return { key, status, approval, blocked, info: info[key] }
   })
   const done = stages.filter(s => s.status === 'done').length

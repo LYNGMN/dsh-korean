@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from './support/fake-dsh.js'
 import { DshClient } from '../server/dsh/client.js'
 import { DshApi } from '../server/dsh/api.js'
-import { commandsOf, workStateOf } from '../server/dsh/normalize.js'
+import { commandsOf, editsOf, workStateOf } from '../server/dsh/normalize.js'
 import { Hub } from '../server/gateway/hub.js'
 import { stagesOf } from '../web/src/lib/stages.js'
 import { stageAsk, stageFacts, stageNext, stageOutgoing, stageSummary } from '../web/src/lib/stage-view.js'
@@ -140,7 +140,14 @@ test('commandsOf pairs shell commands with the folder DSH resolved for them', ()
     { event: { type: 'tool/result', data: { message: { toolCallId: 'c1' }, meta: { cwd: '/w' } } } },
     { event: { type: 'tool/call', data: { callId: 'c2', name: 'read', arguments: '{}' } } },
   ]
-  assert.deepEqual(commandsOf(records), [{ command: 'cd a && git status', cwd: '/w' }])
+  assert.deepEqual(commandsOf(records), [{ command: 'cd a && git status', cwd: '/w', ok: null, at: null }])
+  const ran = [
+    { event: { type: 'tool/call', time: 1, data: { callId: 't1', name: 'bash', arguments: '{"command":"npm test"}' } } },
+    { event: { type: 'tool/result', time: 9, data: { message: { toolCallId: 't1', content: [{ type: 'text', text: 'fail\n[exit code: 1]' }] }, meta: { cwd: '/w' } } } },
+    { event: { type: 'tool/call', time: 10, data: { callId: 't2', name: 'edit', arguments: '{"file_path":"/w/a.js"}' } } },
+  ]
+  assert.deepEqual(commandsOf(ran), [{ command: 'npm test', cwd: '/w', ok: false, at: 9 }])
+  assert.deepEqual(editsOf(ran), [{ path: '/w/a.js', at: 10 }])
   assert.deepEqual(commandsOf(undefined), [])
 })
 
@@ -151,7 +158,11 @@ test('stage text follows the language and names the approval step', (t) => {
   setLang('ko')
   assert.equal(stageSummary(snap), '공유 단계 · 3/6 · 승인 필요')
   assert.match(stageNext(snap.stages[3]), /gh auth login/)
-  assert.deepEqual(stageFacts(snap.stages[1]), ['저장 안 된 변경 없음', '원본보다 앞선 저장 2개'])
+  assert.deepEqual(stageFacts(snap.stages[1]), ['저장 2개 · 저장 안 된 변경 없음'])
+  const fresh = stagesOf({ ...facts, ahead: 0, hadCommits: false, prError: null })
+  assert.deepEqual(stageFacts(fresh.stages[1]), ['아직 바뀐 파일이 없습니다.'])
+  assert.equal(stageNext(fresh.stages[1]), '고칠 것을 말하면, 고친 뒤 커밋으로 저장합니다.')
+  assert.match(stageNext(fresh.stages[1], { running: true }), /^에이전트가 고치는 중입니다\. 기다렸다가/)
   setLang('en')
   assert.equal(stageSummary(snap), 'Share · 3/6 · needs approval')
   assert.equal(stageSummary(stagesOf(null), 'boom'), 'Could not read the work stage: boom')
@@ -185,12 +196,39 @@ test('the sheet offers one request for the current stage, naming the repository 
   const current = (facts, extra) => { const snap = stagesOf(facts, extra); return snap.stages[snap.current] }
   const verified = { todos: [{ content: 'run tests', status: 'completed' }] }
   setLang('ko')
-  assert.equal(stageAsk(current(base)), '테스트와 빌드를 돌리고 결과를 알려 주세요.')
-  assert.equal(stageAsk(current(base), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고 결과를 알려 주세요.')
-  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x' }, verified)), '검토 요청(PR)을 초안으로 열어 주세요.')
-  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x', pr: { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null } }, verified)), '검토 요청(PR)을 스쿼시 머지해 주세요.')
+  assert.equal(stageAsk(current(base)), '테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
+  assert.equal(stageAsk(current(base), 'app'), 'app 저장소에서 테스트와 빌드를 돌리고, 실패하면 원인과 고칠 방법을 알려 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x' }, verified)), '검토 요청(PR)을 초안으로 열어 주세요. PR 본문에는 바뀌는 것·확인한 것·확인하지 못한 것을 적어 주세요.')
+  assert.equal(stageAsk(current({ ...base, upstream: 'origin/x', pr: { number: 2, state: 'OPEN', draft: false, url: null, mergeCommit: null } }, verified)), 'PR 검사가 모두 통과했는지 확인하고, 통과했으면 스쿼시 머지해 주세요.')
   assert.equal(stageAsk(current({ ...base, prError: 'auth' }, verified)), null)
   assert.equal(stageAsk(stagesOf(base).stages[0]), null)
   setLang('en')
-  assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please push and open a draft pull request.')
+  assert.equal(stageAsk(current(base, verified), 'app'), 'In the app repository: Please run the tests and the build, and if they pass, push and open a draft pull request. In its description, list what changes, what you checked and what you could not check.')
+})
+
+test('the sheet shows the real test run and failed PR checks in the language chosen', (t) => {
+  t.after(() => setLang('ko'))
+  setLang('ko')
+  const base = { repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: 'origin/claude/feat/x', unpushed: 0, hadCommits: true, headTime: 1, prError: null, tag: null }
+  const verify = { at: new Date(2026, 10, 16, 14, 2).getTime(), command: 'npm test', editedAfter: false }
+  const pr = { number: 7, state: 'OPEN', draft: false, url: null, mergeCommit: null, review: 'required', checks: { passing: 3, failing: 1, pending: 0, failed: ['lint'] } }
+  const snap = stagesOf({ ...base, verify, pr })
+  assert.deepEqual(stageFacts(snap.stages[2]), ['14:02 npm test 통과', '그 뒤로 고친 파일 없음'])
+  const merge = snap.stages[4]
+  assert.equal(merge.blocked, 'checks')
+  assert.deepEqual(stageFacts(merge).slice(1), ['검사 3개 통과 · 1개 실패 · 검토 기다림', '실패한 검사: lint'])
+  assert.match(stageAsk(merge), /^PR 검사 가운데 실패한 것/)
+  setLang('en')
+  assert.equal(stageNext(merge), 'Fix the failed checks before merging. Ask the agent to find and fix the cause.')
+})
+
+test('the deploy step follows how the project deploys', (t) => {
+  t.after(() => setLang('ko'))
+  setLang('ko')
+  const facts = { repo: true, folder: 'app', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: 'origin/x', unpushed: 0, hadCommits: true, headTime: 1, prError: null, tag: null, pr: { number: 3, state: 'MERGED', draft: false, url: null, mergeCommit: 'm' } }
+  const deploy = stagesOf({ ...facts, deploy: 'wrangler' }).stages[5]
+  assert.deepEqual(stageFacts(deploy), ['배포 방식: Wrangler(Cloudflare Worker)', '아직 완성본 표시(태그)가 없습니다.', '배포 기록은 여기서 확인하지 못합니다.'])
+  assert.match(stageAsk(deploy), /Worker 코드가 바뀌는지/)
+  assert.match(stageNext(stagesOf({ ...facts, deploy: 'script' }).stages[5]), /npm run deploy/)
+  assert.deepEqual(stageFacts(stagesOf(facts).stages[5]), ['아직 완성본 표시(태그)가 없습니다.'])
 })

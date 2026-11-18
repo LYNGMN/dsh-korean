@@ -42,12 +42,20 @@ function phone() {
   }
 }
 
-async function setup(t, { events = [] } = {}) {
+async function until(check, ms = 2000) {
+  const end = Date.now() + ms
+  while (!check()) {
+    if (Date.now() > end) throw new Error('timed out')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+}
+
+async function setup(t, { events = [], gitReader } = {}) {
   const dsh = await createFakeDsh({ sessions: [{ sessionId: SID, cwd: '/home/user/proj', title: '테스트' }] })
   for (const [type, data] of events) dsh.pushEvent(SID, type, data)
   const client = new DshClient({ upstreamUrl: () => dsh.url, logger: quiet, backoff: () => 20 })
   const api = new DshApi(client)
-  const hub = new Hub({ api, logger: quiet, idleFollowMs: 50 })
+  const hub = new Hub({ api, logger: quiet, idleFollowMs: 50, ...(gitReader ? { gitReader } : {}) })
   hub.start()
   const connected = new Promise((resolve) => client.once('generation', resolve))
   client.start()
@@ -180,7 +188,25 @@ test('a session that stops running sends a turn-end notification', async (t) => 
   const running = await p.waitFor((f) => f.type === 'sessions' && f.rows[0].running)
   dsh.setRunning(SID, false)
   await p.waitFor((f) => f.type === 'sessions' && !f.rows[0].running && p.frames.indexOf(f) > p.frames.indexOf(running))
+  await until(() => notes.length > 0)
   assert.deepEqual(notes.map((n) => n.kind), ['turnEnd'])
+})
+
+test('the turn-end notification names the stage waiting for approval', async (t) => {
+  // Pushed work branch with tests done and no PR yet: the merge step (open a PR first) waits for approval.
+  const facts = { repo: true, folder: 'proj', branch: 'claude/feat/x', base: 'main', isBase: false, changes: 0, ahead: 1, upstream: 'origin/claude/feat/x', unpushed: 0, hadCommits: true, headTime: 1, pr: null, prError: null, tag: null, verify: { at: 2, command: 'npm test', editedAfter: false } }
+  const { dsh, hub } = await setup(t, { gitReader: { read: async () => facts } })
+  const notes = []
+  hub.on('notify', (n) => notes.push(n))
+  const p = phone()
+  hub.connect(p)
+  await p.waitFor((f) => f.type === 'sessions')
+  dsh.setRunning(SID, true)
+  await p.waitFor((f) => f.type === 'sessions' && f.rows[0].running)
+  dsh.setRunning(SID, false)
+  await until(() => notes.length > 0)
+  assert.equal(notes[0].kind, 'turnEnd')
+  assert.equal(notes[0].approval, 'merge')
 })
 
 test('prompt checks text and passes the mode through', async (t) => {
