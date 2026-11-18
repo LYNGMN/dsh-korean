@@ -16,6 +16,8 @@ test('방식은 불러 쓴 지도 도구 이름으로 정한다', () => {
   assert.equal(armOf(['mcp__trail__graft_find_code']), 'trail')
   assert.equal(armOf(['mcp__cbm__search_graph', 'mcp__trail__graft_find_code']), 'cbm+trail')
   assert.equal(armOf(['mcp__exa__web_search_exa']), 'none', '검색 서버는 지도 도구가 아니다')
+  assert.equal(armOf(['bash'], true), 'plugin', '코드 지도 플러그인 덧붙임만 있으면 plugin')
+  assert.equal(armOf(['mcp__cbm__search_graph'], true), 'cbm+plugin')
 })
 
 test('도구 호출 수, 읽은 글자, 결과 글자, 토큰을 합산한다', () => {
@@ -29,9 +31,18 @@ test('도구 호출 수, 읽은 글자, 결과 글자, 토큰을 합산한다', 
   assert.equal(summary.arm, 'none')
   assert.equal(summary.startedAt, 1794000000000)
   assert.deepEqual({ ...summary.totals }, {
-    toolCalls: 2, reads: 1, readChars: 100, resultChars: 130, mapCalls: 0, readsAfterMap: 0,
+    toolCalls: 2, reads: 1, readChars: 100, resultChars: 130, mapCalls: 0, readsAfterMap: 0, mapNotes: 0,
     inputTokens: 1400, outputTokens: 70, cacheReadTokens: 1400, steps: 3, stepsWithUsage: 2,
   })
+})
+
+test('코드 지도 플러그인이 붙인 메모가 있는 세션은 plugin 방식으로 센다', () => {
+  const note = event('user/message', 1794000000150, { role: 'user', id: 'n', source: { kind: 'dsh-code-map', form: 'notice' }, content: [{ type: 'text', text: 'Code map: ...' }] })
+  const inbox = event('agent/inbox/spliced', 1794000000151, { inserted: [{ role: 'user', source: { kind: 'dsh-code-map' } }] })
+  const other = event('user/message', 1794000000152, { role: 'user', id: 'u', source: { kind: 'user' }, content: [{ type: 'text', text: 'hi' }] })
+  const summary = summarizeSession(log(call('a', 'grep', {}), result('a', 'x'), note, inbox, other))
+  assert.equal(summary.totals.mapNotes, 1, '같은 메모가 inbox 이벤트에도 남아도 한 번만 센다')
+  assert.equal(summary.arm, 'plugin')
 })
 
 test('지도 도구를 부른 턴에서 그 뒤 읽기가 따라왔는지 센다', () => {
