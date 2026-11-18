@@ -19,11 +19,16 @@ const median = list => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-/** Which map tools a session called: the arm it belongs to. */
-export function armOf(toolNames) {
-  const cbm = toolNames.some(name => /^mcp__(cbm|codebase[-_]?memory)/i.test(name))
-  const trail = toolNames.some(name => /^mcp__(trail|graft)/i.test(name))
-  return cbm && trail ? 'cbm+trail' : cbm ? 'cbm' : trail ? 'trail' : 'none'
+/**
+ * Which map tools a session used: the arm it belongs to. `plugin` means this
+ * kit's code-map plugin attached notes to the session (it is on for the folder).
+ */
+export function armOf(toolNames, plugin = false) {
+  const parts = []
+  if (toolNames.some(name => /^mcp__(cbm|codebase[-_]?memory)/i.test(name))) parts.push('cbm')
+  if (toolNames.some(name => /^mcp__(trail|graft)/i.test(name))) parts.push('trail')
+  if (plugin) parts.push('plugin')
+  return parts.length ? parts.join('+') : 'none'
 }
 
 const MAP_TOOL = /^mcp__(cbm|codebase[-_]?memory|trail|graft)/i
@@ -37,7 +42,7 @@ export function summarizeSession(text) {
   let startedAt = null
   const calls = new Map()
   const totals = {
-    toolCalls: 0, reads: 0, readChars: 0, resultChars: 0, mapCalls: 0, readsAfterMap: 0,
+    toolCalls: 0, reads: 0, readChars: 0, resultChars: 0, mapCalls: 0, readsAfterMap: 0, mapNotes: 0,
     inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, steps: 0, stepsWithUsage: 0,
   }
   const mapTurns = new Set()
@@ -64,6 +69,11 @@ export function summarizeSession(text) {
         totals.outputTokens += usage.outputTokens ?? 0
         totals.cacheReadTokens += usage.cacheReadTokens ?? 0
       }
+      continue
+    }
+    if (line.startsWith('{"type":"user/message"') && line.includes('"dsh-code-map"')) {
+      // The code-map plugin's notes (prompt-time or after a search) are logged as user messages from this source.
+      try { if (JSON.parse(line).data?.source?.kind === 'dsh-code-map') totals.mapNotes += 1 } catch { /* keep going */ }
       continue
     }
     if (line.startsWith('{"type":"tool/result"')) {
@@ -106,7 +116,7 @@ export function summarizeSession(text) {
   return {
     cwd,
     startedAt,
-    arm: armOf(toolNames),
+    arm: armOf(toolNames, totals.mapNotes > 0),
     totals,
     turns: [...turns.values()].map(({ _edited, _pre, ...rest }) => rest),
   }
@@ -130,6 +140,7 @@ export function compareArms(sessions) {
       readChars: pick(list, 'readChars'),
       resultChars: pick(list, 'resultChars'),
       mapCalls: pick(list, 'mapCalls'),
+      mapNotes: pick(list, 'mapNotes'),
       readsAfterMap: pick(list, 'readsAfterMap'),
       sessionsWithUsage: withUsage.length,
       inputTokens: withUsage.length ? median(withUsage.map(session => session.totals.inputTokens)) : null,
@@ -196,9 +207,9 @@ function main(argv) {
   console.log(`검색 ${result.searches}회 (그중 bash 안 검색 ${result.searchesViaBash}회) · 읽기 ${result.reads}회 · 고치기 ${result.edits}회`)
   console.log('')
   console.log('방식별 한 세션의 중앙값 (같은 일을 시킨 세션끼리만 비교하세요. 표본이 작으면 배수로 말하지 않아요.)')
-  const head = ['방식', '세션', '도구호출', '읽기', '읽은글자', '결과글자', '지도호출', '지도뒤읽기', '입력토큰', '캐시읽기', '출력토큰']
+  const head = ['방식', '세션', '도구호출', '읽기', '읽은글자', '결과글자', '지도호출', '덧붙임', '지도뒤읽기', '입력토큰', '캐시읽기', '출력토큰']
   const table = [head, ...Object.entries(result.arms).map(([arm, row]) => [arm, row.sessions, row.toolCalls, row.reads, row.readChars,
-    row.resultChars, row.mapCalls, row.readsAfterMap,
+    row.resultChars, row.mapCalls, row.mapNotes, row.readsAfterMap,
     row.inputTokens === null ? '기록없음' : row.inputTokens, row.cacheReadTokens === null ? '기록없음' : row.cacheReadTokens,
     row.outputTokens === null ? '기록없음' : row.outputTokens].map(String))]
   const widths = head.map((_, column) => Math.max(...table.map(row => [...String(row[column])].length)))
