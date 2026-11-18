@@ -71,6 +71,27 @@ export function prErrorOf(result) {
   return 'error'
 }
 
+const PASSING = new Set(['SUCCESS', 'NEUTRAL', 'SKIPPED'])
+const REVIEW = { APPROVED: 'approved', CHANGES_REQUESTED: 'changes', REVIEW_REQUIRED: 'required' }
+
+/** gh의 statusCheckRollup → 통과·실패·진행 중 개수와 실패한 검사 이름(최대 3개). 검사가 없으면 null. */
+export function checksOf(rollup) {
+  if (!Array.isArray(rollup) || rollup.length === 0) return null
+  const checks = { passing: 0, failing: 0, pending: 0, failed: [] }
+  for (const item of rollup) {
+    const name = String(item?.name ?? item?.context ?? '').slice(0, 80)
+    const done = item?.__typename === 'StatusContext' ? !['PENDING', 'EXPECTED'].includes(item.state) : item?.status === 'COMPLETED'
+    const result = item?.__typename === 'StatusContext' ? item.state : item?.conclusion
+    if (!done) checks.pending += 1
+    else if (PASSING.has(result)) checks.passing += 1
+    else {
+      checks.failing += 1
+      if (checks.failed.length < 3 && name) checks.failed.push(name)
+    }
+  }
+  return checks
+}
+
 function parsePr(text) {
   try {
     const value = JSON.parse(text)
@@ -81,6 +102,8 @@ function parsePr(text) {
       draft: value.isDraft === true,
       url: typeof value.url === 'string' && value.url.startsWith('https://') ? value.url : null,
       mergeCommit: typeof value.mergeCommit?.oid === 'string' ? value.mergeCommit.oid : null,
+      checks: checksOf(value.statusCheckRollup),
+      review: REVIEW[value.reviewDecision] ?? null,
     }
   } catch {
     return null
@@ -189,6 +212,50 @@ export function repoOfCommands(commands, folder, names) {
   return null
 }
 
+// 테스트·빌드·검사 명령. 파이프(|)·세미콜론 뒤에 오면 종료 코드가 그 명령 것이 아니므로 마지막 && 조각만 본다.
+export const VERIFY_COMMAND = /^(?:npm (?:run )?test|npm run (?:build|check|lint|typecheck)|npx (?:vitest|jest|playwright test|tsc)\b|node --test|pnpm (?:run )?(?:test|build|check)|yarn (?:test|build)|bun test|pytest|python3? -m pytest|go (?:test|build|vet)|cargo (?:test|build|check)|make (?:test|check))\b/
+
+/** 명령에서 검증 부분: && 로 이은 마지막 조각이 검증 명령이고 파이프·세미콜론이 없을 때만. */
+export function verifyCommandOf(command) {
+  if (typeof command !== 'string' || /[|;]/.test(command)) return null
+  const last = command.split('&&').pop().trim().replace(/^(?:nice(?: -n \d+)? |timeout \d+ |env (?:\w+=\S+ )+)+/, '')
+  return VERIFY_COMMAND.test(last) ? last.slice(0, 80) : null
+}
+
+const inside = (path, root) => typeof path === 'string' && (path === root || path.startsWith(`${root}/`))
+
+/**
+ * 이 저장소에서 마지막으로 통과한 검증 명령과, 그 뒤에 에이전트가 이 저장소 파일을 고쳤는지.
+ * @returns {{ at: number, command: string, editedAfter: boolean } | null}
+ */
+export function verifyRunOf(commands, edits, topLevel) {
+  const list = Array.isArray(commands) ? commands : []
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const { command, cwd, ok, at } = list[i] ?? {}
+    if (ok !== true || typeof at !== 'number' || typeof cwd !== 'string') continue
+    const verify = verifyCommandOf(command)
+    if (verify === null) continue
+    if (![...pathsOfCommand(command, cwd), cwd].some(path => inside(path, topLevel))) continue
+    const editedAfter = (Array.isArray(edits) ? edits : []).some(edit => typeof edit?.at === 'number' && edit.at > at && inside(resolve(cwd, edit.path), topLevel))
+    return { at, command: verify, editedAfter }
+  }
+  return null
+}
+
+const WRANGLER_FILES = ['wrangler.jsonc', 'wrangler.json', 'wrangler.toml']
+
+/** 저장소 맨 위 파일로 배포 방식을 정한다: Wrangler 설정이 있으면 wrangler, package.json에 deploy 스크립트가 있으면 script, 아니면 tag. */
+export async function deployKindOf(topLevel) {
+  for (const name of WRANGLER_FILES) {
+    try { if ((await stat(join(topLevel, name))).isFile()) return 'wrangler' } catch { /* 없으면 다음 */ }
+  }
+  try {
+    const pkg = JSON.parse(await readFile(join(topLevel, 'package.json'), 'utf8'))
+    if (typeof pkg?.scripts?.deploy === 'string') return 'script'
+  } catch { /* package.json이 없거나 읽을 수 없으면 tag */ }
+  return 'tag'
+}
+
 /**
  * @param {{ run?: typeof runCommand, now?: () => number }} [options] run은 시험에서 바꿔 끼운다.
  */
@@ -213,7 +280,7 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
     const key = `${cwd}\u0000${branch}`
     const cached = prCache.get(key)
     if (cached && now() - cached.at < PR_TTL_MS) return cached.value
-    const result = await run('gh', ['pr', 'view', branch, '--json', 'number,state,isDraft,url,mergeCommit'], cwd)
+    const result = await run('gh', ['pr', 'view', branch, '--json', 'number,state,isDraft,url,mergeCommit,statusCheckRollup,reviewDecision'], cwd)
     const value = result.ok ? { pr: parsePr(result.out), prError: null } : { pr: null, prError: prErrorOf(result) }
     prCache.set(key, { at: now(), value })
     return value
@@ -221,16 +288,16 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
 
   /**
    * @param {string} cwd 세션 작업 폴더
-   * @param {{ pick?: string | null, commands?: Array<{ command: string, cwd?: string | null }> }} [options]
+   * @param {{ pick?: string | null, commands?: Array<{ command: string, cwd?: string | null, ok?: boolean | null, at?: number | null }>, edits?: Array<{ path: string, at: number | null }> }} [options]
    *   pick: 저장소 묶음 폴더일 때 사람이 고른 저장소(상대 경로). 목록에 없으면 무시.
    *   commands: 그 세션이 돌린 명령(오래된 것부터). 고른 저장소가 없으면 마지막으로 다룬 저장소를 따라간다.
    * @returns {Promise<object>} stagesOf가 읽는 사실. 저장소도, 안에 저장소도 없으면 { repo: false }.
    *   묶음 폴더면 가장 최근에 Git 활동이 있던 저장소(또는 고른 저장소)를 읽고 within에 목록을 붙인다.
    */
-  async function read(cwd, { pick = null, commands = [] } = {}) {
+  async function read(cwd, { pick = null, commands = [], edits = [] } = {}) {
     if (typeof cwd !== 'string' || cwd === '') return { repo: false }
     const top = await git(cwd, 'rev-parse', '--show-toplevel')
-    if (top.ok) return readRepo(cwd, top.out.trim())
+    if (top.ok) return readRepo(cwd, top.out.trim(), { commands, edits })
 
     const repos = await findRepos(cwd)
     const picked = repos.find(item => item.name === pick)
@@ -244,13 +311,13 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
     const names = repos.slice(0, MAX_REPOS).map(item => item.name)
     if (!names.includes(chosen.name)) names.push(chosen.name)
     return {
-      ...(await readRepo(path, inner.out.trim())),
+      ...(await readRepo(path, inner.out.trim(), { commands, edits })),
       folder: chosen.name,
       within: { folder: basename(cwd), repos: names, picked: chosen.name, auto: reason !== 'picked', reason },
     }
   }
 
-  async function readRepo(cwd, topLevel) {
+  async function readRepo(cwd, topLevel, { commands = [], edits = [] } = {}) {
 
     const status = parseStatus((await git(cwd, 'status', '--porcelain=v2', '--branch')).out)
     const base = await baseOf(cwd)
@@ -311,6 +378,8 @@ export function createGitReader({ run = runCommand, now = Date.now } = {}) {
       pr,
       prError,
       tag: isBase && pr === null ? null : tag,
+      verify: verifyRunOf(commands, edits, topLevel),
+      deploy: await deployKindOf(topLevel),
     }
   }
 

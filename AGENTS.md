@@ -30,6 +30,7 @@ DeepSeek Harness(DSH) 플러그인을 모은 키트입니다. 구조는 [docs/ar
 | 전체 시험(키트 규칙 + 모든 플러그인) | `npm test` |
 | 빌드(필요한 플러그인만) | `npm run build` |
 | 한국어 번역 검사 | `npm run check` |
+| 휴대폰 앱 사본 맞추기(`git-stage`의 단계 규칙·Git 읽기를 고친 뒤) | `npm run sync` |
 | 설치 미리 보기 | `./install.sh --dry-run` |
 
 ## 작업·배포 흐름

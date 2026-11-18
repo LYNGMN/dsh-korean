@@ -1,7 +1,7 @@
 // Gateway operations expressed as DSH calls. Outside server/dsh/ nobody sees
 // DSH endpoint names, argument wrappers or event names.
 import { randomUUID } from 'node:crypto'
-import { commandsOf, normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
+import { commandsOf, editsOf, normalizeEvent, parseSubagentRef, StreamAssembler, subagentsOf, summarizeSession, workStateOf } from './normalize.js'
 
 const HISTORY_PAGE_MESSAGES = 20
 const WORK_HISTORY_MESSAGES = 30
@@ -116,7 +116,8 @@ export class DshApi {
    * conversation reads its parent's folder and todos.
    * Also the shell commands of its recent history, so a folder holding many repositories can follow
    * the one the session worked in.
-   * @returns {Promise<{sessionId: string, cwd: string|null, todos: Array<{content: string, status: string}>|null, commands: Array<{command: string, cwd: string|null}>}>}
+   * And the files the agent edited, so a test run before the last edit does not count as verified.
+   * @returns {Promise<{sessionId: string, cwd: string|null, todos: Array<{content: string, status: string}>|null, commands: Array<{command: string, cwd: string|null, ok: boolean|null, at: number|null}>, edits: Array<{path: string, at: number|null}>}>}
    */
   async workState(sessionId) {
     const own = parseSubagentRef(sessionId)?.parentId ?? sessionId
@@ -124,7 +125,7 @@ export class DshApi {
       this.client.rpc('session/projections', { request: { sessionId: own } }).catch(() => null),
       this.client.rpc('session/events', { request: { address: sessionAddress(own), maxMessages: WORK_HISTORY_MESSAGES } }).catch(() => null),
     ])
-    return { sessionId: own, ...workStateOf(projections), commands: commandsOf(page?.records) }
+    return { sessionId: own, ...workStateOf(projections), commands: commandsOf(page?.records), edits: editsOf(page?.records) }
   }
 
   async listSessions() {
