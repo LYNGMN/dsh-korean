@@ -194,6 +194,7 @@ test('the web search setting joins the card only when the Host shares the web se
   const bridge = calls.slots[0].inject().web
   assert.equal(bridge.get().form, form)
   assert.deepEqual((await bridge.get().listProviders()).value.search.map((p) => p.id), ['auto', 'korea'])
+  assert.equal(typeof bridge.get().pageText, 'function')
   // Leaving the Host's scope drops the section again.
   let heard = 0
   bridge.subscribe(() => { heard += 1 })

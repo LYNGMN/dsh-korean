@@ -7,12 +7,13 @@
 - 검색(`@lyngmn/dsh-search`) 1.2.0: Brave Search(`@lyngmn/dsh-search-brave`)·Exa Search(`@lyngmn/dsh-search-exa`)·검색 자동 전환(`@lyngmn/dsh-search-fallback`)을 검색 플러그인 하나로 합쳤습니다. 키트 플러그인은 14개에서 11개가 됩니다.
   - Exa·Brave는 엔진 `exa`·`brave`가 됩니다. 자동 엔진의 기본 순서는 Exa → Brave → You.com에서 시작해 Bing으로 끝납니다. 키는 예전처럼 `EXA_API_KEY`·`BRAVE_API_KEY`로 찾고, `~/.dsh/exa-api-key`·`~/.dsh/brave-api-key` 파일도 읽습니다. 결과 수는 Exa 1~100개(10개를 넘으면 추가 요금), Brave 1~20개입니다.
   - 1.1에서 순서를 저장했다면, 그때 없던 Exa·Brave는 기본 자리(맨 앞)에 들어갑니다. 이제부터는 저장할 때 아는 엔진 목록(`autoKnown`)도 함께 남겨, 일부러 끈 엔진과 새 엔진을 구분합니다.
+  - 프로필에 1.1 때의 엔진 목록(`providers`)이 남아 있어도 Exa·Brave를 등록합니다. YAML로 새 엔진을 일부러 빼려면 `providersKnown`에 아는 엔진을 모두 적습니다.
   - `brave_search`·`exa_search` 도구와 `/brave`·`/exa` 명령은 같은 이름으로 남습니다. `/brave 20 서울 날씨`, `/exa max 서울 날씨`처럼 이번 검색 개수도 정할 수 있습니다.
   - 검색 자동 전환은 자동 엔진과 하는 일이 같아 코드를 옮기지 않았습니다. 순서 이름 `exa-brave`·`brave-exa`·`exa-brave-auto`만 정해진 순서로 도는 자동 엔진으로 남겨, `web.searchProvider`로 이 이름을 고른 프로필이 계속 동작합니다. 새로 고를 때는 `auto`를 권합니다.
   - 검색 플러그인 패치가 `web.searchProvider`를 `auto`로 정합니다(예전에는 Brave 패치가 `brave`로 정했습니다). 프로필에서 다른 값을 고른 경우 그 값이 그대로 남습니다.
   - 예전 플러그인이 아직 깔려 있어 이름(`brave`, `brave_search`, `/brave` 등)이 겹치면, 그 이름만 건너뛰고 경고를 남깁니다. 검색 플러그인 전체가 빠지지 않습니다. 설치기는 예전 세 패키지를 알아보고 먼저 뺄지 묻습니다.
   - 한국 검색은 세 가지 방식이 됩니다. `/search ko`(`korea`)는 네이버·카카오를 함께 찾아 둘 다 찾은 결과를 먼저 보여 주고, 결과마다 찾은 엔진을 표시합니다. `/search ko-group`은 엔진별로 묶어 보여 주고, `/search ko-seq`는 네이버로 먼저 찾고 실패하거나 결과가 없을 때만 카카오를 씁니다. 도구 결과 첫 줄에는 엔진별 개수와 겹친 수가 나옵니다.
-  - 플러그인 페이지에 "웹 검색에 쓰는 엔진"을 더했습니다. DSH 설정의 '웹 검색과 가져오기'와 같은 값(`web.searchProvider`)을 같은 설정 폼으로 읽고 써서, 어느 쪽에서 바꿔도 다른 쪽에 바로 보입니다.
+  - 플러그인 페이지에 "웹 검색에 쓰는 엔진"을 더했습니다. DSH 설정의 '웹 검색과 가져오기'와 같은 값(`web.searchProvider`)을 같은 설정 폼으로 읽고 써서, 어느 쪽에서 바꿔도 다른 쪽에 바로 보입니다. DeepSeek 내장 엔진은 DSH 화면과 같은 이름·순서로 보여 줍니다.
   - 예전 순서 이름(`exa-brave` 등)은 `web.searchProvider`가 그 이름일 때만 등록해, 설정 화면의 엔진 목록에 자동이 여러 번 나오지 않게 했습니다.
   - 플러그인 페이지의 명령 예시는 줄임표 없이 끝까지 쓰고 고정폭 글꼴로 보여 줍니다.
   - 예전 플러그인 아이콘은 `plugins/search/icons/`에 보관했습니다.

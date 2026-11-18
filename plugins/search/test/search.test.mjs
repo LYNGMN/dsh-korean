@@ -71,12 +71,26 @@ test('apply registers every engine, the automatic and the Korean one, the legacy
 })
 
 test('the providers list in the config limits what is registered and the automatic order follows it', () => {
-  const { providers } = register({ providers: ['bing', 'tavily', 'nope'] })
+  const { providers } = register({ providers: ['bing', 'tavily', 'nope'], providersKnown: PROVIDER_IDS })
   // The fixed legacy orders need Exa or Brave; exa-brave-auto is the automatic order.
   assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto', 'exa-brave-auto'])
-  const settings = normalizeSettings({ providers: ['bing', 'naver'], autoOrder: ['bing', 'naver', 'naver', 'x'] })
+  const settings = normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS, autoOrder: ['bing', 'naver', 'naver', 'x'], autoKnown: PROVIDER_IDS })
   assert.deepEqual(settings.autoOrder(), ['bing', 'naver'])
-  assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'] }).autoOrder(), ['naver', 'bing'])
+  assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS }).autoOrder(), ['naver', 'bing'])
+})
+
+test('a providers list saved before Exa and Brave existed still registers them, unless providersKnown says it was left out', () => {
+  const legacy = ['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
+  // The desktop profile kept the 1.1 list after the card saved its order (2026-11-18).
+  assert.deepEqual(normalizeSettings({ providers: legacy }).providers, PROVIDER_IDS)
+  assert.deepEqual(normalizeSettings({ providers: legacy, autoOrder: legacy }).autoOrder(), PROVIDER_IDS)
+  const { providers, tools, commands } = register({ providers: legacy })
+  assert.ok(providers.some((p) => p.id === 'exa') && providers.some((p) => p.id === 'brave'))
+  assert.deepEqual(tools.map((tool) => tool.name), ['engine_search', 'exa_search', 'brave_search'])
+  assert.deepEqual(commands.map((command) => command.name), ['search', 'exa', 'brave'])
+  // Written with every engine known: Exa left out stays out.
+  assert.deepEqual(normalizeSettings({ providers: ['brave', 'naver'], providersKnown: PROVIDER_IDS }).providers, ['brave', 'naver'])
+  assert.deepEqual(normalizeSettings({ providers: [] }).providers, [])
 })
 
 test('the automatic order is a volatile setting: no language priority, read again on every search', () => {
