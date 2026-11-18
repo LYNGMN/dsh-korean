@@ -27,6 +27,12 @@ function prepareConfig(home) {
 
 const NOT_CODE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg', 'pdf', 'zip', 'gz', 'woff', 'woff2', 'ttf',
   'otf', 'mp3', 'mp4', 'mov', 'lock', 'ds_store', 'bak', 'log', 'map', 'min'])
+// Files that hold prose, data, settings or media rather than program code. A
+// file the map lacks and that is not in this set might be code, so it stays in
+// the "needs a look" group; only these are filed as quiet.
+const QUIET = new Set([...NOT_CODE, 'md', 'markdown', 'txt', 'rst', 'json', 'jsonc', 'yml', 'yaml', 'toml', 'ini', 'cfg',
+  'csv', 'tsv', 'xml', 'env', 'gitignore', 'claspignore', 'editorconfig', 'license', 'bmp', 'tif', 'tiff', 'avif', 'heic',
+  'wav', 'ogg', 'm4a', 'webm', 'avi', 'rar', '7z', 'tar', 'tgz', 'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx'])
 const extOf = path => {
   const name = basename(path).toLowerCase()
   const dot = name.lastIndexOf('.')
@@ -131,6 +137,45 @@ const periodOrSlash = word => /[./]/.test(word)
 // the screen can say "unknown" instead of showing a reassuring zero.
 const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null
 
+function top(counts, limit) {
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit)
+    .map(([ext, files]) => ({ ext: '.' + ext, files }))
+}
+
+function formatsOf(survey) {
+  if (!survey) return null
+  const counts = new Map()
+  for (const file of survey.tracked) {
+    const ext = extOf(file)
+    if (ext && !survey.exts.has(ext) && !NOT_CODE.has(ext)) counts.set(ext, (counts.get(ext) ?? 0) + 1)
+  }
+  return top(counts, 5)
+}
+
+// The engine leaves test folders out of the map on purpose, so they get their own count: calls from
+// tests are missing from "who uses this", which is worth saying, but it is not a read failure.
+const isTestPath = file => /(^|\/)(tests?|__tests__|specs?|e2e)\//i.test(file) || /\.(test|spec)\.[a-z0-9]+$/i.test(file)
+
+function unmappedOf(survey) {
+  if (!survey) return null
+  const counts = new Map()
+  let look = 0
+  let tests = 0
+  let quiet = 0
+  for (const file of survey.tracked) {
+    if (survey.files.has(file)) continue
+    const ext = extOf(file)
+    if (QUIET.has(ext)) quiet += 1
+    else if (isTestPath(file)) tests += 1
+    else {
+      look += 1
+      const key = ext ? ext : '(확장자 없음)'
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+  }
+  return { look, tests, quiet, lookTop: top(counts, 3).map(item => ({ ...item, ext: item.ext.replace(/^\.\(/, '(') })) }
+}
+
 export function coverageOf(result) {
   return {
     notIndexed: count(result?.not_indexed_files_count),
@@ -198,6 +243,26 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
     }) }
   }
 
+  // Which tracked files the map holds: every tracked path, the paths and extensions the map has.
+  // null means it could not be worked out (large repo, git or engine failure).
+  async function survey(root, project, signal) {
+      try {
+        const tracked = (await runGit(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--'], signal))
+          .split('\0').filter(Boolean)
+        const files = new Set()
+        const exts = new Set()
+        for (let offset = 0; ; offset += 500) {
+          if (offset >= 3000) return null
+          const page = await call(root, 'search_graph', { project, label: 'File', format: 'json', limit: 500, offset,
+            max_output_tokens: 60000 }, { signal, timeout: 10_000 })
+          for (const row of records(page)) if (typeof row.file === 'string') { files.add(row.file); exts.add(extOf(row.file)) }
+          if (!page.has_more) break
+        }
+        return { tracked, files, exts }
+      } catch {
+        return null
+      }
+  }
   return {
     stop,
     dispose: () => { for (const root of workers.keys()) stop(root) },
@@ -241,29 +306,18 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
     },
     callers,
     // Extensions the map holds no file of at all, with how many tracked files use them.
-    // null means the answer could not be worked out (large repo, git or engine failure).
     async unknownFormats(root, project, signal) {
-      try {
-        const tracked = (await runGit(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--'], signal))
-          .split('\0').filter(Boolean)
-        const known = new Set()
-        for (let offset = 0; ; offset += 500) {
-          if (offset >= 3000) return null
-          const page = await call(root, 'search_graph', { project, label: 'File', format: 'json', limit: 500, offset,
-            max_output_tokens: 60000 }, { signal, timeout: 10_000 })
-          for (const row of records(page)) if (typeof row.file === 'string') known.add(extOf(row.file))
-          if (!page.has_more) break
-        }
-        const counts = new Map()
-        for (const file of tracked) {
-          const ext = extOf(file)
-          if (ext && !known.has(ext) && !NOT_CODE.has(ext)) counts.set(ext, (counts.get(ext) ?? 0) + 1)
-        }
-        return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5)
-          .map(([ext, files]) => ({ ext: '.' + ext, files }))
-      } catch {
-        return null
-      }
+      return formatsOf(await survey(root, project, signal))
+    },
+    // Tracked files missing from the map, split into ones that might be code (or unknown) and
+    // ones that are prose, data or media. null when the survey failed.
+    async unmapped(root, project, signal) {
+      return unmappedOf(await survey(root, project, signal))
+    },
+    // Both answers from one survey of the repository.
+    async gaps(root, project, signal) {
+      const found = await survey(root, project, signal)
+      return { unknownFormats: formatsOf(found), unmapped: unmappedOf(found) }
     },
     async scopedImpact(root, project, files, signal) {
       const paths = [...new Set(files)].filter(file => safeFile(file) === file && file).slice(0, 8)

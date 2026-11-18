@@ -7,11 +7,21 @@ test('라우트는 세션 id만 싣는다', () => {
 })
 
 test('읽지 못한 범위는 0이어도 만들고, 모르는 값은 확인 안 됨으로 쓴다', () => {
-  assert.deepEqual(codeGapsOf({ notIndexed: 0, partial: 3, unusable: undefined }).map(({ label, warn }) => [label, warn]), [
-    ['미인덱스 0개', false], ['부분 파싱 3개', true], ['파싱 불가 확인 안 됨', true],
+  assert.deepEqual(codeGapsOf({ notIndexed: 0, partial: 3, unusable: undefined }).map(({ label, tone }) => [label, tone]), [
+    ['지도에 넣지 못한 파일 없음', 'idle'], ['일부만 읽은 파일 3개', 'warn'], ['읽지 못한 파일 확인 안 됨', 'warn'],
   ])
   assert.equal(codeGapsOf(undefined), null)
-  assert.equal(codeGapsOf({ notIndexed: -1 })[0].label, '미인덱스 확인 안 됨')
+  assert.equal(codeGapsOf({ notIndexed: -1 })[0].label, '지도에 넣지 못한 파일 확인 안 됨')
+})
+
+test('코드가 아닌 파일과 테스트 파일은 숫자만 보이고 주황이 아니다', () => {
+  const gaps = codeGapsOf({ notIndexed: 89, partial: 0, unusable: 0, unmapped: { look: 0, tests: 76, quiet: 13, lookTop: [] } })
+  assert.deepEqual(gaps.map(({ label, tone }) => [label, tone]), [
+    ['지도에 없는 코드 없음', 'idle'], ['일부만 읽은 파일 없음', 'idle'], ['읽지 못한 파일 없음', 'idle'],
+    ['테스트 파일 76개', 'idle'], ['문서·설정·이미지 13개', 'idle'],
+  ])
+  assert.equal(codeGapsOf({ partial: 0, unusable: 0, unmapped: { look: 4, tests: 0, quiet: 0 } })[0].tone, 'warn')
+  assert.equal(codeGapsOf({ partial: 0, unusable: 0, unmapped: null })[0].label, '지도에 넣지 못한 파일 확인 안 됨', '조사를 못 했으면 엔진 숫자로')
 })
 
 test('요청 범위 문장은 상태마다 다르다', () => {
@@ -40,6 +50,7 @@ test('지도에 한 개도 없는 형식은 칩으로 더하고, 모르면 확�
   const labels = coverage => codeGapsOf(coverage).map(gap => gap.label)
   assert.deepEqual(labels({ ...base, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }] }).slice(3),
     ['형식 모름 .gs 28개', '형식 모름 .xyz 2개'])
+  assert.ok(codeGapsOf({ ...base, unknownFormats: [{ ext: '.gs', files: 28 }] }).slice(3).every(gap => gap.tone === 'warn'))
   assert.deepEqual(labels({ ...base, unknownFormats: null }).slice(3), ['형식 모름 확인 안 됨'])
   assert.equal(codeGapsOf(base).length, 3)
   assert.deepEqual(labels({ ...base, unknownFormats: [{ ext: 'a', files: 1 }, { ext: 'b', files: 1 }, { ext: 'c', files: 1 }, { ext: 'd', files: 1 }] }).at(-1),

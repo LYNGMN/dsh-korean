@@ -261,9 +261,9 @@ test('코드 지도가 켜져 있으면 요청 범위와 읽지 못한 범위를
   assert.ok(urls.some(url => url === 'api/dsh-code-map?sessionId=s1'), '코드 지도 라우트도 같은 세션으로 읽는다')
   assert.match(out, /코드 지도\s+마지막 코딩 요청 기준/)
   assert.match(out, /이번 요청에서 바뀐 파일 2개 · 함께 확인할 곳 1곳/)
-  assert.match(out, /미인덱스 88개/)
-  assert.match(out, /부분 파싱 8개/)
-  assert.match(out, /파싱 불가 0개/, '0이어도 늘 보인다')
+  assert.match(out, /지도에 넣지 못한 파일 88개/)
+  assert.match(out, /일부만 읽은 파일 8개/)
+  assert.match(out, /읽지 못한 파일 없음/, '0이어도 늘 보인다')
   assert.match(out, /실행할 때만 이어지는 호출은 빠져요/)
 })
 
@@ -271,12 +271,12 @@ test('코드 지도가 없거나 꺼져 있거나 실패해도 작업 단계는 
   for (const code of [undefined, new Error('offline'), { state: 'off', enabled: false }, { state: 'no-repo', focus: [] }]) {
     const { out } = await shown(code)
     assert.match(out, /단계 · \d\/6/)
-    assert.doesNotMatch(out, /마지막 코딩 요청 기준|미인덱스/)
+    assert.doesNotMatch(out, /마지막 코딩 요청 기준|지도에 넣지 못한 파일/)
   }
 })
 
 test('읽지 못한 범위를 모를 때는 0이 아니라 확인 안 됨으로 쓴다', async () => {
   const { out } = await shown({ ...CODE_MAP, coverage: { notIndexed: null, partial: 0 } })
-  assert.match(out, /미인덱스 확인 안 됨/)
-  assert.match(out, /파싱 불가 확인 안 됨/)
+  assert.match(out, /지도에 넣지 못한 파일 확인 안 됨/)
+  assert.match(out, /읽지 못한 파일 확인 안 됨/)
 })

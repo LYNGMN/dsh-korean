@@ -49,18 +49,82 @@ test('화면은 읽지 못한 범위를 0이어도 없음으로 보여 준다', 
   assert.equal(text.split('없음').length - 1, 4)
 })
 
-test('모르는 값은 없음이 아니라 확인 안 됨으로 쓰고 결론에 경고를 올린다', () => {
-  const view = render({ ...ready, coverage: { notIndexed: null, partial: 0, unusable: 0, unknownFormats: null } })
-  assert.equal(view.text.split('확인 안 됨').length - 1, 2)
-  assert.match(view.text, /읽지 못한 범위를 확인하지 못했어요/)
-  assert.equal(view.nodes.find(node => node.props?.className === 'dcm-summary').props['data-kind'], 'warn')
+const TONES = ['wait', 'ok', 'warn', 'err', 'idle']
+const toneOf = (nodes, className) => nodes.find(node => node.props?.className?.split(' ').includes(className))?.props['data-tone']
+const toneRows = nodes => nodes.filter(node => node.props?.className === 'dcm-gap').map(node => node.props['data-tone'])
+const allRead = { ...ready, coverage: { notIndexed: 0, partial: 0, unusable: 0, skipped: 0,
+  unmapped: { look: 0, tests: 76, quiet: 40, lookTop: [] } } }
+
+test('모르는 값은 없음이 아니라 확인 안 됨으로 쓰고 주황으로 알린다(조사를 못 했을 때)', () => {
+  const view = render({ ...ready, coverage: { notIndexed: null, partial: 0, unusable: 0, unmapped: null } })
+  assert.ok(view.text.includes('확인 안 됨'))
+  assert.equal(toneOf(view.nodes, 'dcm-state'), 'warn')
+  assert.match(view.text, /읽은 범위를 확인 못 했어요/)
+  assert.equal(toneRows(view.nodes)[0], 'warn')
 })
 
-test('모르는 형식은 확장자와 개수로 쓰고 세 가지까지만 보인다', () => {
+test('코드가 아닌 파일과 테스트 파일은 숫자는 보이되 경고 색을 쓰지 않는다', () => {
+  const view = render(allRead)
+  assert.match(view.text, /테스트 파일/)
+  assert.match(view.text, /문서·설정·이미지 등/)
+  assert.match(view.text, /76개/)
+  assert.deepEqual([...new Set(toneRows(view.nodes))], ['idle'], '코드 공백이 없으면 모든 행이 회색')
+  assert.equal(toneOf(view.nodes, 'dcm-state'), 'ok')
+  assert.match(view.text, /코드를 모두 읽었어요/)
+})
+
+test('코드로 보이는 파일이 지도에 없으면 주황이고 어떤 형식인지 알려 준다', () => {
+  const view = render({ ...allRead, coverage: { ...allRead.coverage,
+    unmapped: { look: 29, tests: 0, quiet: 0, lookTop: [{ ext: '.gs', files: 28 }, { ext: '.sh', files: 1 }] } } })
+  assert.equal(toneOf(view.nodes, 'dcm-state'), 'warn')
+  assert.match(view.text, /코드 일부를 못 읽었어요/)
+  assert.match(view.text, /주로 \.gs 28개, \.sh 1개/)
+  assert.equal(toneRows(view.nodes)[0], 'warn')
+})
+
+test('옛 코드 지도가 엔진 숫자만 보내도 이전처럼 보인다', () => {
   const formats = [{ ext: '.gs', files: 28 }, { ext: '.a', files: 4 }, { ext: '.b', files: 3 }, { ext: '.c', files: 2 }]
-  const { text } = render({ ...ready, coverage: { ...ready.coverage, unknownFormats: formats } })
+  const { text, nodes } = render({ ...ready, coverage: { ...ready.coverage, notIndexed: 2, unknownFormats: formats } })
   assert.match(text, /\.gs 28개, \.a 4개, \.b 3개 외 1종/)
-  assert.match(text, /지도가 읽지 못한 범위가 있어서/)
+  assert.match(text, /지도에 넣지 못한 파일/)
+  assert.equal(toneOf(nodes, 'dcm-state'), 'warn')
+})
+
+test('알약과 결론 카드와 카드 줄무늬가 같은 상태에 같은 색을 쓴다', () => {
+  const changedAll = { ...allRead, requestImpact: { status: 'ready', files: ['a.js'], candidates: [] } }
+  const cases = [
+    [{ state: 'indexing', enabled: true, focus: [] }, 'wait', 'wait'],
+    [allRead, 'ok', 'idle'],
+    [changedAll, 'ok', 'ok'],
+    [{ ...changedAll, coverage: { ...allRead.coverage, unmapped: { look: 3, tests: 0, quiet: 0, lookTop: [] } } }, 'warn', 'warn'],
+    [{ ...allRead, coverage: { ...allRead.coverage, unmapped: { look: 3, tests: 0, quiet: 0, lookTop: [] } } }, 'warn', 'idle'],
+    [{ state: 'engine-missing', enabled: true, focus: [] }, 'err', null],
+    [{ state: 'off', enabled: false, focus: [] }, 'idle', null],
+  ]
+  for (const [snapshot, pill, summary] of cases) {
+    const { nodes } = render(snapshot)
+    assert.equal(toneOf(nodes, 'dcm-state'), pill, snapshot.state + ' 알약')
+    if (summary) assert.equal(toneOf(nodes, 'dcm-summary'), summary, snapshot.state + ' 결론')
+  }
+})
+
+test('초록은 지도가 코드를 모두 읽었다는 뜻일 뿐 고친 것이 맞다는 뜻이 아니다', () => {
+  const { text } = render({ ...allRead, requestImpact: { status: 'ready', files: ['a.js'], candidates: [] } })
+  assert.match(text, /지도가 코드를 모두 읽었어요/)
+  assert.doesNotMatch(text, /문제 없|안전|통과/)
+})
+
+test('화면은 다섯 가지 색 뜻만 쓰고 옛 표시 방식은 남기지 않는다', () => {
+  const scenes = [ready, allRead, { state: 'engine-missing', enabled: true, focus: [] }, { state: 'indexing', enabled: true, focus: [] }]
+  for (const scene of scenes) {
+    for (const node of render(scene).nodes) {
+      const tone = node.props?.['data-tone']
+      if (tone !== undefined) assert.ok(TONES.includes(tone), tone)
+      assert.equal(node.props?.['data-ready'], undefined)
+      assert.equal(node.props?.['data-kind'], undefined)
+    }
+  }
+  assert.doesNotMatch(client, /--cm-(blue|good)/)
 })
 
 test('상태가 바뀌어도 같은 뼈대의 한 칸이다', () => {
@@ -68,7 +132,6 @@ test('상태가 바뀌어도 같은 뼈대의 한 칸이다', () => {
     const { nodes } = render(snapshot)
     assert.ok(nodes.some(node => node.props?.className === 'dcm-summary'), '결론 카드')
     assert.ok(nodes.some(node => node.props?.className === 'dcm-stack'))
-    assert.equal(nodes.some(node => node.props?.['data-ready'] && node.props.className === 'dcm-stack'), false, '상태로 칸 수를 바꾸지 않는다')
   }
   assert.doesNotMatch(client, /grid-template-columns: minmax\(0, 1\.12fr\)/)
 })
@@ -136,7 +199,8 @@ test('세션 폴더 밖의 파일은 절대 경로 주소로 연다', () => {
 test('사이드바 서비스가 없거나 저장소 위치를 모르면 열 수 없는 글자로만 보인다', () => {
   assert.equal(fileButtons(render(changed).nodes).length, 0)
   assert.equal(fileButtons(render({ ...changed, root: undefined }, hostWith([])).nodes).length, 0)
-  assert.ok(render(changed).flat.includes('src/cache.js'))
+  const plain = render(changed).flat
+  assert.ok(plain.includes('cache.js') && plain.includes('src/'), '이름과 폴더가 글자로 남는다')
 })
 
 test('여는 데 실패하면 알리고 화면은 그대로 둔다', () => {

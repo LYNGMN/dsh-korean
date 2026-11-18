@@ -183,14 +183,27 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
           state.indexedAt = Date.now()
           state.indexMs = state.indexedAt - started
           state.coverage = indexed.coverage
-          // Extensions the map has no file of: they never appear in the counts above.
-          const unknown = typeof engine.unknownFormats === 'function'
-            ? await engine.unknownFormats(root, indexed.project, signal) ?? null
-            : undefined
-          if (!signal.aborted && state.coverage && unknown !== undefined) state.coverage = { ...state.coverage, unknownFormats: unknown }
-          state.partial = indexed.status === 'degraded' ||
-            ['skipped_count', 'not_indexed_files_count', 'parse_partial_count', 'parse_unusable_count']
-              .some(key => Number(indexed[key]) > 0) || (Array.isArray(unknown) && unknown.length > 0)
+          // Tracked files the map lacks, split into ones that might be code and quiet ones (docs,
+          // settings, media), and formats the map has no file of: none of them show up in the counts above.
+          let unknown
+          let unmapped
+          if (typeof engine.gaps === 'function') {
+            const found = await engine.gaps(root, indexed.project, signal)
+            unknown = found.unknownFormats ?? null
+            unmapped = found.unmapped ?? null
+          } else if (typeof engine.unknownFormats === 'function') {
+            unknown = await engine.unknownFormats(root, indexed.project, signal) ?? null
+          }
+          if (!signal.aborted && state.coverage) {
+            state.coverage = { ...state.coverage, ...(unknown !== undefined && { unknownFormats: unknown }),
+              ...(unmapped !== undefined && { unmapped }) }
+          }
+          // "Partial" means code may be missing. Files the map lacks count only when the survey says
+          // they might be code; without a survey the engine's own not-indexed count stands in.
+          const missing = unmapped ? unmapped.look > 0 : Number(indexed.not_indexed_files_count) > 0
+          state.partial = indexed.status === 'degraded' || missing ||
+            ['skipped_count', 'parse_partial_count', 'parse_unusable_count'].some(key => Number(indexed[key]) > 0) ||
+            (Array.isArray(unknown) && unknown.length > 0)
         } catch (error) {
           if (!signal.aborted) state.error = error.code === 'engine-missing' ? 'engine-missing' : 'analysis-failed'
           return

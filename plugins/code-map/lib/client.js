@@ -14,121 +14,154 @@ window.__ModuleLoader__.load({
   --cm-line: var(--dsw-alias-border-l3, #d9e1eb);
   --cm-edge: #718198;
   --cm-focus: #315ac7;
-  --cm-blue: #2650b5;
-  --cm-blue-bg: #edf3ff;
-  --cm-good: #206543;
-  --cm-good-bg: #eaf6ee;
-  --cm-warn: #8a4b00;
-  --cm-warn-bg: #fff4e0;
   box-sizing: border-box; max-width: 44rem; width: 100%; margin-inline: auto;
   padding: clamp(16px, 4vw, 36px); color: var(--cm-fg); color-scheme: inherit;
-  font: inherit; word-break: keep-all; container-type: inline-size; scrollbar-width: thin; scrollbar-color: var(--cm-edge) transparent;
+  font: inherit; font-size: 15px; line-height: 1.6; word-break: keep-all; container-type: inline-size;
+  scrollbar-width: thin; scrollbar-color: var(--cm-edge) transparent; caret-color: var(--cm-wait);
 }
+.dcm-view ::selection { background: color-mix(in srgb, var(--cm-wait) 26%, transparent); color: inherit; }
 @media (prefers-color-scheme: dark) {
   .dcm-view { --cm-fg: var(--dsw-alias-label-primary, #f0f3f8); --cm-muted: var(--dsw-alias-label-secondary, #b7c3d4);
     --cm-surface: var(--dsw-alias-background-main, #171c27); --cm-soft: var(--dsw-alias-interactive-bg-hover, #222a38);
-    --cm-line: var(--dsw-alias-border-l3, #3e4c62); --cm-edge: #8191ab; --cm-focus: #a9c2ff;
-    --cm-blue: #bcd0ff; --cm-blue-bg: #24365e; --cm-good: #b4e5c5; --cm-good-bg: #1b382e; --cm-warn: #ffd49a; --cm-warn-bg: #3a2d12; }
+    --cm-line: var(--dsw-alias-border-l3, #3e4c62); --cm-edge: #8191ab; --cm-focus: #a9c2ff; }
 }
 :is([data-theme="dark"], .dark) .dcm-view {
   --cm-fg: var(--dsw-alias-label-primary, #f0f3f8); --cm-muted: var(--dsw-alias-label-secondary, #b7c3d4);
   --cm-surface: var(--dsw-alias-background-main, #171c27); --cm-soft: var(--dsw-alias-interactive-bg-hover, #222a38);
   --cm-line: var(--dsw-alias-border-l3, #3e4c62); --cm-edge: #8191ab; --cm-focus: #a9c2ff;
-  --cm-blue: #bcd0ff; --cm-blue-bg: #24365e; --cm-good: #b4e5c5; --cm-good-bg: #1b382e;
-  --cm-warn: #ffd49a; --cm-warn-bg: #3a2d12;
 }
 :is([data-theme="light"], .light) .dcm-view {
   --cm-fg: var(--dsw-alias-label-primary, #1b2230); --cm-muted: var(--dsw-alias-label-secondary, #536176);
   --cm-surface: var(--dsw-alias-background-main, #fff); --cm-soft: var(--dsw-alias-interactive-bg-hover, #f3f6fb);
   --cm-line: var(--dsw-alias-border-l3, #d9e1eb); --cm-edge: #718198; --cm-focus: #315ac7;
-  --cm-blue: #2650b5; --cm-blue-bg: #edf3ff; --cm-good: #206543; --cm-good-bg: #eaf6ee;
-  --cm-warn: #8a4b00; --cm-warn-bg: #fff4e0;
 }
+/* One hue, one meaning: wait = in progress or clickable, ok = the map read all code, warn = code may be missing,
+   err = failed, idle = nothing to report. A tone is only ever a solid fill with its own readable ink on it
+   (--on-*), never colored text, so no state turns into a muddy tint on either theme. Every fill also carries
+   an icon and words. */
+.dcm-view { --cm-wait: #1d4ed8; --on-wait: #fff; --cm-ok: #15803d; --on-ok: #fff; --cm-warn: #fbbf24; --on-warn: #1f1700;
+  --cm-err: #b42318; --on-err: #fff; --cm-idle: #475467; --on-idle: #fff; }
+@media (prefers-color-scheme: dark) {
+  .dcm-view { --cm-wait: #8db3ff; --on-wait: #0b1530; --cm-ok: #6ee7a0; --on-ok: #052e16; --cm-warn: #fbbf24; --on-warn: #1f1700;
+    --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #c0c7d4; --on-idle: #161b26; }
+}
+:is([data-theme="dark"], .dark) .dcm-view { --cm-wait: #8db3ff; --on-wait: #0b1530; --cm-ok: #6ee7a0; --on-ok: #052e16; --cm-warn: #fbbf24; --on-warn: #1f1700;
+  --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #c0c7d4; --on-idle: #161b26; }
+:is([data-theme="light"], .light) .dcm-view { --cm-wait: #1d4ed8; --on-wait: #fff; --cm-ok: #15803d; --on-ok: #fff; --cm-warn: #fbbf24; --on-warn: #1f1700;
+  --cm-err: #b42318; --on-err: #fff; --cm-idle: #475467; --on-idle: #fff; }
+.dcm-view [data-tone="wait"] { --tone: var(--cm-wait); --on-tone: var(--on-wait); }
+.dcm-view [data-tone="ok"] { --tone: var(--cm-ok); --on-tone: var(--on-ok); }
+.dcm-view [data-tone="warn"] { --tone: var(--cm-warn); --on-tone: var(--on-warn); }
+.dcm-view [data-tone="err"] { --tone: var(--cm-err); --on-tone: var(--on-err); }
+.dcm-view [data-tone="idle"] { --tone: var(--cm-idle); --on-tone: var(--on-idle); }
 .dcm-view *, .dcm-view *::before { box-sizing: border-box; }
-.dcm-view h2, .dcm-view h3, .dcm-view p { margin: 0; }
-.dcm-view h2 { font-size: 24px; line-height: 1.3; letter-spacing: -.035em; }
+.dcm-view h2, .dcm-view h3, .dcm-view h4, .dcm-view p { margin: 0; }
+.dcm-view h2 { font-size: 24px; line-height: 1.3; letter-spacing: -.03em; }
 .dcm-view h3 { font-size: 17px; line-height: 1.4; letter-spacing: -.015em; }
-.dcm-view p { line-height: 1.65; text-wrap: pretty; }
-.dcm-view .dcm-muted { color: var(--cm-muted); font-size: 13px; }
-.dcm-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 6px; align-items: center; margin-bottom: 20px; }
+.dcm-view p { text-wrap: pretty; max-width: 62ch; }
+.dcm-view .dcm-muted { color: var(--cm-muted); font-size: 14px; line-height: 1.6; }
+.dcm-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 8px; align-items: center; margin-bottom: 24px; }
 .dcm-head h2 { grid-column: 1; grid-row: 1; white-space: nowrap; translate: 0 .6px; }
-.dcm-meta { display: flex; gap: 8px; grid-column: 1 / -1; grid-row: 2; align-items: center; min-width: 0; }
+.dcm-meta { display: flex; gap: 10px; grid-column: 1 / -1; grid-row: 2; align-items: center; min-width: 0; }
 .dcm-repo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dcm-actions { grid-column: 2; grid-row: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 8px; }
 .dcm-actions > * { min-width: 0; }
-.dcm-state { display: inline-flex; align-items: center; justify-content: center; padding: 5px 11px; width: max-content;
-  border-radius: 999px; font-size: 12px; line-height: 18px; color: var(--cm-blue); background: var(--cm-blue-bg); white-space: nowrap; }
-.dcm-state[data-ready] { color: var(--cm-good); background: var(--cm-good-bg); }
-.dcm-stack { display: grid; gap: 14px; align-items: start; }
+.dcm-state { display: inline-flex; align-items: center; padding: 4px 12px 4px 9px; width: max-content; gap: 6px;
+  border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 20px; white-space: nowrap; font-variant-numeric: tabular-nums;
+  color: var(--on-tone); background: var(--tone); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-tone) 22%, transparent); }
+.dcm-icon { display: inline-flex; flex: none; align-items: center; justify-content: center; width: var(--s, 24px); height: var(--s, 24px); color: inherit; }
+.dcm-icon svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dcm-badge { width: var(--b, 36px); height: var(--b, 36px); border-radius: 50%; background: var(--tone); color: var(--on-tone);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-tone) 22%, transparent); }
+.dcm-badge svg { width: var(--s, 20px); height: var(--s, 20px); }
+.dcm-stack { display: grid; gap: 0; align-items: start; }
 .dcm-footer, .dcm-status, .dcm-welcome { grid-column: 1 / -1; }
-.dcm-summary { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; row-gap: 4px; align-items: start;
-  padding: clamp(14px, 3vw, 22px); background: var(--cm-surface); border: 1px solid var(--cm-line); border-radius: 14px;
-  border-inline-start: 4px solid var(--cm-blue); }
-.dcm-summary[data-kind="warn"] { border-inline-start-color: var(--cm-warn); }
-.dcm-summary-icon { grid-row: 1 / span 3; width: 28px; height: 28px; color: var(--cm-blue); }
-.dcm-summary[data-kind="warn"] .dcm-summary-icon { color: var(--cm-warn); }
-.dcm-summary-icon svg { display: block; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.dcm-view .dcm-summary h3 { font-size: 20px; line-height: 28px; grid-column: 2; text-wrap: balance; }
-.dcm-view .dcm-summary p { grid-column: 2; font-size: 14px; }
-.dcm-view .dcm-summary p[data-warn] { color: var(--cm-warn); font-weight: 600; }
-.dcm-card { background: var(--cm-surface); border: 1px solid var(--cm-line); border-radius: 14px; display: grid;
-  align-content: start; gap: 12px; min-width: 0; padding: clamp(14px, 3vw, 24px); }
-.dcm-start { border-inline-start: 3px solid var(--cm-focus); }
+/* The one boxed block: the answer. Everything below it is flat sections split by hairlines. */
+.dcm-summary { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 14px; row-gap: 4px; align-items: start;
+  padding: 18px 20px; background: var(--cm-surface); border: 1px solid var(--cm-line); border-radius: 14px; }
+.dcm-summary-icon { grid-row: 1 / span 3; }
+.dcm-view .dcm-summary h3 { font-size: 20px; line-height: 28px; grid-column: 2; text-wrap: balance; margin-top: 4px; }
+.dcm-view .dcm-summary p { grid-column: 2; }
+.dcm-view .dcm-summary p[data-tone] { color: var(--cm-fg); font-weight: 600; }
+.dcm-card { display: grid; align-content: start; gap: 14px; min-width: 0; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--cm-line); }
+.dcm-summary + .dcm-card { margin-top: 28px; }
+.dcm-welcome { padding: 18px 20px; border: 1px solid var(--cm-line); border-radius: 14px; margin-top: 0; }
 .dcm-card-title { display: grid; gap: 4px; min-width: 0; }
 .dcm-card-title h3 { white-space: nowrap; }
 .dcm-view .dcm-button, .dcm-view .dcm-link {
-  display: inline-flex; font: inherit; font-size: 13px; font-weight: 600; line-height: 20px; white-space: nowrap;
-  align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px;
+  display: inline-flex; font: inherit; font-size: 14px; font-weight: 600; line-height: 20px; white-space: nowrap;
+  align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 14px;
   background: var(--cm-surface); color: var(--cm-fg); border: 1px solid var(--cm-edge);
-  border-radius: 8px; cursor: pointer; text-decoration: none;
+  border-radius: 8px; cursor: pointer; text-decoration: none; transition: background-color 160ms ease-out;
 }
 .dcm-view .dcm-button:hover, .dcm-view .dcm-link:hover { background: var(--cm-soft); }
 .dcm-view .dcm-button:disabled { opacity: .62; cursor: default; }
-.dcm-view .dcm-primary { color: var(--cm-blue); background: var(--cm-blue-bg); border-color: var(--cm-focus); }
+.dcm-view .dcm-primary { color: var(--on-wait); background: var(--cm-wait); border-color: var(--cm-wait); }
+.dcm-view .dcm-primary:hover { background: var(--cm-wait); filter: brightness(1.08); }
 .dcm-view :is(button, input, a):focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
 .dcm-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-.dcm-form label { grid-column: 1 / -1; }
-.dcm-form label { font-size: 13px; font-weight: 600; }
+.dcm-form label { grid-column: 1 / -1; font-size: 14px; font-weight: 600; }
 .dcm-view input { font: inherit; font-size: 16px; color: var(--cm-fg); min-width: 0; width: 100%;
-  min-height: 44px; padding: 8px 11px; border: 1px solid var(--cm-edge); border-radius: 8px; background: var(--cm-surface); }
+  min-height: 44px; padding: 8px 12px; border: 1px solid var(--cm-edge); border-radius: 8px; background: var(--cm-surface); }
 .dcm-view input::placeholder { color: var(--cm-muted); opacity: 1; }
 .dcm-list { list-style: none; display: grid; margin: 0; padding: 0; gap: 0; }
 .dcm-list li { min-width: 0; padding: 10px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center; gap: 6px 10px; border-top: 1px solid var(--cm-line); }
-.dcm-evidence { display: grid; min-width: 0; gap: 4px; }
-.dcm-symbol { font-size: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dcm-view code { color: var(--cm-muted); display: block; min-width: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; word-break: normal; }
-.dcm-details { display: grid; gap: 8px; margin-top: 5px; }
-.dcm-details h4 { margin: 0; font-size: 14px; line-height: 1.4; }
+  align-items: center; gap: 6px 12px; border-top: 1px solid var(--cm-line); }
+.dcm-evidence { display: grid; min-width: 0; gap: 2px; }
+.dcm-symbol { font-size: 15px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* A file shows its name first and its folder second: the name is what the eye looks for. */
+.dcm-path { display: grid; gap: 1px; min-width: 0; text-align: start; }
+.dcm-view code { display: block; min-width: 0; line-height: 1.45; overflow-wrap: anywhere; word-break: normal; }
+.dcm-name { font-size: 14px; font-weight: 600; color: var(--cm-fg); }
+.dcm-dir { font-size: 13px; color: var(--cm-muted); }
+.dcm-details { display: grid; gap: 6px; margin-top: 2px; }
+.dcm-details h4 { font-size: 15px; line-height: 1.4; margin-bottom: 2px; }
 .dcm-all { border-top: 1px solid var(--cm-line); }
-.dcm-all summary, .dcm-more summary { display: list-item; min-height: 44px; padding: 11px 6px; cursor: pointer;
-  color: var(--cm-fg); font-size: 14px; font-weight: 600; white-space: nowrap; }
-.dcm-all[open] summary { margin-bottom: 8px; }
-.dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
-.dcm-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
-.dcm-start .dcm-button, .dcm-start .dcm-link { justify-self: start; }
-.dcm-gaps { display: grid; margin: 0; padding: 0; list-style: none; }
-.dcm-gap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 10px 0;
-  border-top: 1px solid var(--cm-line); font-size: 14px; line-height: 1.5; }
-.dcm-gap strong { font-weight: 600; text-align: end; text-wrap: balance; }
+.dcm-view summary { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 0; cursor: pointer; list-style: none;
+  color: var(--cm-fg); font-size: 15px; font-weight: 600; }
+.dcm-view summary::-webkit-details-marker { display: none; }
+.dcm-view summary::before { content: ''; flex: none; width: 7px; height: 7px; margin-inline: 3px 4px; border-right: 2px solid var(--cm-muted); border-bottom: 2px solid var(--cm-muted);
+  transform: rotate(-45deg); transition: transform 160ms ease-out; }
+.dcm-view details[open] > summary::before { transform: rotate(45deg); }
+.dcm-view summary small { margin-inline-start: auto; font-size: 13px; font-weight: 400; color: var(--cm-muted); text-align: end; text-wrap: balance; }
 @container (max-width: 520px) {
-  .dcm-gap { grid-template-columns: minmax(0, 1fr); }
-  .dcm-gap strong { text-align: start; }
+  .dcm-view summary { flex-wrap: wrap; row-gap: 0; }
+  .dcm-view summary small { flex: 1 0 calc(100% - 24px); margin-inline-start: 24px; margin-top: -6px; padding-bottom: 6px; text-align: start; }
 }
-.dcm-gap[data-warn] strong { color: var(--cm-warn); }
+.dcm-all[open] summary { margin-bottom: 6px; }
+.dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; border-radius: 4px; }
+.dcm-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+.dcm-welcome .dcm-button, .dcm-welcome .dcm-link { justify-self: start; }
+.dcm-gaps { display: grid; margin: 0; padding: 0; list-style: none; }
+.dcm-gap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 12px 0;
+  border-top: 1px solid var(--cm-line); font-size: 15px; line-height: 1.5; }
+.dcm-gap strong { font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
+/* A count needs a look only when it wears the warn fill; calm rows stay plain text. */
+.dcm-gap[data-tone="warn"] strong { min-width: 2.6em; padding: 1px 12px; border-radius: 999px; text-align: center; color: var(--on-tone); background: var(--tone);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-tone) 22%, transparent); }
+.dcm-gap[data-tone="idle"] strong { color: var(--cm-fg); }
+@container (max-width: 520px) {
+  .dcm-gap { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .dcm-gap strong { text-align: start; justify-self: start; }
+}
+.dcm-gap > div { display: grid; gap: 2px; min-width: 0; }
+.dcm-gap small { display: block; font-size: 13px; line-height: 1.5; color: var(--cm-muted); font-weight: 400; text-wrap: balance; }
+.dcm-gap-title { margin-top: 8px; }
 .dcm-files { list-style: none; margin: 0; padding: 0; display: grid; }
-.dcm-view .dcm-file { display: flex; align-items: center; width: 100%; max-width: 100%; text-align: start; font: inherit; padding: 6px 0; margin: 0; min-height: 44px;
-  background: none; border: 0; cursor: pointer; color: var(--cm-blue); }
-.dcm-view .dcm-file code { color: var(--cm-blue); text-decoration: underline; text-underline-offset: 3px; }
-.dcm-view .dcm-file:hover code { text-decoration-thickness: 2px; }
-.dcm-search { border: 1px solid var(--cm-line); border-radius: 14px; background: var(--cm-surface); }
-.dcm-search summary { padding-inline: 16px; }
-.dcm-search .dcm-form { margin-top: 4px; }
-.dcm-search > div { display: grid; gap: 12px; padding: 4px 16px 16px; }
-.dcm-quiet { justify-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px;
-  padding: 0 12px; font: inherit; font-size: 13px; color: var(--cm-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.dcm-view .dcm-file { display: flex; align-items: center; width: 100%; max-width: 100%; text-align: start; font: inherit; padding: 6px 0; margin: 0; min-height: 48px;
+  background: none; border: 0; cursor: pointer; color: var(--cm-wait); }
+.dcm-view .dcm-file .dcm-name { color: var(--cm-wait); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+  transition: text-decoration-color 160ms ease-out; }
+.dcm-view .dcm-file:hover .dcm-name { text-decoration-color: currentColor; }
+.dcm-quietbox { border-top: 1px solid var(--cm-line); margin-top: 10px; }
+.dcm-search { border-top: 1px solid var(--cm-line); margin-top: 32px; }
+.dcm-search > div { display: grid; gap: 14px; padding: 8px 0 16px; }
+.dcm-quiet { justify-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; margin-top: 8px;
+  padding: 0 12px; font: inherit; font-size: 14px; line-height: 20px; color: var(--cm-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .dcm-quiet:hover { color: var(--cm-fg); }
 .dcm-quiet:disabled { opacity: .62; cursor: default; }
+.dcm-footer { margin-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .dcm-view * { transition: none !important; } }
 @media (max-width: 470px) {
   .dcm-head { column-gap: 8px; }
   .dcm-view .dcm-actions .dcm-button { padding-inline: 10px; }
@@ -136,17 +169,6 @@ window.__ModuleLoader__.load({
 `
     const ROUTE = '/api/dsh-code-map'
     const RELEASES = 'https://github.com/DeusData/codebase-memory-mcp/releases/tag/v0.12.1'
-    const STATE = {
-      loading: '불러오는 중',
-      off: '꺼짐',
-      indexing: '읽는 중',
-      ready: '준비됨',
-      'no-repo': '저장소 없음',
-      'engine-missing': '분석 도구 필요',
-      'analysis-failed': '다시 확인 필요',
-      unavailable: '연결 확인 필요',
-    }
-
     const FOCUS_NOTE = {
       'no-identifier': '최근 코딩 요청에 함수나 파일 이름이 없어서 위치를 자동으로 붙이지 않았어요. 여기서 직접 찾아 보세요.',
       'no-match': '최근 코딩 요청의 이름과 맞는 위치를 지도에서 찾지 못했어요. 여기서 다른 이름으로 찾아 보세요.',
@@ -157,11 +179,15 @@ window.__ModuleLoader__.load({
     }
 
     function PathText({ value, file = value, onOpen, line }) {
-      const code = h('code', null, value.split('/').flatMap((part, index) =>
-        index ? ['/', h('wbr', { key: index }), part] : [part]))
-      if (!onOpen) return code
+      const cut = value.lastIndexOf('/')
+      const dir = value.slice(0, cut + 1)
+      const folders = dir ? dir.split('/').slice(0, -1).flatMap((part, index) => [part, '/', h('wbr', { key: index })]) : []
+      const body = h('span', { className: 'dcm-path' },
+        h('code', { className: 'dcm-name' }, value.slice(cut + 1)),
+        dir && h('code', { className: 'dcm-dir' }, folders))
+      if (!onOpen) return body
       return h('button', { type: 'button', className: 'dcm-file', 'data-qa-multiline': '', onClick: () => onOpen(file, line),
-        'aria-label': '오른쪽 사이드바에서 열기 · ' + value }, code)
+        'aria-label': '오른쪽 사이드바에서 열기 · ' + value }, body)
     }
 
     // A repository-relative path becomes the address DSH's own file menu opens
@@ -175,16 +201,20 @@ window.__ModuleLoader__.load({
       return 'dsh-resource://file/session/' + encodeSegment(sessionId) + '/' + path.split('/').map(encodeSegment).join('/')
     }
 
+    // One icon per tone, so a state is never told apart by color alone.
     const ICONS = {
-      info: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 16v-4' }], ['path', { d: 'M12 8h.01' }]],
+      wait: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 6v6l4 2' }]],
+      ok: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M8 12.5l2.7 2.7L16 9.5' }]],
       warn: [['path', { d: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' }],
         ['path', { d: 'M12 9v4' }], ['path', { d: 'M12 17h.01' }]],
-      wait: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 6v6l4 2' }]],
+      err: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M9 9l6 6M15 9l-6 6' }]],
+      idle: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 16v-4' }], ['path', { d: 'M12 8h.01' }]],
     }
 
-    function Icon({ kind }) {
-      return h('span', { className: 'dcm-summary-icon', 'aria-hidden': 'true' },
-        h('svg', { viewBox: '0 0 24 24', focusable: 'false' }, ICONS[kind].map(([tag, props], index) => h(tag, { key: index, ...props }))))
+    function Icon({ tone, size, badge, className = '' }) {
+      return h('span', { className: 'dcm-icon ' + (badge ? 'dcm-badge ' : '') + className, 'data-tone': tone, 'aria-hidden': 'true',
+        style: { '--s': size + 'px', ...(badge && { '--b': badge + 'px' }) } },
+        h('svg', { viewBox: '0 0 24 24', focusable: 'false' }, ICONS[tone].map(([tag, props], index) => h(tag, { key: index, ...props }))))
     }
 
     function amount(value) {
@@ -194,60 +224,109 @@ window.__ModuleLoader__.load({
 
     // The numbers say how much of the repository the map could not read, so
     // they are listed even at zero: a short result is not mistaken for a full one.
+    // Files that might be code are told apart from prose, settings and media, so a
+    // warning means something worth a look. `state` is none, some or unknown.
     function gapsOf(coverage) {
-      if (!coverage) return { rows: [], state: 'unknown' }
-      const formats = coverage.unknownFormats
-      const rows = [
-        ['지도에 넣지 못한 파일', amount(coverage.notIndexed), coverage.notIndexed],
-        ['일부만 읽은 파일', amount(coverage.partial), coverage.partial],
-        ['읽지 못한 파일', amount(coverage.unusable), coverage.unusable],
-      ]
-      if (formats !== undefined) {
-        // File types the map holds no file of never show up in the counts above.
-        const list = Array.isArray(formats) ? formats : null
-        const text = list === null ? '확인 안 됨' : !list.length ? '없음'
-          : list.slice(0, 3).map(item => item.ext + ' ' + item.files + '개').join(', ') +
+      if (!coverage) return { state: 'unknown', look: [], quiet: [] }
+      const map = coverage.unmapped
+      const look = []
+      const quiet = []
+      if (map) {
+        const hint = map.lookTop?.length ? '주로 ' + map.lookTop.map(item => item.ext + ' ' + item.files + '개').join(', ') : ''
+        look.push({ label: '지도에 없는 코드·알 수 없는 파일', value: map.look, hint })
+        quiet.push({ label: '테스트 파일', short: '테스트', value: map.tests,
+          hint: '지도가 건너뛴 폴더라서 테스트가 부르는 곳은 안 나와요.' })
+        quiet.push({ label: '문서·설정·이미지 등', short: '문서·설정·이미지', value: map.quiet, hint: '코드가 아니라서 지도 대상이 아니에요.' })
+      } else {
+        // The survey failed (null) or an older code map sent only the engine's counts.
+        look.push({ label: '지도에 넣지 못한 파일', value: map === null ? null : coverage.notIndexed })
+        const formats = coverage.unknownFormats
+        if (formats !== undefined) {
+          const list = Array.isArray(formats) ? formats : null
+          const text = list === null ? '' : list.slice(0, 3).map(item => item.ext + ' ' + item.files + '개').join(', ') +
             (list.length > 3 ? ' 외 ' + (list.length - 3) + '종' : '')
-        rows.push(['형식을 몰라 건너뛴 파일', text, list === null ? null : list.length])
+          look.push({ label: '형식을 몰라 건너뛴 파일', value: list === null ? null : list.length, text })
+        }
       }
-      const unknown = rows.some(row => row[2] === null || row[2] === undefined)
-      const some = rows.some(row => row[2] > 0)
-      return { rows, state: unknown ? 'unknown' : some ? 'some' : 'none' }
+      look.push({ label: '일부만 읽은 파일', value: coverage.partial })
+      look.push({ label: '읽지 못한 파일', value: coverage.unusable })
+      const unknown = look.some(row => row.value === null || row.value === undefined)
+      const some = look.some(row => row.value > 0)
+      return { state: unknown ? 'unknown' : some ? 'some' : 'none', look, quiet }
+    }
+
+    // Whether the map read all the code, for the pill and the headline together.
+    function readState(data) {
+      const gaps = gapsOf(data.coverage).state
+      return gaps === 'some' || data.partial ? 'some' : gaps
+    }
+
+    function GapRow({ row, calm }) {
+      const unknown = row.value === null || row.value === undefined
+      const tone = !calm && (unknown || row.value > 0) ? 'warn' : 'idle'
+      return h('li', { className: 'dcm-gap', 'data-tone': tone },
+        h('div', null, h('span', null, row.label), (row.hint || (row.value > 0 && row.text)) && h('small', null, row.hint || row.text)),
+        h('strong', null, amount(row.value)))
     }
 
     function Coverage({ coverage }) {
       if (!coverage) return null
-      const { rows } = gapsOf(coverage)
+      const { look, quiet } = gapsOf(coverage)
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '지도가 못 읽은 범위'),
-          h('p', { className: 'dcm-muted' }, '여기에 있는 파일은 위 결과에서 빠질 수 있어요.')),
-        h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 범위' },
-          rows.map(([label, text, value]) => h('li', { key: label, className: 'dcm-gap', 'data-warn': value === null || value > 0 || undefined },
-            h('span', null, label), h('strong', null, text)))),
+          h('p', { className: 'dcm-muted' }, '“확인이 필요한 범위”에 있는 코드는 위 결과에서 빠질 수 있어요.')),
+        h('div', null,
+          h('h4', { className: 'dcm-gap-title' }, '확인이 필요한 범위'),
+          h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 코드 범위' }, look.map(row => h(GapRow, { key: row.label, row })))),
+        !!quiet.length && h('details', { className: 'dcm-quietbox' },
+          h('summary', null, h('span', null, '지도 대상이 아닌 파일'), ' ',
+            h('small', null, quiet.map(row => row.short + ' ' + amount(row.value)).join(' · '))),
+          h('ul', { className: 'dcm-gaps', 'aria-label': '지도 대상이 아닌 파일' }, quiet.map(row => h(GapRow, { key: row.label, row, calm: true })))),
         h('p', { className: 'dcm-muted' },
           '지도에 없는 파일이나 실행할 때만 이어지는 호출은 쓰는 곳에 나오지 않아요. 안 나온다고 쓰는 곳이 없다는 뜻은 아니에요.'))
     }
 
+    // The pill and the headline speak for the same thing: did the map read all the code.
+    function pillOf(data) {
+      switch (data.state) {
+        case 'loading': return { tone: 'idle', text: '불러오는 중' }
+        case 'off': return { tone: 'idle', text: '꺼짐' }
+        case 'no-repo': return { tone: 'idle', text: '저장소 없음' }
+        case 'indexing': return { tone: 'wait', text: '읽는 중' }
+        case 'engine-missing': return { tone: 'err', text: '분석 도구 필요' }
+        case 'analysis-failed': return { tone: 'err', text: '다시 확인 필요' }
+        case 'unavailable': return { tone: 'err', text: '연결 확인 필요' }
+        default: {
+          const read = readState(data)
+          return read === 'none' ? { tone: 'ok', text: '코드를 모두 읽었어요' }
+            : read === 'some' ? { tone: 'warn', text: '코드 일부를 못 읽었어요' }
+              : { tone: 'warn', text: '읽은 범위를 확인 못 했어요' }
+        }
+      }
+    }
+
     function summaryOf(data) {
       if (data.state === 'indexing' || data.state === 'loading') {
-        return { kind: 'wait', title: '지도를 읽는 중이에요', lines: ['끝나면 이번 요청에서 바뀐 곳과 확인할 곳을 알려 드려요.'] }
+        return { tone: 'wait', title: '지도를 읽는 중이에요', lines: ['끝나면 이번 요청에서 바뀐 곳과 확인할 곳을 알려 드려요.'] }
       }
       const result = data.requestImpact
-      const gaps = gapsOf(data.coverage).state
-      let kind = 'info'
-      let title
+      const read = readState(data)
       const lines = []
+      let tone = 'idle'
+      let title
+      let checked = false
       if (!result) {
         title = '아직 이번 요청에서 바뀐 게 없어요'
         lines.push('코딩을 요청하면 바뀐 곳과 함께 확인할 곳을 알려 드려요.')
       } else if (result.status === 'pending') {
-        kind = 'wait'
+        tone = 'wait'
         title = '이번 요청에서 바뀐 곳을 확인하고 있어요'
       } else if (result.status === 'unavailable') {
-        kind = 'warn'
+        tone = 'warn'
         title = '이번 요청에서 바뀐 곳을 확인하지 못했어요'
       } else if (result.files.length) {
+        checked = true
         title = '이번 요청에서 파일 ' + result.files.length + '개를 고쳤어요'
         lines.push(result.analyzing ? '영향 줄 수 있는 곳을 확인하고 있어요.'
           : result.candidates.length ? '영향 줄 수 있는 곳이 ' + result.candidates.length + '곳 있어요.'
@@ -255,21 +334,25 @@ window.__ModuleLoader__.load({
         if (result.partial) lines.push('일부 파일의 연결은 확인하지 못했어요.')
       } else {
         title = result.partial ? '확인할 수 있는 범위에서는 바뀐 파일을 찾지 못했어요' : '이번 요청에서 바뀐 파일이 없어요'
-        if (result.partial) kind = 'warn'
+        if (result.partial) tone = 'warn'
       }
-      const warning = gaps === 'some' ? '지도가 읽지 못한 범위가 있어서 빠진 곳이 있을 수 있어요. 아래를 확인해 주세요.'
-        : gaps === 'unknown' ? '지도가 읽지 못한 범위를 확인하지 못했어요. 빠진 곳이 있을 수 있어요.' : null
-      if (warning) kind = 'warn'
-      return { kind, title, lines, warning }
+      let warning = null
+      if (checked) {
+        // Green only says the map read all the code; it never says the change is right.
+        if (read === 'none' && !result.partial) { tone = 'ok'; lines.push('지도가 코드를 모두 읽었어요.') } else tone = 'warn'
+        if (read === 'some') warning = '지도가 읽지 못한 코드가 있어서 빠진 곳이 있을 수 있어요. 아래를 확인해 주세요.'
+        else if (read === 'unknown') warning = '지도가 읽지 못한 범위를 확인하지 못했어요. 빠진 곳이 있을 수 있어요.'
+      }
+      return { tone, title, lines, warning }
     }
 
     function Summary({ data }) {
-      const { kind, title, lines, warning } = summaryOf(data)
-      return h('section', { className: 'dcm-summary', 'data-kind': kind, 'aria-live': 'polite', 'aria-label': '이번 요청 결과' },
-        h(Icon, { kind }),
+      const { tone, title, lines, warning } = summaryOf(data)
+      return h('section', { className: 'dcm-summary', 'data-tone': tone, 'aria-live': 'polite', 'aria-label': '이번 요청 결과' },
+        h(Icon, { tone, size: 20, badge: 36, className: 'dcm-summary-icon' }),
         h('h3', { 'data-qa-multiline': '' }, title),
         lines.map(line => h('p', { key: line, className: 'dcm-muted' }, line)),
-        warning && h('p', { 'data-warn': '' }, warning))
+        warning && h('p', { 'data-tone': 'warn' }, warning))
     }
 
     function CallersResult({ callers, onOpen }) {
@@ -352,20 +435,20 @@ window.__ModuleLoader__.load({
     function Welcome({ data, act, busy }) {
       const state = data.state
       if (state === 'loading') return null
-      if (state === 'no-repo') return h('section', { className: 'dcm-card dcm-start dcm-welcome' },
+      if (state === 'no-repo') return h('section', { className: 'dcm-card dcm-welcome', 'data-tone': 'idle' },
         h('h3', null, '코드 저장소를 열어 주세요'),
         h('p', null, 'Git으로 관리하는 저장소 폴더에서 대화를 열면 함수와 파일의 연결을 볼 수 있어요.'))
-      if (state === 'unavailable') return h('section', { className: 'dcm-card dcm-start dcm-welcome' },
+      if (state === 'unavailable') return h('section', { className: 'dcm-card dcm-welcome', 'data-tone': 'err' },
         h('h3', null, '코드 지도에 연결할 수 없어요'),
         h('p', null, 'DSH 플러그인 화면에서 코드 지도가 켜져 있는지 확인해 주세요.'))
-      if (state === 'engine-missing') return h('section', { className: 'dcm-card dcm-start dcm-welcome' },
+      if (state === 'engine-missing') return h('section', { className: 'dcm-card dcm-welcome', 'data-tone': 'err' },
         h('h3', null, '분석 도구를 연결해 주세요'),
         h('p', null, 'Codebase Memory 실행 파일을 설치하면 이 저장소의 코드 관계를 내 컴퓨터에서 찾을 수 있어요.'),
         h('a', { className: 'dcm-link', href: RELEASES, target: '_blank', rel: 'noreferrer' }, 'Codebase Memory 내려받기'))
-      if (state === 'analysis-failed') return h('section', { className: 'dcm-card dcm-start dcm-welcome' },
+      if (state === 'analysis-failed') return h('section', { className: 'dcm-card dcm-welcome', 'data-tone': 'err' },
         h('h3', null, '코드 지도를 준비하지 못했어요'),
         h('p', null, 'Codebase Memory가 실행되는지 확인하고 다시 준비해 보세요.'))
-      if (state === 'off' && !data.enabled) return h('section', { className: 'dcm-card dcm-start dcm-welcome' },
+      if (state === 'off' && !data.enabled) return h('section', { className: 'dcm-card dcm-welcome', 'data-tone': 'idle' },
         h('h3', null, '이 저장소에서 코드 지도 사용하기'),
         h('p', null, '코딩을 요청하면 관련 위치를 DSH가 참고하고, 작업이 끝나면 함께 확인할 곳을 여기에서 볼 수 있어요.'),
         h('p', { className: 'dcm-muted' }, '지도는 로컬에서 만들어요. 참고에 쓰인 함수명과 파일 위치는 DSH 모델 요청에 포함돼요.'),
@@ -498,14 +581,14 @@ window.__ModuleLoader__.load({
       const onDraft = typeof inputActions?.captureInsertion === 'function' &&
         typeof inputActions?.insertText === 'function' ? draftVerification : undefined
       const rows = found ?? data.focus ?? []
-      const displayedState = ready && data.partial ? '일부만 읽었어요' : STATE[data.state]
+      const pill = pillOf(data)
       const mapped = data.enabled && (ready || data.state === 'indexing')
       return h('div', { className: 'dcm-view' },
         h('header', { className: 'dcm-head' },
           h('h2', null, '코드 지도'),
           h('div', { className: 'dcm-meta' },
             data.repo && h('p', { className: 'dcm-muted dcm-repo', title: data.repo }, data.repo),
-            h('span', { className: 'dcm-state', 'data-ready': ready || undefined, role: 'status' }, displayedState)),
+            h('span', { className: 'dcm-state', 'data-tone': pill.tone, role: 'status' }, h(Icon, { tone: pill.tone, size: 14 }), pill.text)),
           data.enabled && h('div', { className: 'dcm-actions' },
             h(Button, { onClick: () => action('refresh'), disabled: busy || data.state === 'indexing' },
               ['analysis-failed', 'engine-missing'].includes(data.state) ? '다시 준비' : '지도 갱신'))),
