@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작업 단계 미리보기</title>
 <!-- 실제 DSH 없이 lib/client.js의 작업 단계 탭과 채팅 머리 칩을 올려 보는 틀.
-     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?within=1 저장소 묶음 폴더(~/Dev처럼), ?left=1 저장 안 된 변경 2개, ?fail=1 읽기 실패. -->
+     ?theme=dark 어두운 테마, ?stage=0~6 단계 고정(0 원본 브랜치 … 6 모두 끝), ?blocked=gh GitHub 로그인 만료, ?repo=0 저장소 아님, ?within=1 저장소 묶음 폴더(~/Dev처럼), ?left=1 저장 안 된 변경 2개, ?fail=1 읽기 실패, ?code=ready|clean|off|indexing|missing 코드 지도 요약. -->
 <style>
   :root {
     --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
@@ -61,7 +61,19 @@
   // ?checks=fail: 열린 PR의 검사 하나가 실패하고 검토를 기다린다.
   if (params.get('checks') === 'fail' && facts.pr) facts.pr = { ...facts.pr, draft: false, review: 'required', checks: { passing: 3, failing: 1, pending: 1, failed: ['lint'] } }
   const REPOS = ['DiscordActions', 'dsh-korean', 'worktrees/summarize-feed/claude-fix-localized-search-all-languages', 'summarize-meta']
+  // ?code=ready 코드 지도 켜짐(읽지 못한 범위 있음), clean 읽지 못한 범위 0, off 꺼짐, indexing 준비 중, missing 분석 도구 없음. 없으면 코드 지도 플러그인이 없는 것처럼 404.
+  const CODE = {
+    ready: { state: 'ready', enabled: true, requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js'], candidates: [{ name: 'loadUser' }, { name: 'render' }], partial: true }, coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0 } },
+    clean: { state: 'ready', enabled: true, requestImpact: { status: 'ready', files: [], candidates: [] }, coverage: { notIndexed: 0, partial: 0, unusable: 0, skipped: 0 } },
+    off: { state: 'off', enabled: false },
+    indexing: { state: 'indexing', enabled: true, coverage: null },
+    missing: { state: 'engine-missing', enabled: true },
+  }
   window.fetch = async url => {
+    if (String(url).startsWith('api/dsh-code-map')) {
+      const code = CODE[params.get('code')]
+      return code ? new Response(JSON.stringify(code), { headers: { 'content-type': 'application/json' } }) : new Response('{}', { status: 404 })
+    }
     if (params.get('fail') === '1') return new Response('{}', { status: 500 })
     let body = facts
     if (params.get('within') === '1' && facts.repo) {
