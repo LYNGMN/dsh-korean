@@ -4,7 +4,7 @@
 
 # 한국어 DeepSeek Harness 키트
 
-**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 14개를 명령 한 번으로 설치합니다.
+**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 15개를 명령 한 번으로 설치합니다.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,7 +30,7 @@
 
 </div>
 
-DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 14개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
+DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 15개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
 
 플러그인 이름은 모두 `@lyngmn/dsh-<이름>`입니다. DSH 플러그인 화면에 플러그인마다 카드가 생기고, 하나씩 켜고 끌 수 있습니다.
 
@@ -50,6 +50,10 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <tr>
 <td align="center" nowrap><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""><br><strong>하위 에이전트 트리</strong></td>
 <td>사이드바에서 하위 에이전트를 부모 세션 아래에 묶어 보여 줘요.</td>
+</tr>
+<tr>
+<td align="center" nowrap><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""><br><strong>작업공간 대화 옮기기</strong></td>
+<td>대화를 다른 작업공간으로 옮기거나, 필요 없는 대화를 삭제해요. 옮길 때는 기록·제목·세션 id를 그대로 가져가고, 삭제한 기록은 휴지통으로 보내요.</td>
 </tr>
 <tr>
 <td align="center" nowrap><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""><br><strong>엔터 키 설정</strong></td>

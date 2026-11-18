@@ -4,7 +4,7 @@
 
 # Korean DeepSeek Harness Kit
 
-**DeepSeek Harness in Korean, and on your phone.**<br>14 plugins, including a Korean language pack, installed with one command.
+**DeepSeek Harness in Korean, and on your phone.**<br>15 plugins, including a Korean language pack, installed with one command.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,7 +30,7 @@
 
 </div>
 
-A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 14 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
+A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 15 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
 
 Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plugins screen, where you can turn it on or off.
 
@@ -50,6 +50,10 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <tr>
 <td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""><br><strong>Subagent tree</strong></td>
 <td>Nests subagents under their parent session in the sidebar.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""><br><strong>Move conversation to workspace</strong></td>
+<td>Moves a conversation to another workspace or deletes an unneeded one from the sidebar. Moves keep the title, history and session id; deletes send the record to the Trash.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""><br><strong>Enter key setting</strong></td>
@@ -188,7 +192,7 @@ Shows what the installer would do without changing anything: which plugins it wo
 
 ### 4. Check
 
-Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 14 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
+Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 15 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
 
 ### Installing a single plugin
 

@@ -1,0 +1,14 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "folder-symlink" (ISC License, https://lucide.dev/icons/folder-symlink). -->
+  <!-- 폴더 몸통이 왼쪽으로 넓어 보여 보이는 중심을 오른쪽으로 0.15칸 옮겼다. -->
+  <g transform="translate(18.15 18) scale(1) translate(-12 -12)" stroke="url(#dsh-workspace-move-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 9.35V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7" />
+    <path d="m8 16 3-3-3-3" />
+  </g>
+  <defs>
+    <linearGradient id="dsh-workspace-move-icon" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>
