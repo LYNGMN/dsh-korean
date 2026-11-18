@@ -83,6 +83,8 @@ const USER_AGENT = 'dsh-search/1.2.0'
 export const QUOTA_COOLDOWN_MS = 10 * 60 * 1000
 /** Overall time the automatic order may spend before it stops trying more providers. */
 const AUTO_BUDGET_MS = 50000
+/** Less time than this left in the budget is not worth starting another engine. */
+const MIN_ENGINE_MS = 2000
 
 export const PROVIDER_TEXT = Object.freeze({
   exa: {
@@ -221,6 +223,23 @@ export const LEGACY_ORDERS = Object.freeze({
       ko: '예전 검색 자동 전환 순서예요. Brave가 실패하거나 결과가 없으면 Exa를 써요. 순서를 검색 플러그인 페이지에서 정하는 "자동 검색"을 쓰세요.'
     }
   }),
+  // Search Fallback 1.0.1 on main also offered these two.
+  'exa-brave-free': Object.freeze({
+    title: 'Exa → Brave → Free search',
+    order: Object.freeze(['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing']),
+    description: {
+      en: 'Former Search Fallback order: Exa, Brave, then the keyless engines. Prefer "Auto search", whose order is set on the Search plugin page.',
+      ko: '예전 검색 자동 전환 순서예요. Exa, Brave 다음에 키 없는 엔진을 써요. 순서를 검색 플러그인 페이지에서 정하는 "자동 검색"을 쓰세요.'
+    }
+  }),
+  'free-only': Object.freeze({
+    title: 'Free search only',
+    order: Object.freeze(['you', 'parallel', 'keenable', 'tavily', 'bing']),
+    description: {
+      en: 'Former Search Fallback order: keyless engines only. Prefer "Auto search", whose order is set on the Search plugin page.',
+      ko: '예전 검색 자동 전환 순서예요. 키 없는 엔진만 써요. 순서를 검색 플러그인 페이지에서 정하는 "자동 검색"을 쓰세요.'
+    }
+  }),
   'exa-brave-auto': Object.freeze({
     title: 'Exa → Brave → Auto',
     order: null,
@@ -328,7 +347,9 @@ export class EngineSearchProvider {
     const planned = buildRequest(this.id, { query, count, keys: keyed ? keys : [], settings: this.settings })
     // A plain timer (not AbortSignal.timeout) so the wait also holds in a bare Node process.
     const timeout = new AbortController()
-    const timer = setTimeout(() => timeout.abort(), this.settings.timeoutMs)
+    // The automatic engine passes the time it has left, so one slow engine cannot outlast the tool's own limit.
+    const limitMs = Math.max(1000, Math.min(this.settings.timeoutMs, Number.isFinite(request?.timeLimitMs) ? request.timeLimitMs : Infinity))
+    const timer = setTimeout(() => timeout.abort(), limitMs)
     const combined = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal
 
     let response
@@ -344,7 +365,7 @@ export class EngineSearchProvider {
       body = await response.text()
     } catch (error) {
       if (signal?.aborted) throw new SearchError(`${title} search aborted`, 'WEB_ABORTED')
-      if (timeout.signal.aborted) throw new SearchError(`${title} did not answer within ${this.settings.timeoutMs / 1000}s`, 'WEB_PROVIDER_ERROR')
+      if (timeout.signal.aborted) throw new SearchError(`${title} did not answer within ${Math.round(limitMs / 1000)}s`, 'WEB_PROVIDER_ERROR')
       throw new SearchError(`${title} request failed: ${errorDetail(error?.message ?? error, keys)}`, 'WEB_PROVIDER_ERROR')
     } finally {
       clearTimeout(timer)
@@ -423,13 +444,14 @@ export class AutoSearchProvider {
     }
     for (const id of order) {
       if (signal?.aborted) throw new SearchError('Auto search aborted', 'WEB_ABORTED')
-      if (this.now() - started > AUTO_BUDGET_MS) {
+      const left = AUTO_BUDGET_MS - (this.now() - started)
+      if (left < MIN_ENGINE_MS) {
         failures.push('time budget used up')
         break
       }
       const provider = this.providers.get(id)
       try {
-        const result = await provider.search(request, signal)
+        const result = await provider.search({ ...request, timeLimitMs: left }, signal)
         if (Array.isArray(result?.sources) && result.sources.length > 0) return { ...result, answeredBy: provider.title }
         failures.push(`${id}: no results`)
         lastEmpty = { ...result, answeredBy: provider.title }

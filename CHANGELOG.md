@@ -2,14 +2,18 @@
 
 키트 전체의 판입니다. 플러그인마다의 자세한 내용은 `plugins/<폴더>/CHANGELOG.md`에 있습니다.
 
-## 다음 판 (미정)
+## 1.1.0 (2026-11-18)
 
-- 검색(`@lyngmn/dsh-search`) 1.2.0: Brave Search(`@lyngmn/dsh-search-brave`)·Exa Search(`@lyngmn/dsh-search-exa`)·검색 자동 전환(`@lyngmn/dsh-search-fallback`)을 검색 플러그인 하나로 합쳤습니다. 키트 플러그인은 14개에서 11개가 됩니다.
+DeepSeek Harness 0.2.2-rc.3에서 확인했습니다. 키트 플러그인은 13개에서 11개가 됩니다(검색 플러그인 하나가 Brave Search·Exa Search·검색 자동 전환을 대신합니다).
+
+- 휴대폰 작업 공간 1.1.0: 화면 언어 설정(한국어·English·日本語·简体中文·繁體中文), Desktop과 같은 계획 검토 화면, 다듬은 모습과 Lucide 아이콘, 입력창의 명령어 목록, 작업 중 보내기 방식 설명. 자세한 내용은 `plugins/handheld/CHANGELOG.md`에 있습니다.
+- 올리는 법: 저장소를 받은 뒤 `./install.sh`를 다시 돌립니다. 예전 Brave Search·Exa Search·검색 자동 전환·무료 검색이 깔려 있으면 먼저 뺄지 묻습니다. 키(자격 증명)는 그대로 씁니다.
+- 검색(`@lyngmn/dsh-search`) 1.2.0: Brave Search(`@lyngmn/dsh-search-brave`)·Exa Search(`@lyngmn/dsh-search-exa`)·검색 자동 전환(`@lyngmn/dsh-search-fallback`)을 검색 플러그인 하나로 합쳤습니다.
   - Exa·Brave는 엔진 `exa`·`brave`가 됩니다. 자동 엔진의 기본 순서는 Exa → Brave → You.com에서 시작해 Bing으로 끝납니다. 키는 예전처럼 `EXA_API_KEY`·`BRAVE_API_KEY`로 찾고, `~/.dsh/exa-api-key`·`~/.dsh/brave-api-key` 파일도 읽습니다. 결과 수는 Exa 1~100개(10개를 넘으면 추가 요금), Brave 1~20개입니다.
-  - 1.1에서 순서를 저장했다면, 그때 없던 Exa·Brave는 기본 자리(맨 앞)에 들어갑니다. 이제부터는 저장할 때 아는 엔진 목록(`autoKnown`)도 함께 남겨, 일부러 끈 엔진과 새 엔진을 구분합니다.
+  - 1.1에서 순서를 저장했다면, 그때 없던 Exa·Brave는 기본 순서의 자리에 들어갑니다(기본 순서에서 둘 뒤에 오는 엔진 가운데 목록에 있는 첫 엔진 바로 앞). 이제부터는 저장할 때 아는 엔진 목록(`autoKnown`)도 함께 남겨, 일부러 끈 엔진과 새 엔진을 구분합니다.
   - 프로필에 1.1 때의 엔진 목록(`providers`)이 남아 있어도 Exa·Brave를 등록합니다. YAML로 새 엔진을 일부러 빼려면 `providersKnown`에 아는 엔진을 모두 적습니다.
   - `brave_search`·`exa_search` 도구와 `/brave`·`/exa` 명령은 같은 이름으로 남습니다. `/brave 20 서울 날씨`, `/exa max 서울 날씨`처럼 이번 검색 개수도 정할 수 있습니다.
-  - 검색 자동 전환은 자동 엔진과 하는 일이 같아 코드를 옮기지 않았습니다. 순서 이름 `exa-brave`·`brave-exa`·`exa-brave-auto`만 정해진 순서로 도는 자동 엔진으로 남겨, `web.searchProvider`로 이 이름을 고른 프로필이 계속 동작합니다. 새로 고를 때는 `auto`를 권합니다.
+  - 검색 자동 전환은 자동 엔진과 하는 일이 같아 코드를 옮기지 않았습니다. 순서 이름 `exa-brave`·`brave-exa`·`exa-brave-free`·`free-only`·`exa-brave-auto`만 정해진 순서로 도는 자동 엔진으로 남겨, `web.searchProvider`로 이 이름을 고른 프로필이 계속 동작합니다. 새로 고를 때는 `auto`를 권합니다.
   - 검색 플러그인 패치가 `web.searchProvider`를 `auto`로 정합니다(예전에는 Brave 패치가 `brave`로 정했습니다). 프로필에서 다른 값을 고른 경우 그 값이 그대로 남습니다.
   - 예전 플러그인이 아직 깔려 있어 이름(`brave`, `brave_search`, `/brave` 등)이 겹치면, 그 이름만 건너뛰고 경고를 남깁니다. 검색 플러그인 전체가 빠지지 않습니다. 설치기는 예전 세 패키지를 알아보고 먼저 뺄지 묻습니다.
   - 한국 검색은 세 가지 방식이 됩니다. `/search ko`(`korea`)는 네이버·카카오를 함께 찾아 둘 다 찾은 결과를 먼저 보여 주고, 결과마다 찾은 엔진을 표시합니다. `/search ko-group`은 엔진별로 묶어 보여 주고, `/search ko-seq`는 네이버로 먼저 찾고 실패하거나 결과가 없을 때만 카카오를 씁니다. 도구 결과 첫 줄에는 엔진별 개수와 겹친 수가 나옵니다.
@@ -18,14 +22,18 @@
   - 플러그인 페이지의 명령 예시는 줄임표 없이 끝까지 쓰고 고정폭 글꼴로 보여 줍니다.
   - `/search`·`/exa`·`/brave`가 질문 아래 붙이는 검색 안내는 DSH 언어를 따릅니다. 한국어로는 `(이번 요청 검색 안내: 웹 검색은 web_search 대신 engine_search 도구로 해 주세요. 엔진: "naver", 개수: "30". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)`처럼 보입니다.
   - 예전 플러그인 아이콘은 `plugins/search/icons/`에 보관했습니다.
-  - 프로필에 예전 항목을 덮어쓰는 줄(`- id: brave-search`)이 남아 있으면 DSH가 켤 때 "entry not found" 경고를 냅니다. 그 줄은 `cordis.patch.yml`에서 지워도 됩니다.
-- 플러그인 14번째: 검색(`@lyngmn/dsh-search`) 1.1.0. 여러 웹검색 엔진과 자동 엔진, `/search` 명령을 더합니다.
+  - 프로필에 예전 항목을 덮어쓰는 줄(`- id: brave-search` 등)이 남아 있으면 DSH가 켤 때 "entry not found" 경고를 냅니다. 그 줄은 `cordis.patch.yml`에서 지워도 됩니다. 예전 항목에 따로 적은 설정(Brave `country`, Exa `type` 등)은 옮겨지지 않으니, 필요하면 `- id: search` 아래 `brave:`·`exa:`에 다시 적습니다.
+  - 명령 별칭에서 질문 첫머리에 흔한 낱말(다음·한국·국내·무료·자동·korean)을 뺐습니다. `/search 다음 주 날씨`가 카카오로 "주 날씨"를 찾던 문제입니다. 엔진 이름과 `ko`·`kr`·`네이버`·`카카오`·`daum`·`free`는 그대로입니다.
+  - 자동 엔진은 남은 시간(모두 50초) 안에서만 엔진을 기다립니다. 느린 엔진 하나가 도구 제한 시간을 넘겨 요약 없이 끝나던 것을 막습니다.
+  - `install.sh --remove`는 합치기 전 이름(`@lyngmn/dsh-search-brave` 등)으로 남은 플러그인도 함께 뺍니다.
+  - 실제 키로 검색해 보는 점검 스크립트를 `plugins/search/scripts/live-check.mjs`로 옮겼습니다. 예전 자리(`test/`)에서는 `npm test`가 이 스크립트까지 돌려 키 없이 쓰는 엔진에 실제 요청을 보냈습니다.
+- 검색 1.1.0에서 들어온 것(main에만 있던 무료 검색 `@lyngmn/dsh-search-free`를 이름을 바꿔 넓혔습니다):
   - 이름에서 free를 뺐습니다: 패키지 `@lyngmn/dsh-search-free` → `@lyngmn/dsh-search`, 폴더 `plugins/search`, 도구 `free_search` → `engine_search`. 무료 엔진만 있는 것이 아니라서입니다. 설치기는 예전 이름으로 깔린 플러그인을 알아보고 먼저 뺄지 묻습니다.
   - 키 없이 쓰는 공급자: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing.
   - 키가 있어야 쓰는 공급자: 네이버·카카오(다음)·TinyFish·Jina.
   - 자동 엔진 `auto`("Auto search")는 플러그인 페이지에서 정한 순서로 엔진을 차례로 씁니다. 검색어 언어로 순서를 바꾸지 않고, 체크를 끈 엔진은 자동에서 빠집니다. 순서는 설정(`autoOrder`)에 저장되고 다음 검색부터 바로 적용됩니다. 한도에 걸린 공급자는 10분 동안 건너뜁니다.
   - 묶음 엔진 `korea`("한국(네이버+카카오)")는 네이버와 카카오를 함께 검색해 결과를 번갈아 섞고 같은 주소를 하나로 합칩니다. 한쪽에 키가 없거나 실패하면 다른 쪽 결과만 돌려줍니다.
-  - `/search <엔진> <질문>` 명령(`/search auto 서울 날씨`, `/search korea 서울 날씨`, `/search naver 서울 날씨`, 별칭 free·자동·한국·국내·네이버·카카오·다음)과 `engine_search` 도구가 있습니다. 엔진 없이 `/search`만 고르면 엔진 고르기 창이 뜨고, 고른 엔진이 입력창에 채워집니다.
+  - `/search <엔진> <질문>` 명령(`/search auto 서울 날씨`, `/search korea 서울 날씨`, `/search naver 서울 날씨`, 별칭은 1.2.0 항목 참고)과 `engine_search` 도구가 있습니다. 엔진 없이 `/search`만 고르면 엔진 고르기 창이 뜨고, 고른 엔진이 입력창에 채워집니다.
   - 이번 검색만 결과 수를 명령에 적을 수 있습니다: `/search naver 30 서울 날씨`, `/search kakao 20개 서울 날씨`, `/search korea max 서울 날씨`(`max`·`all`·`최대`는 엔진마다 공식 최대). 1~100 숫자만 개수로 읽고, 엔진 최대를 넘으면 최대로 맞춥니다. 도구는 명령이 정한 엔진·개수(30분 유효)와 같을 때만 그 개수를 따르므로, 에이전트가 스스로 개수를 늘리지는 못합니다.
   - 플러그인 페이지 소개의 엔진 목록을 갈래(키 없이·키 필요·묶음)마다 한 줄씩 나눴습니다.
   - 플러그인 페이지에서 공급자마다 키를 넣고 지울 수 있습니다. 공급자마다 국기와 회사가 있는 나라, 가입 필요 여부, 키 없이 쓸 때와 무료 키를 넣었을 때의 한도, 키 받는 곳과 요금표 링크를 보여 줍니다. 엔진 고르기 창에는 나라와 한도를 한 줄로 줄여 보여 줍니다.

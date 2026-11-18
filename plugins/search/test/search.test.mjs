@@ -57,7 +57,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 
 test('apply registers every engine, the automatic and the Korean one, the legacy orders, the tools and the commands', () => {
   const { providers, tools, commands } = register()
-  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto', 'korea', 'exa-brave', 'brave-exa', 'exa-brave-auto'])
+  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto', 'korea', 'exa-brave', 'brave-exa', 'exa-brave-free', 'free-only', 'exa-brave-auto'])
   for (const p of providers) {
     assert.equal(p.available(), true)
     assert.ok(p.title)
@@ -72,8 +72,8 @@ test('apply registers every engine, the automatic and the Korean one, the legacy
 
 test('the providers list in the config limits what is registered and the automatic order follows it', () => {
   const { providers } = register({ providers: ['bing', 'tavily', 'nope'], providersKnown: PROVIDER_IDS })
-  // The fixed legacy orders need Exa or Brave; exa-brave-auto is the automatic order.
-  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto', 'exa-brave-auto'])
+  // A fixed legacy order needs one of its engines; exa-brave-auto is the automatic order.
+  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto', 'exa-brave-free', 'free-only', 'exa-brave-auto'])
   const settings = normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS, autoOrder: ['bing', 'naver', 'naver', 'x'], autoKnown: PROVIDER_IDS })
   assert.deepEqual(settings.autoOrder(), ['bing', 'naver'])
   assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS }).autoOrder(), ['naver', 'bing'])
@@ -642,12 +642,26 @@ test('the earlier Search Fallback names still answer: fixed Exa → Brave orders
   assert.deepEqual(byId['exa-brave'].wantedOrder(), ['exa', 'brave'])
   assert.deepEqual(byId['brave-exa'].wantedOrder(), ['brave', 'exa'])
   assert.deepEqual(byId['exa-brave-auto'].wantedOrder(), PROVIDER_IDS)
+  // Search Fallback 1.0.1 on main offered these two as well.
+  assert.deepEqual(byId['exa-brave-free'].wantedOrder(), ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing'])
+  assert.deepEqual(byId['free-only'].wantedOrder(), ['you', 'parallel', 'keenable', 'tavily', 'bing'])
 
   const map = new Map([['exa', fake('exa', fails('credits', { quota: true }))], ['brave', fake('brave', found('https://brave.example'))], ['you', fake('you', found('https://you.example'))]])
   const exaBrave = new AutoSearchProvider({ providers: map, settings: normalizeSettings({}), now: () => 0, id: 'exa-brave', order: LEGACY_ORDERS['exa-brave'].order })
   const result = await exaBrave.search({ query: 'q' })
   assert.equal(result.answeredBy, 'BRAVE')
   assert.equal(map.get('you').calls, 0, 'a fixed order never reaches other engines')
+})
+
+test('the automatic engine gives each engine only the time left in its budget', async () => {
+  let clock = 0
+  const limits = []
+  const slow = (id, spend) => ({ id, title: id, calls: 0, async search(request) { limits.push([id, request.timeLimitMs]); clock += spend; return { sources: [], truncated: false } } })
+  const providers = new Map([['you', slow('you', 30000)], ['bing', slow('bing', 19000)], ['naver', slow('naver', 0)]])
+  const a = new AutoSearchProvider({ providers, settings: normalizeSettings({ autoOrder: ['you', 'bing', 'naver'], autoKnown: PROVIDER_IDS }), now: () => clock })
+  await a.search({ query: 'q' })
+  // 50 s in all: you gets 50, bing the 20 left; with 1 s left naver is not started.
+  assert.deepEqual(limits, [['you', 50000], ['bing', 20000]])
 })
 
 test('names an older bundle still registers are skipped one by one, and the rest still loads', () => {

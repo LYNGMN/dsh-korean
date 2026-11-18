@@ -101,6 +101,13 @@ test('--remove는 깔려 있는 키트 플러그인만 뺀다', () => {
   assert.deepEqual(calls(), ['plugin --profile desktop remove @lyngmn/dsh-korean @lyngmn/dsh-skill-hints'])
 })
 
+test('--remove는 합치기 전 이름으로 남은 검색 플러그인도 함께 뺀다', () => {
+  const { run, calls } = setup({ '@lyngmn/dsh-search': 'link:/a', '@lyngmn/dsh-search-brave': 'link:/b', '@lyngmn/dsh-search-fallback': 'link:/c' })
+  const result = run(['--remove', '--yes'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(calls(), ['plugin --profile desktop remove @lyngmn/dsh-search @lyngmn/dsh-search-brave @lyngmn/dsh-search-fallback'])
+})
+
 test('플러그인이 쓰는 npm 패키지가 없으면 키트 폴더에서 먼저 받고 넣는다', () => {
   const kit = kitWithDependency()
   const { run, calls, npmCalls } = setup({}, kit)

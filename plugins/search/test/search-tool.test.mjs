@@ -17,12 +17,15 @@ test('parseToolArgs checks the query, the engine and max_results', () => {
 test('parseCommandInput reads an engine, an alias, or none', () => {
   assert.deepEqual(parseCommandInput('auto Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
   assert.deepEqual(parseCommandInput('free Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
-  assert.deepEqual(parseCommandInput('자동 Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
   assert.deepEqual(parseCommandInput('NAVER 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('네이버 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
-  assert.deepEqual(parseCommandInput('다음 서울 날씨', ENGINES), { engine: 'kakao', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('daum 서울 날씨', ENGINES), { engine: 'kakao', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('korea 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
-  assert.deepEqual(parseCommandInput('한국 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('ko 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
+  // Words a question often starts with stay part of the question (review, 2026-11-18).
+  for (const question of ['다음 주 날씨', '한국 경제 전망', '국내 여행지 추천', '무료 영화 사이트', '자동 저장 방법', 'korean food recipes']) {
+    assert.deepEqual(parseCommandInput(question, [...ENGINES, 'korea']), { engine: 'auto', question })
+  }
   assert.deepEqual(parseCommandInput('서울 날씨 알려 줘', ENGINES), { engine: 'auto', question: '서울 날씨 알려 줘' })
   assert.deepEqual(parseCommandInput('naver', ENGINES), { engine: 'naver', question: '' })
   assert.deepEqual(parseCommandInput('   ', ENGINES), { engine: 'auto', question: '' })
