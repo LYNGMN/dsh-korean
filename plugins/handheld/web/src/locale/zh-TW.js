@@ -92,6 +92,8 @@ export default {
   'toolcall.truncatedFull': '結果過長，僅顯示前 100 萬個字元。',
   'reasoning.title': '思考過程',
   'msg.images': ' · {count} 張圖片',
+  'msg.more': '展開',
+  'msg.less': '收合',
   'note.asked': '核准要求：{tool}',
   'note.rejected': '已拒絕',
   'note.allowed': '已允許',

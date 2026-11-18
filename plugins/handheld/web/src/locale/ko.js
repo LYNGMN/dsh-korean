@@ -92,6 +92,8 @@ export default {
   'toolcall.truncatedFull': '결과가 너무 길어 앞 100만 자만 보입니다.',
   'reasoning.title': '생각 과정',
   'msg.images': ' · 이미지 {count}장',
+  'msg.more': '더 보기',
+  'msg.less': '접기',
   'note.asked': '승인 요청: {tool}',
   'note.rejected': '거부됨',
   'note.allowed': '허용됨',

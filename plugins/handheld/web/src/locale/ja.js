@@ -92,6 +92,8 @@ export default {
   'toolcall.truncatedFull': '結果が非常に長いため、先頭100万文字のみ表示しています。',
   'reasoning.title': '思考過程',
   'msg.images': ' · 画像 {count}枚',
+  'msg.more': 'もっと見る',
+  'msg.less': '閉じる',
   'note.asked': '承認リクエスト：{tool}',
   'note.rejected': '拒否済み',
   'note.allowed': '許可済み',

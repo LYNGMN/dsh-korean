@@ -92,6 +92,8 @@ export default {
   'toolcall.truncatedFull': 'The output is very long, so only the first 1,000,000 characters are shown.',
   'reasoning.title': 'Reasoning',
   'msg.images': ' · {count} images',
+  'msg.more': 'Show more',
+  'msg.less': 'Show less',
   'note.asked': 'Approval requested: {tool}',
   'note.rejected': 'Denied',
   'note.allowed': 'Allowed',

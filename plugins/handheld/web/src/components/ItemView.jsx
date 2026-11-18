@@ -5,6 +5,7 @@ import { update } from '../store.js'
 import { api, sessionPath } from '../api.js'
 import { Icon } from './Icon.jsx'
 import { t } from '../lib/i18n.js'
+import { isLongMessage } from '../lib/fold.js'
 
 const OUTCOME = { completed: 'state.done', cancelled: 'state.stopped', interrupted: 'state.stopped', error: 'outcome.error', failed: 'outcome.error' }
 
@@ -14,6 +15,28 @@ function openDiff(title, files) {
 
 export function diffsOf(row) {
   return [...(row.call?.diffs ?? []), ...(row.result?.diffs ?? [])]
+}
+
+class UserMessage extends Component {
+  constructor() {
+    super()
+    this.state = { open: false }
+  }
+
+  render({ item }, { open }) {
+    const long = isLongMessage(item.text)
+    const id = `msg-${String(item.seq)}`
+    return (
+      <div class="msg msg-user" data-seq={item.seq}>
+        <p class={`user-text${long && !open ? ' folded' : ''}`} id={id}>{item.text}{item.images ? <span class="muted small">{t('msg.images', { count: item.images })}</span> : null}</p>
+        {long ? (
+          <button type="button" class="fold-btn" aria-expanded={open} aria-controls={id} onClick={() => this.setState({ open: !open })}>
+            {t(open ? 'msg.less' : 'msg.more')}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
 }
 
 class ToolRow extends Component {
@@ -99,7 +122,7 @@ export class ItemView extends Component {
   render({ row, sessionId }) {
     switch (row.kind) {
       case 'user':
-        return <div class="msg msg-user" data-seq={row.item.seq}><p class="user-text">{row.item.text}{row.item.images ? <span class="muted small">{t('msg.images', { count: row.item.images })}</span> : null}</p></div>
+        return <UserMessage item={row.item} />
       case 'assistant':
         return <div data-seq={row.item.seq}><Assistant item={row.item} /></div>
       case 'tool':
