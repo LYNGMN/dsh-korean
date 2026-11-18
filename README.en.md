@@ -37,58 +37,71 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 ## Plugins
 
 <table>
-<thead><tr><th width="220">Name</th><th align="left">What it does</th></tr></thead>
+<thead><tr><th width="72">Icon</th><th align="left" width="220">Name</th><th align="left">What it does</th></tr></thead>
 <tbody>
 <tr>
-<td align="center"><img src="plugins/korean/icon.svg" width="40" height="40" alt=""><br><strong>Korean language pack</strong></td>
+<td align="center"><img src="plugins/korean/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Korean language pack</strong></td>
 <td>Translates DSH into Korean and adds font pickers for body text, code and the terminal.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""><br><strong>Phone workspace</strong></td>
+<td align="center"><img src="plugins/handheld/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Phone workspace</strong></td>
 <td>Follow sessions and send messages from an app on your phone. Approval requests arrive as notifications, and you allow or deny each one yourself.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""><br><strong>Subagent tree</strong></td>
-<td>Nests subagents under their parent session in the sidebar.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""><br><strong>Move conversation to workspace</strong></td>
+<td align="center"><img src="plugins/workspace-move/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Move conversation to workspace</strong></td>
 <td>Moves a conversation to another workspace or deletes an unneeded one from the sidebar. Moves keep the title, history and session id; deletes send the record to the Trash.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""><br><strong>Enter key setting</strong></td>
-<td>Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing.</td>
+<td align="center"><img src="plugins/subagent-tree/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Subagent tree</strong></td>
+<td>Nests subagents under their parent session in the sidebar.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""><br><strong>Plan view</strong></td>
-<td>Adds a Plan tab to the conversation views that keeps the agent's todo list and submitted plans on one screen.</td>
+<td align="center"><img src="plugins/plan-view/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Plan view</strong></td>
+<td>Adds a Plan tab to the conversation views that keeps the agent's todo list and submitted plans on one screen. A stopped plan resumes with one button.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""><br><strong>Work stages</strong></td>
+<td align="center"><img src="plugins/git-stage/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Work stages</strong></td>
 <td>Adds a Work stages tab to the conversation views that shows where the session's Git work stands, from branch to deploy, and what needs your approval next.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>Footnote preview</strong></td>
-<td>Shows a footnote's text when you hover over its number.</td>
+<td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Search</strong></td>
+<td>Adds web search engines, Exa, Brave, Naver and Kakao among them, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page.<br>To change a single search, write <code>/search naver 30 서울 날씨</code> or <code>/search exa max 서울 날씨</code>.<br>No key needed: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing<br>Key required: Exa, Brave, Naver, Kakao, TinyFish, Jina<br>Group: Korea (Naver + Kakao) <code>/search ko</code>, <code>ko-group</code>, <code>ko-seq</code><br>It replaces the old Brave Search, Exa Search and search fallback plugins. <code>/brave</code>, <code>/exa</code>, <code>brave_search</code> and <code>exa_search</code> keep working.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""><br><strong>Skill hints</strong></td>
-<td>Shows each skill's argument hint in the composer.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""><br><strong>Antigravity commands</strong></td>
+<td align="center"><img src="plugins/agy-commands/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Antigravity commands</strong></td>
 <td>Adds <code>/agy</code> commands for plans, goals, interviews, boosts and teamwork.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""><br><strong>Spare model keys</strong></td>
+<td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Enter key setting</strong></td>
+<td>Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Skill hints</strong></td>
+<td>Shows each skill's argument hint in the composer.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Footnote preview</strong></td>
+<td>Shows a footnote's text when you hover over its number.</td>
+</tr>
+<tr>
+<td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Spare model keys</strong></td>
 <td>Switches to a spare API key when the current one stops working.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
-<td>Adds web search engines, Exa and Brave among them, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page; one search can ask for more with <code>/search naver 30 seoul weather</code> or <code>/search exa max seoul weather</code>. The web search engine shows and changes the same value as DSH settings.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Exa, Brave, Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao) <code>/search ko</code>, <code>ko-group</code>, <code>ko-seq</code><br>Replaces the earlier Brave Search, Exa Search and Search fallback plugins; <code>/brave</code>, <code>/exa</code>, <code>brave_search</code> and <code>exa_search</code> keep working.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>
+<td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Auto review recovery</strong></td>
 <td>Retries an Auto review that hit a rate limit, then asks for your approval if it still fails.</td>
 </tr>
 </tbody>

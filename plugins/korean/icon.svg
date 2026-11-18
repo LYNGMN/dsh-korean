@@ -1,12 +1,8 @@
 <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Lucide "languages" (ISC License, https://lucide.dev/icons/languages). 24칸 원본을 36칸 가운데에 그대로 놓았다. -->
-  <g transform="translate(6 6)" stroke="url(#dsh-korean-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m5 8 6 6" />
-    <path d="m4 14 6-6 2-3" />
-    <path d="M2 5h12" />
-    <path d="M7 2h1" />
-    <path d="m22 22-5-10-5 10" />
-    <path d="M14 18h6" />
+  <!-- 한글 "가": Pretendard SemiBold(OFL-1.1, https://github.com/orioncactus/pretendard)의 글자 윤곽을 경로로 옮겼다. 글꼴 파일 없이 어디서나 같게 보인다. -->
+  <!-- 24칸 안 18칸 크기로 맞춰 가운데에 놓았다. -->
+  <g transform="translate(6 6)">
+    <path fill="url(#dsh-korean-icon)" d="M17.78 3H15.56V21H17.78V11.9H20.45V10.04H17.78ZM13.01 4.88H4.53V6.71H10.77C10.31 10.81 7.94 13.89 3.55 16.07L4.81 17.79C10.81 14.83 13.01 10.18 13.01 4.88Z" />
   </g>
   <defs>
     <linearGradient id="dsh-korean-icon" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
