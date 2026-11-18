@@ -24,7 +24,7 @@ DSH 플러그인 여러 개를 저장소 하나에 모은 키트입니다. 플�
 | 무엇 | 규칙 | 바꾸면 |
 |---|---|---|
 | 패키지 이름 | `@lyngmn/dsh-<폴더>` | 프로필 설치 목록, `cordis.patch.yml`의 `name`, 화면 번들 `id`, 설정 칸 `key`를 같이 바꾼다 |
-| 플러그인 id(`cordis.patch.yml`의 `id`) | 처음 정한 그대로(예: `brave-search`, `dsh-korean`) | 사용자 프로필에 저장된 설정 덮어쓰기가 끊긴다. 바꾸지 않는다 |
+| 플러그인 id(`cordis.patch.yml`의 `id`) | 처음 정한 그대로(예: `search`, `dsh-korean`) | 사용자 프로필에 저장된 설정 덮어쓰기가 끊긴다. 바꾸지 않는다 |
 | 데이터 폴더·로그 접두사 | 처음 정한 그대로 | 저장된 데이터를 못 찾는다 |
 
 루트 `test/plugin-card.test.mjs`가 패키지 이름·`cordis.patch.yml`의 `name`·화면 번들 `id`가 같은지 확인합니다.
