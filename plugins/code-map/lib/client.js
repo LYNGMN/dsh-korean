@@ -87,6 +87,11 @@ window.__ModuleLoader__.load({
 .dcm-view code { color: var(--cm-muted); display: block; min-width: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; word-break: normal; }
 .dcm-details { display: grid; gap: 8px; margin-top: 5px; }
 .dcm-details h4 { margin: 0; font-size: 14px; line-height: 1.4; }
+.dcm-all { border-top: 1px solid var(--cm-line); }
+.dcm-all summary { display: list-item; min-height: 44px; padding: 11px 6px; cursor: pointer;
+  color: var(--cm-fg); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.dcm-all[open] summary { margin-bottom: 8px; }
+.dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
 .dcm-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .dcm-start .dcm-button, .dcm-start .dcm-link { justify-self: start; }
 @media (max-width: 470px) {
@@ -116,7 +121,7 @@ window.__ModuleLoader__.load({
         index ? ['/', h('wbr', { key: index }), part] : [part]))
     }
 
-    function LocationList({ rows, onCallers, busy }) {
+    function LocationList({ rows, onCallers, onDraft, busy }) {
       return h('ul', { className: 'dcm-list' }, rows.map(row => {
         const location = row.file + (row.line ? ':' + row.line : '')
         const traceable = onCallers && (row.kind === 'Function' || row.kind === 'Method')
@@ -126,32 +131,59 @@ window.__ModuleLoader__.load({
             h(PathText, { value: location }),
             row.hop && h('span', { className: 'dcm-muted' }, row.hop === 1 ? '직접 사용' : '한 곳을 거쳐 연결')),
           traceable && h(Button, { onClick: () => onCallers(row), disabled: busy,
-            'aria-label': row.name + ' 사용처 찾기' }, '사용처'))
+            'aria-label': row.name + ' 사용처 찾기' }, '사용처'),
+          onDraft && h(Button, { onClick: () => onDraft(row),
+            'aria-label': '검증 요청 넣기 · ' + row.name }, '검증 요청 넣기'))
       }))
     }
 
-    function Impact({ data }) {
+    function ChangedFiles({ files }) {
+      return files.length > 0 && h('div', { className: 'dcm-details' },
+        h('h4', null, '변경한 파일'),
+        files.map(path => h(PathText, { key: path, value: path })))
+    }
+
+    function RepositoryImpact({ data }) {
       const result = data.impact
-      const hasFiles = (result?.changed ?? result?.files.length ?? 0) > 0
+      return h('details', { className: 'dcm-all' },
+        h('summary', null, '저장소 전체 변경'),
+        h('p', { className: 'dcm-muted' }, '마지막 커밋(HEAD) 이후의 변경이에요.'),
+        result
+          ? h(React.Fragment, null,
+            h('p', null, result.changed
+              ? '변경 파일 ' + result.changed + '개 · 확인 후보 ' + result.total + '곳' + (result.more ? ' 이상' : '')
+              : '분석에서 확인된 변경 파일이 없어요.'),
+            h(ChangedFiles, { files: result.files }),
+            !!result.candidates.length && h(LocationList, { rows: result.candidates }))
+          : h('p', { className: 'dcm-muted' }, data.impactUnavailable
+            ? '저장소 전체의 변경 영향을 읽지 못했어요.'
+            : '지도 준비가 끝나면 결과를 볼 수 있어요.'))
+    }
+
+    function RequestImpact({ result, onDraft }) {
+      if (!result) return h('p', { className: 'dcm-muted' }, '코딩 요청이 끝나면 이번에 바뀐 파일을 보여 줘요.')
+      if (result.status === 'pending') return h('p', { className: 'dcm-muted' }, '이번 요청의 변경 범위를 확인하고 있어요.')
+      if (result.status === 'unavailable') return h('p', { className: 'dcm-muted' }, '이번 요청의 변경 범위를 확인할 수 없어요.')
+      return h(React.Fragment, null,
+        h('p', null, result.files.length
+          ? '변경 파일 ' + result.files.length + '개' + (result.analyzing ? '' : ' · 파일 단위 확인 후보 ' + result.candidates.length + '곳')
+          : result.partial ? '확인할 수 있는 범위에서 변경 파일을 찾지 못했어요.' : '이번 요청 중 바뀐 파일이 없어요.'),
+        h(ChangedFiles, { files: result.files }),
+        !!result.candidates.length && h(LocationList, { rows: result.candidates, onDraft }),
+        result.analyzing && h('p', { className: 'dcm-muted' }, '호출 관계를 확인하고 있어요.'),
+        result.partial && h('p', { className: 'dcm-muted' }, '일부 파일의 연결은 확인하지 못했어요.'),
+        !result.analyzing && !result.partial && !!result.files.length && !result.candidates.length &&
+          h('p', { className: 'dcm-muted' }, '코드 지도에서 확인된 사용처가 없어요.'))
+    }
+
+    function Impact({ data, onDraft }) {
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '함께 확인할 곳'),
-          h('p', { className: 'dcm-muted' }, '마지막 커밋(HEAD) 이후의 변경을 확인해요.')),
-        result
-          ? h(React.Fragment, null,
-            h('p', null, hasFiles
-              ? '변경 파일 ' + (result.changed ?? result.files.length) + '개 · 확인 후보 ' + (result.total ?? 0) + '곳' + (result.more ? ' 이상' : '')
-              : '분석에서 확인된 변경 파일이 없어요.'),
-            hasFiles && !!result.files.length && h('div', { className: 'dcm-details' },
-              h('h4', null, '변경한 파일'),
-              result.files.map(path => h(PathText, { key: path, value: path }))),
-            !!result.candidates.length && h(LocationList, { rows: result.candidates }),
-            hasFiles && h('p', { className: 'dcm-muted' }, result.candidates.length
-              ? '코드에 나타난 사용 관계를 두 단계까지 살폈어요.'
-              : '코드 지도에서 찾은 사용처가 없어요. 실행 중에만 결정되는 연결은 빠질 수 있어요.'))
-          : h('p', { className: 'dcm-muted' }, data.impactUnavailable
-            ? '변경 영향을 읽지 못했어요. 저장소에 커밋이 있고 접근할 수 있는지 확인해 주세요.'
-            : '지도 준비가 끝나면 결과를 볼 수 있어요.'))
+          h('p', { className: 'dcm-muted' }, '이번 요청 중 확인된 변경이에요.')),
+        h('div', { 'aria-live': 'polite', className: 'dcm-details' },
+          h(RequestImpact, { result: data.requestImpact, onDraft })),
+        h(RepositoryImpact, { data }))
     }
 
     function Welcome({ data, act, busy }) {
@@ -178,11 +210,12 @@ window.__ModuleLoader__.load({
       return null
     }
 
-    function CodeMap({ sessionId }) {
-      return h(SessionMap, { key: sessionId, sessionId })
+    function CodeMap({ sessionId, inputActions, useInput }) {
+      const hasDraft = typeof useInput === 'function' && useInput(input => Boolean(input?.draft))
+      return h(SessionMap, { key: sessionId, sessionId, inputActions, hasDraft })
     }
 
-    function SessionMap({ sessionId }) {
+    function SessionMap({ sessionId, inputActions, hasDraft }) {
       const [data, setData] = useState({ state: 'loading', focus: [] })
       const [query, setQuery] = useState('')
       const [found, setFound] = useState(null)
@@ -272,7 +305,28 @@ window.__ModuleLoader__.load({
         if (result && live.current) setCallers({ ...result, name: row.name })
       }
 
+      function draftVerification(row) {
+        const location = row.file + (row.line ? ':' + row.line : '')
+        const verification = '코드 지도에서 찾은 ' + row.name + ' (저장소 루트 기준 ' + location +
+          ')의 사용처와 관련 테스트를 확인해 줘. 변경 영향과 추가로 검증할 점을 파일 위치와 함께 알려 줘.'
+        try {
+          const span = inputActions.captureInsertion()
+          // A selection can contain existing text or reference chips. Write
+          // at its end using the same revision, leaving the selection intact.
+          const inserted = inputActions.insertText(
+            (span.end > 0 ? '\n\n' : '') + verification + (hasDraft ? '\n\n' : ''),
+            { ...span, start: span.end })
+          if (inserted) {
+            setNotice('검증 요청을 입력창에 넣었어요.')
+            return
+          }
+        } catch { /* A disposed or locked composer is reported below. */ }
+        setNotice('입력창에 넣지 못했어요. 잠시 뒤 다시 눌러 주세요.')
+      }
+
       const ready = data.state === 'ready'
+      const onDraft = typeof inputActions?.captureInsertion === 'function' &&
+        typeof inputActions?.insertText === 'function' ? draftVerification : undefined
       const rows = found ?? data.focus ?? []
       const displayedState = ready && data.partial ? '일부 코드 준비됨' : STATE[data.state]
       return h('div', { className: 'dcm-view' },
@@ -287,8 +341,7 @@ window.__ModuleLoader__.load({
             h(Button, { onClick: () => action('disable'), disabled: busy }, '끄기'))),
         h('div', { className: 'dcm-stack', 'data-ready': ready || undefined },
           h(Welcome, { data, act: action, busy }),
-          data.enabled && (ready || data.state === 'indexing') && h(React.Fragment, null,
-            h('section', { className: 'dcm-card dcm-start', 'aria-busy': data.state === 'indexing' },
+          data.enabled && (ready || data.state === 'indexing') && h('section', { className: 'dcm-card dcm-start', 'aria-busy': data.state === 'indexing' },
               h('div', { className: 'dcm-card-title' },
                 h('h3', null, '어디부터 볼까요?'),
                 !!data.focus?.length && found === null && h('p', { className: 'dcm-muted' }, '최근 코딩 요청에서 DSH가 참고한 위치예요.')),
@@ -306,9 +359,9 @@ window.__ModuleLoader__.load({
                 callers.candidates.length
                   ? h(LocationList, { rows: callers.candidates })
                   : h('p', { className: 'dcm-muted' }, '지도에서 확인된 사용처를 표시할 수 없어요.'))),
-            h(Impact, { data }),
-            data.indexedAt && h('p', { className: 'dcm-muted dcm-footer' },
-              '지도 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt))),
+          data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft }),
+          data.enabled && data.indexedAt && h('p', { className: 'dcm-muted dcm-footer' },
+            '지도 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt)),
           h('p', { className: 'dcm-muted dcm-status', role: 'status' }, notice)))
     }
 

@@ -9,9 +9,12 @@ import { createEngine, repositoryOf } from '../lib/engine.js'
 const executable = process.env.DSH_CODE_MAP_TEST_ENGINE
 
 test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는다', { skip: !executable }, async () => {
-  const temp = await mkdtemp(join(tmpdir(), 'dsh-code-map-test-'))
+  const temp = await mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'cbm-test-'))
+  const runtimeDir = join(temp, 'rt')
+  const cacheDir = join(temp, 'engine')
   let engine
   try {
+    await mkdir(runtimeDir, { mode: 0o700 })
     const source = join(temp, 'repo')
     await mkdir(source)
     const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd: source, stdio: 'ignore' })
@@ -23,12 +26,18 @@ test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는�
       'export function loadUser(key) { return readCache(key) }',
       '',
     ].join('\n'))
-    git('add', 'cache.js', 'user.js')
+    await writeFile(join(source, 'other.js'), 'export function unrelated(key) { return key }\n')
+    await writeFile(join(source, 'otherUser.js'), [
+      'import { unrelated } from "./other.js"',
+      'export function otherCaller(key) { return unrelated(key) }',
+      '',
+    ].join('\n'))
+    git('add', 'cache.js', 'user.js', 'other.js', 'otherUser.js')
     git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false',
       'commit', '-qm', 'fixture')
 
     const root = await repositoryOf(source)
-    engine = createEngine({ executable, cacheDir: join(temp, 'engine') })
+    engine = createEngine({ executable, cacheDir, runtimeDir })
     const { project } = await engine.index(root)
     assert.deepEqual(await engine.impact(root, project), { files: [], candidates: [], changed: 0, total: 0, more: false })
 
@@ -41,12 +50,24 @@ test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는�
       [{ name: 'loadUser', file: 'user.js', line: 2 }])
 
     await writeFile(join(source, 'cache.js'), exported.replace('return key', 'return String(key)'))
+    await writeFile(join(source, 'other.js'), 'export function unrelated(key) { return Number(key) }\n')
     await engine.index(root)
     const impact = await engine.impact(root, project)
-    assert.deepEqual(impact.files, ['cache.js'])
-    assert.deepEqual(impact.candidates.map(row => row.file), ['user.js'])
+    assert.deepEqual([...impact.files].sort(), ['cache.js', 'other.js'])
+    assert.deepEqual(impact.candidates.map(row => row.file).sort(), ['otherUser.js', 'user.js'])
+    const scoped = await engine.scopedImpact(root, project, ['cache.js'])
+    assert.deepEqual(scoped.candidates.map(({ name, file, line }) => ({ name, file, line })),
+      [{ name: 'loadUser', file: 'user.js', line: 2 }])
   } finally {
     engine?.dispose()
-    await rm(temp, { recursive: true, force: true })
+    if (engine) {
+      // Only stop the daemon attached to this fixture's private socket.
+      try {
+        execFileSync(executable, ['daemon', 'stop'], {
+          env: { ...process.env, CBM_RUNTIME_DIR: runtimeDir, CBM_CACHE_DIR: cacheDir }, stdio: 'ignore', timeout: 3000,
+        })
+      } catch { /* The fixture's last client may already have stopped it. */ }
+    }
+    await rm(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 })
   }
 })

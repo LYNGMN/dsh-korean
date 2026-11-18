@@ -45,11 +45,15 @@ function run(executable, args, { cwd, env, signal, timeout }) {
   })
 }
 
+export function runGit(root, args, signal) {
+  return run('git', ['-c', 'core.fsmonitor=false', ...args],
+    { cwd: root, env: environment(), signal, timeout: 1500 })
+}
+
 export async function repositoryOf(cwd, signal) {
   if (typeof cwd !== 'string' || !isAbsolute(cwd)) return null
   try {
-    const out = await run('git', ['-c', 'core.fsmonitor=false', 'rev-parse', '--show-toplevel'],
-      { cwd, env: environment(), signal, timeout: 600 })
+    const out = await runGit(cwd, ['rev-parse', '--show-toplevel'], signal)
     const root = out.replace(/\r?\n$/, '')
     return isAbsolute(root) && text(root, 4096) ? await realpath(root) : null
   } catch {
@@ -57,7 +61,7 @@ export async function repositoryOf(cwd, signal) {
   }
 }
 
-function safeFile(value) {
+export function safeFile(value) {
   const path = text(value, 400).replaceAll('\\', '/')
   if (!path || path.startsWith('/') || path.includes(':')) return ''
   if (path.split('/').some(part => !part || part === '.' || part === '..' ||
@@ -101,7 +105,7 @@ function patterns(query, auto) {
 const periodOrSlash = word => /[./]/.test(word)
 const uniqueLocations = rows => [...new Map(rows.map(row => [row.id, row])).values()]
 
-export function createEngine({ executable, cacheDir } = {}) {
+export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
   if (executable !== undefined && (typeof executable !== 'string' || !isAbsolute(executable))) {
     throw new TypeError('code-map executable must be an absolute path')
   }
@@ -115,7 +119,8 @@ export function createEngine({ executable, cacheDir } = {}) {
   function workerOf(root) {
     let worker = workers.get(root)
     if (worker) return worker
-    const env = { ...baseEnv, CBM_ALLOWED_ROOT: root, ...(cacheDir && { CBM_CACHE_DIR: cacheDir }) }
+    const env = { ...baseEnv, CBM_ALLOWED_ROOT: root,
+      ...(cacheDir && { CBM_CACHE_DIR: cacheDir }), ...(runtimeDir && { CBM_RUNTIME_DIR: runtimeDir }) }
     worker = openGraph(executable ?? 'codebase-memory-mcp', { cwd: root, env }, () => workers.delete(root))
     workers.set(root, worker)
     return worker
@@ -130,6 +135,21 @@ export function createEngine({ executable, cacheDir } = {}) {
       if (error.code === 'ENOENT') throw Object.assign(new Error('engine-missing'), { code: 'engine-missing' })
       throw new Error('analysis-failed')
     }
+  }
+
+  async function callers(root, project, id, signal) {
+    const graph = await call(root, 'trace_path', { project, function_name: id, direction: 'inbound',
+      depth: 2, limit: 8, include_tests: true, format: 'json' }, { signal })
+    if (!Number.isSafeInteger(graph.callers_total)) throw new Error('analysis-failed')
+    const hits = records(graph.callers).filter(row => text(row.qn, 380)).slice(0, 8)
+    if (!hits.length) return { candidates: [], total: graph.callers_total }
+    const graphRows = await call(root, 'search_graph', { project, format: 'json', limit: 8,
+      qn_pattern: '^(' + hits.map(hit => regex(hit.qn)).join('|') + ')$' }, { signal })
+    const byId = new Map(locations(graphRows).map(row => [row.id, row]))
+    return { total: graph.callers_total, candidates: hits.flatMap(hit => {
+      const row = byId.get(hit.qn)
+      return row ? [{ ...row, hop: hit.hop }] : []
+    }) }
   }
 
   return {
@@ -163,19 +183,41 @@ export function createEngine({ executable, cacheDir } = {}) {
       }
       return uniqueLocations(rows).slice(0, auto ? 3 : 8)
     },
-    async callers(root, project, id, signal) {
-      const graph = await call(root, 'trace_path', { project, function_name: id, direction: 'inbound',
-        depth: 2, limit: 8, include_tests: true, format: 'json' }, { signal })
-      if (!Number.isSafeInteger(graph.callers_total)) throw new Error('analysis-failed')
-      const hits = records(graph.callers).filter(row => text(row.qn, 380)).slice(0, 8)
-      if (!hits.length) return { candidates: [], total: graph.callers_total }
-      const graphRows = await call(root, 'search_graph', { project, format: 'json', limit: 8,
-        qn_pattern: '^(' + hits.map(hit => regex(hit.qn)).join('|') + ')$' }, { signal })
-      const byId = new Map(locations(graphRows).map(row => [row.id, row]))
-      return { total: graph.callers_total, candidates: hits.flatMap(hit => {
-        const row = byId.get(hit.qn)
-        return row ? [{ ...row, hop: hit.hop }] : []
-      }) }
+    callers,
+    async scopedImpact(root, project, files, signal) {
+      const paths = [...new Set(files)].filter(file => safeFile(file) === file && file).slice(0, 8)
+      if (!paths.length) return { candidates: [], partial: files.length > 0 }
+      const byFile = new Map()
+      let partial = paths.length !== files.length
+      for (const file of paths) {
+        // CBM treats file_pattern as a glob/substring. Check the returned
+        // path too, so a similarly named file can never supply seeds.
+        const tables = await Promise.all(['Function', 'Method'].map(label => call(root, 'search_graph',
+          { project, label, file_pattern: file, format: 'json', limit: 12 }, { signal })))
+        const definitions = tables.flatMap(locations).filter(row => row.file === file)
+        byFile.set(file, definitions)
+        partial ||= !definitions.length || tables.some(table => table.has_more || table.truncated)
+      }
+      // Give each changed file a chance before picking additional definitions.
+      const seeds = [0, 1].flatMap(offset => paths.map(file => byFile.get(file)[offset]).filter(Boolean)).slice(0, 8)
+      partial ||= [...byFile.values()].reduce((count, definitions) => count + definitions.length, 0) > seeds.length
+      const selected = new Map()
+      for (const seed of seeds) {
+        signal?.throwIfAborted()
+        try {
+          const result = await callers(root, project, seed.id, signal)
+          partial ||= result.total > result.candidates.length
+          for (const row of result.candidates) {
+            if (row.hop > 0 && (!selected.has(row.id) || row.hop < selected.get(row.id).hop)) {
+              selected.set(row.id, row)
+            }
+          }
+        } catch {
+          partial = true
+        }
+      }
+      const candidates = [...selected.values()].sort((a, b) => a.hop - b.hop || a.file.localeCompare(b.file))
+      return { candidates: candidates.slice(0, 8), partial: partial || candidates.length > 8 }
     },
     async impact(root, project, signal) {
       const result = await call(root, 'detect_changes', { project, base_branch: 'HEAD',

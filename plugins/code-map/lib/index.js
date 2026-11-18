@@ -3,6 +3,7 @@ import { access, mkdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
 import { createEngine, repositoryOf, rootKey } from './engine.js'
+import { captureChanges, compareChanges } from './changes.js'
 
 export const name = 'dsh-code-map'
 export const inject = ['connection', 'sessionQuery', 'workingDirectory']
@@ -16,10 +17,13 @@ const MAX_SESSIONS = 128
 const CODE = /코드|함수|메서드|저장소|컴포넌트|테스트|인덱스|라우트|플러그인|호출|[a-z][A-Z]|[a-z][a-z0-9_-]*\.(?:[cm]?js|tsx?|py|go|rs|yml|yaml|json|css)\b|\b(?:code|bug|function|test|caller|plugin|module|route|repo|component|method|refactor)\b/u
 const TASK = /고치|고쳐|수정|변경|추가|개선|만들|구현|확인|어디|찾[아기]|분석|점검|리팩|오류|버그|조사|\b(?:fix|change|update|add|find|where|check|review|implement|refactor|bug|trace|debug|show|explain)\b/iu
 
-function codeRequest(messages) {
-  const human = messages.find(message => ['user', 'user-rpc'].includes(message?.source?.kind) &&
+function humanMessage(messages) {
+  return messages.find(message => ['user', 'user-rpc'].includes(message?.source?.kind) &&
     message.source.principal === undefined)
-  const prompt = human?.content.filter(block => block.type === 'text').map(block => block.text).join(' ').trim().slice(0, 1200)
+}
+
+function codeRequest(human) {
+  const prompt = human.content.filter(block => block.type === 'text').map(block => block.text).join(' ').trim().slice(0, 1200)
   return prompt?.length >= 8 && CODE.test(prompt) && TASK.test(prompt) ? prompt : ''
 }
 
@@ -76,11 +80,13 @@ function createPreferences(dir) {
   }
 }
 
-export function createCodeMap({ rootOf, preferences, engine }) {
+export function createCodeMap({ rootOf, preferences, engine, capture = captureChanges }) {
   const projects = new Map()
   const sessions = new Map()
   const turns = new WeakMap()
+  const activeByRoot = new Map()
   const lifecycle = new AbortController()
+  let sequence = 0
 
   async function enabledProject(root) {
     if (!root || lifecycle.signal.aborted) return null
@@ -97,10 +103,27 @@ export function createCodeMap({ rootOf, preferences, engine }) {
     return state
   }
 
-  function showFocus(id, root, turn, focus) {
+  function remember(id, entry) {
     sessions.delete(id)
-    sessions.set(id, { root, turn, focus })
+    sessions.set(id, entry)
     if (sessions.size > MAX_SESSIONS) sessions.delete(sessions.keys().next().value)
+  }
+
+  function track(active, root) {
+    active.root = root
+    let group = activeByRoot.get(root)
+    if (!group) activeByRoot.set(root, group = new Set())
+    for (const other of group) {
+      other.overlapped = true
+      active.overlapped = true
+    }
+    group.add(active)
+  }
+
+  function release(active) {
+    const group = activeByRoot.get(active.root)
+    group?.delete(active)
+    if (group?.size === 0) activeByRoot.delete(active.root)
   }
 
   function snapshot(id, root) {
@@ -113,6 +136,7 @@ export function createCodeMap({ rootOf, preferences, engine }) {
       worktree: rootKey(root).slice(0, 24),
       enabled: !!state?.enabled,
       focus: state?.enabled && session?.root === root ? session.focus : [],
+      ...(state?.enabled && session?.root === root && { requestImpact: session.requestImpact }),
       ...(state?.enabled && {
         indexedAt: state.indexedAt,
         partial: state.partial,
@@ -187,6 +211,10 @@ export function createCodeMap({ rootOf, preferences, engine }) {
         current.project = undefined
         current.indexedAt = undefined
         current.impact = undefined
+        for (const active of activeByRoot.get(root) ?? []) {
+          active.disabled = true
+          active.before = undefined
+        }
         for (const [entry, session] of sessions) if (session.root === root) sessions.delete(entry)
       }
     })
@@ -197,33 +225,115 @@ export function createCodeMap({ rootOf, preferences, engine }) {
   async function preStep(payload, next) {
     const decision = await next()
     const { agent, step, turn, signal } = payload
-    if (decision.kind !== 'enter' || step !== 1 || !agent?.session || agent.session.header?.origin === 'subagent') return decision
-    const prompt = codeRequest(payload.messages)
-    if (!prompt) return decision
+    const session = agent?.session
+    if (decision.kind !== 'enter' || step !== 1 || !session || session.header?.origin === 'subagent') return decision
+    const human = humanMessage(payload.messages)
+    if (!human) return decision
+    const prompt = codeRequest(human)
+    const previous = turns.get(session)
+    if (previous?.turn === turn) return decision
+    if (previous) sessionDisposed(session)
+    const active = { turn, sequence: ++sequence, coding: Boolean(prompt) }
+    turns.set(session, active)
+
     const rows = await bounded(signal, async control => {
-      const session = agent.session
       const root = await rootOf(session, control)
+      if (control.aborted || !root) return
       const state = await enabledProject(root)
-      if (!state || state.error || control.aborted) return
-      turns.set(session, { root, turn })
-      showFocus(session.id, root, turn, [])
-      if (state.job || state.error || !state.project) return
-      const signal = AbortSignal.any([control, lifecycle.signal])
-      const found = (await engine.search(root, state.project, prompt, { auto: true, signal })).slice(0, 3)
-      if (signal.aborted || !state.enabled || turns.get(session)?.turn !== turn) return
-      showFocus(session.id, root, turn, found)
-      return found
+      if (control.aborted || !state || turns.get(session) !== active) return
+      track(active, root)
+      if (!prompt) return
+
+      const entry = { root, sequence: active.sequence, focus: [], requestImpact: { status: 'pending' } }
+      active.entry = entry
+      remember(session.id, entry)
+      const taskSignal = AbortSignal.any([control, lifecycle.signal])
+      const before = active.overlapped ? undefined : capture(root, { signal: taskSignal }).catch(() => undefined)
+      const search = state.job || state.error || !state.project ? [] :
+        engine.search(root, state.project, prompt, { auto: true, signal: taskSignal }).catch(() => [])
+      const [captured, found] = await Promise.all([before, search])
+      if (taskSignal.aborted || active.disabled || turns.get(session) !== active) return
+      active.before = captured
+      entry.focus = found.slice(0, 3)
+      return entry.focus
     })
     return rows?.length && !signal?.aborted ? { ...decision, messages: [...decision.messages, contextOf(rows)] } : decision
+  }
+
+  function publish(session, active, root, result) {
+    if (!root || active.disabled || lifecycle.signal.aborted || !projects.get(root)?.enabled) return
+    const latest = sessions.get(session.id)
+    if (latest && latest.sequence > active.sequence) return
+    const focus = active.entry?.root === root ? active.entry.focus : []
+    remember(session.id, { root, sequence: active.sequence, focus, requestImpact: result })
   }
 
   async function turnEnded(session, event) {
     const active = turns.get(session)
     if (!active || event.type !== 'turn/end' || active.turn !== event.data?.turn) return
     turns.delete(session)
-    if (await rootOf(session, lifecycle.signal) === active.root) {
-      await refresh(session.id, active.root, { again: true })
+    const before = active.before
+    active.before = undefined
+    let resultRoot = active.root
+    let result = { status: 'unavailable' }
+
+    try {
+      if (!active.coding || active.disabled) return
+      const root = await rootOf(session, lifecycle.signal)
+      if (root && await enabledProject(root)) resultRoot = root
+      const sameRoot = root && root === active.root && !active.moved
+      const signal = AbortSignal.any([lifecycle.signal, AbortSignal.timeout(2500)])
+      if (sameRoot && before && !active.overlapped) {
+        const after = await capture(root, { head: before.head, previousPaths: before.fingerprints.keys(), signal }).catch(() => undefined)
+        if (after) {
+          const changes = compareChanges(before, after)
+          result = { status: 'ready', ...changes, candidates: [] }
+        }
+      }
+
+      // The observation ends with the second filesystem read. Index work
+      // runs in the background and must not make the next turn overlap.
+      release(active)
+      if (active.overlapped || active.moved) result = { status: 'unavailable' }
+      if (result.status === 'ready' && result.files.length) {
+        publish(session, active, resultRoot, { ...result, analyzing: true })
+      } else {
+        publish(session, active, resultRoot, result)
+      }
+
+      // Refresh the independent repository-wide view even when this turn
+      // could not be attributed.
+      if (sameRoot) {
+        await refresh(session.id, root, { again: true })
+        const state = projects.get(root)
+        if (result.status === 'ready' && result.files.length && !active.overlapped && !active.disabled) {
+          const analysisSignal = AbortSignal.any([lifecycle.signal, AbortSignal.timeout(8000)])
+          const scoped = !state?.project || state.error ? undefined :
+            await engine.scopedImpact?.(root, state.project, result.files, analysisSignal)?.catch(() => undefined)
+          result.candidates = scoped?.candidates ?? []
+          result.partial ||= !scoped || scoped.partial || state?.partial === true
+        }
+      }
+    } catch {
+      result = result.status === 'ready' ? { ...result, partial: true } : { status: 'unavailable' }
+    } finally {
+      release(active)
+      if (active.coding) publish(session, active, resultRoot,
+        active.overlapped || active.moved ? { status: 'unavailable' } : result)
     }
+  }
+
+  function workingDirectoryChanged(session) {
+    const active = turns.get(session)
+    if (active) active.moved = true
+  }
+
+  function sessionDisposed(session) {
+    const active = turns.get(session)
+    if (!active) return
+    active.disabled = true
+    turns.delete(session)
+    release(active)
   }
 
   async function lookup(root, action, query) {
@@ -237,8 +347,8 @@ export function createCodeMap({ rootOf, preferences, engine }) {
     return { available: true, result }
   }
 
-  return { refresh, snapshot, view, toggle, preStep, turnEnded, lookup,
-    dispose: () => { lifecycle.abort(); engine.dispose?.() } }
+  return { refresh, snapshot, view, toggle, preStep, turnEnded, workingDirectoryChanged, sessionDisposed, lookup,
+    dispose: () => { lifecycle.abort(); activeByRoot.clear(); engine.dispose?.() } }
 }
 
 function json(value, status = 200) {
@@ -311,6 +421,8 @@ export function apply(ctx, config = {}) {
   ctx.effect(() => ctx.on('agent/pre-step', service.preStep), 'dsh-code-map: context')
   ctx.effect(() => ctx.on('session/event', (session, event) => {
     if (event.type === 'turn/end') void service.turnEnded(session, event).catch(() => {})
+    if (event.type === 'working-directory/change') service.workingDirectoryChanged(session)
   }), 'dsh-code-map: changes')
+  ctx.effect(() => ctx.on('session/disposed', service.sessionDisposed), 'dsh-code-map: session disposal')
   ctx.effect(() => service.dispose, 'dsh-code-map: lifecycle')
 }
