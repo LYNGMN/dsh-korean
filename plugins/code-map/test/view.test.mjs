@@ -5,12 +5,13 @@ import vm from 'node:vm'
 
 const client = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
 
-function render(snapshot) {
+function render(snapshot, extra = {}) {
   let View
+  const notices = []
   const react = {
     createElement: (tag, props, ...children) => ({ tag, props: props ?? {}, children }),
     useEffect() {},
-    useState: initial => [initial?.state === 'loading' ? snapshot : initial, () => {}],
+    useState: initial => [initial?.state === 'loading' ? snapshot : initial, text => notices.push(text)],
     useRef: current => ({ current }),
     useId: () => 'test-id',
     Fragment: 'fragment',
@@ -19,6 +20,7 @@ function render(snapshot) {
     window: { __ModuleLoader__: { load: ({ factory }) => factory(() => react).apply({
       effect() {},
       slots: { inject: (_name, register) => register(), register: (_options, view) => { View = view } },
+      ...extra,
     }) } },
     document: { createElement: () => ({}), head: { append() {} } },
   })
@@ -32,8 +34,10 @@ function render(snapshot) {
     value.children.forEach(visit)
   }
   visit(View({ sessionId: 'a', inputActions: undefined, useInput: () => false }))
+
   const text = nodes.filter(node => node.tag === '#text').map(node => node.text).join('\n')
-  return { nodes, text, tags: nodes.map(node => node.tag) }
+  const flat = nodes.filter(node => node.tag === '#text').map(node => node.text).join('')
+  return { nodes, text, flat, notices, tags: nodes.map(node => node.tag) }
 }
 
 const ready = { state: 'ready', enabled: true, focus: [], indexedAt: 1, indexMs: 400,
@@ -89,4 +93,61 @@ test('찾기 폼은 접힌 상자 안에 있고 끄기는 아래 작은 단추�
   const quiet = nodes.find(node => node.props?.className === 'dcm-quiet')
   assert.ok(quiet)
   assert.equal(nodes.filter(node => node.tag === 'button' && node.children.includes('끄기')).length, 0)
+})
+
+const changed = { ...ready, root: '/repo',
+  requestImpact: { status: 'ready', files: ['src/cache.js', 'docs/한글 문서.md'],
+    candidates: [{ id: 'x', name: 'loadUser', file: 'src/user.js', line: 12 }] } }
+
+function hostWith(opened, cwd = '/repo', fail = false) {
+  return {
+    sidebarRight: { openResource: (address, options) => { if (fail) throw new Error('no'); opened.push({ address, options }) } },
+    sessions: { list: { getSnapshot: () => ({ byId: { a: { cwd } } }) } },
+  }
+}
+
+const fileButtons = nodes => nodes.filter(node => node.tag === 'button' && node.props.className === 'dcm-file')
+
+test('고친 파일과 확인할 곳의 경로를 누르면 오른쪽 사이드바에서 연다', () => {
+  const opened = []
+  const { nodes } = render(changed, hostWith(opened))
+  const buttons = fileButtons(nodes)
+  assert.equal(buttons.length, 3)
+  buttons.find(node => node.props['aria-label'].includes('src/cache.js')).props.onClick()
+  buttons.find(node => node.props['aria-label'].includes('src/user.js:12')).props.onClick()
+  buttons.find(node => node.props['aria-label'].includes('한글 문서')).props.onClick()
+  assert.deepEqual(opened.map(item => item.address), [
+    'dsh-resource://file/session/a/src/cache.js',
+    'dsh-resource://file/session/a/src/user.js',
+    'dsh-resource://file/session/a/docs/%ED%95%9C%EA%B8%80%20%EB%AC%B8%EC%84%9C.md',
+  ])
+  // 화면 코드는 다른 실행 환경에서 돌아 객체 모양만 JSON으로 비교한다.
+  assert.equal(JSON.stringify(opened[0].options), '{"destination":"sidebar"}')
+  assert.equal(JSON.stringify(opened[1].options), '{"destination":"sidebar","params":{"line":12}}')
+})
+
+test('세션 폴더 밖의 파일은 절대 경로 주소로 연다', () => {
+  const opened = []
+  const { nodes } = render(changed, hostWith(opened, '/repo/sub'))
+  fileButtons(nodes)[0].props.onClick()
+  assert.equal(opened[0].address, 'dsh-resource://file/session/a//repo/src/cache.js')
+})
+
+test('사이드바 서비스가 없거나 저장소 위치를 모르면 열 수 없는 글자로만 보인다', () => {
+  assert.equal(fileButtons(render(changed).nodes).length, 0)
+  assert.equal(fileButtons(render({ ...changed, root: undefined }, hostWith([])).nodes).length, 0)
+  assert.ok(render(changed).flat.includes('src/cache.js'))
+})
+
+test('여는 데 실패하면 알리고 화면은 그대로 둔다', () => {
+  const view = render(changed, hostWith([], '/repo', true))
+  fileButtons(view.nodes)[0].props.onClick()
+  assert.match(view.notices.at(-1), /열지 못했어요/)
+})
+
+test('고친 파일이 많으면 다섯 개까지 보이고 나머지는 접어 둔다', () => {
+  const files = Array.from({ length: 8 }, (_v, i) => 'f' + i + '.js')
+  const { nodes, text } = render({ ...changed, requestImpact: { status: 'ready', files, candidates: [] } }, hostWith([]))
+  assert.match(text, /외 3개 더 보기/)
+  assert.equal(fileButtons(nodes).length, 8)
 })
