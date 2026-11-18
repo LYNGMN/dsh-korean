@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-code-map
+      name: '@lyngmn/dsh-code-map'

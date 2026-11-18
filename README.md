@@ -64,6 +64,10 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>대화 보기 방식에 '작업 단계' 탭을 더해 작업실 만들기부터 배포까지 Git 작업이 어디쯤인지, 다음에 무엇을 승인해야 하는지 보여 줘요.</td>
 </tr>
 <tr>
+<td align="center" nowrap><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""><br><strong>코드 지도</strong></td>
+<td>작업 단계 옆에서 관련 코드와 변경 뒤 함께 확인할 곳을 보여 줘요. Codebase Memory 실행 파일이 필요해요. <a href="plugins/code-map/README.md">설치 안내</a></td>
+</tr>
+<tr>
 <td align="center" nowrap><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>각주 미리보기</strong></td>
 <td>각주 번호에 마우스를 올리면 내용을 미리 보여 줘요.</td>
 </tr>

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Code Map",
+    "description": "Adds a Code Map conversation tab with relevant code locations and places to check after a change. Not an official DeepSeek plugin."
+  }
+}

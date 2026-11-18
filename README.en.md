@@ -64,6 +64,10 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>Adds a Work stages tab to the conversation views that shows where the session's Git work stands, from branch to deploy, and what needs your approval next.</td>
 </tr>
 <tr>
+<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""><br><strong>Code Map</strong></td>
+<td>Shows relevant code locations and change-impact candidates in a conversation tab next to Work stages. Requires the Codebase Memory executable. <a href="plugins/code-map/README.md">Setup</a></td>
+</tr>
+<tr>
 <td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""><br><strong>Footnote preview</strong></td>
 <td>Shows a footnote's text when you hover over its number.</td>
 </tr>
