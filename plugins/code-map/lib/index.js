@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { access, mkdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { access, appendFile, mkdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, isAbsolute, join } from 'node:path'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 import { createEngine, hasIdentifier, repositoryOf, rootKey } from './engine.js'
 import { captureChanges, compareChanges } from './changes.js'
+import { createSeen, fileText, filePathOf, impactText, noticeOf, searchText, searchTermsOf } from './intercept.js'
 
 export const name = 'dsh-code-map'
 export const inject = ['connection', 'sessionQuery', 'workingDirectory']
@@ -16,6 +17,11 @@ const CONTEXT_LIMIT_MS = 950
 const MAX_SESSIONS = 128
 // A turn that changed nothing skips re-indexing while the map is this fresh.
 const IDLE_REFRESH_MS = 10 * 60_000
+// Notes added to tool results must never slow the agent for long; past this they are dropped.
+// Measured on a real repository: name search ~17ms, file status ~13ms, callers of an edited file ~160ms.
+const SEARCH_NOTE_MS = 300
+const EDIT_NOTE_MS = 600
+const METRICS_LIMIT = 1024 * 1024
 const CODE = /코드|함수|메서드|저장소|컴포넌트|테스트|인덱스|라우트|플러그인|호출|[a-z][A-Z]|[a-z][a-z0-9_-]*\.(?:[cm]?js|tsx?|py|go|rs|yml|yaml|json|css)\b|\b(?:code|bug|function|test|caller|plugin|module|route|repo|component|method|refactor)\b/u
 const TASK = /고치|고쳐|수정|변경|추가|개선|만들|구현|확인|어디|찾[아기]|분석|점검|리팩|오류|버그|조사|\b(?:fix|change|update|add|find|where|check|review|implement|refactor|bug|trace|debug|show|explain)\b/iu
 
@@ -44,8 +50,8 @@ function contextOf(rows) {
   })
 }
 
-function bounded(signal, fn) {
-  const budget = AbortSignal.timeout(CONTEXT_LIMIT_MS)
+function bounded(signal, fn, limit = CONTEXT_LIMIT_MS) {
+  const budget = AbortSignal.timeout(limit)
   const control = signal ? AbortSignal.any([signal, budget]) : budget
   return new Promise(resolve => {
     if (control.aborted) return resolve(undefined)
@@ -82,12 +88,13 @@ function createPreferences(dir) {
   }
 }
 
-export function createCodeMap({ rootOf, preferences, engine, capture = captureChanges }) {
+export function createCodeMap({ rootOf, preferences, engine, capture = captureChanges, metrics = { record() {} }, now = Date.now }) {
   const projects = new Map()
   const sessions = new Map()
   const turns = new WeakMap()
   const activeByRoot = new Map()
   const lifecycle = new AbortController()
+  const seen = createSeen()
   let sequence = 0
 
   async function enabledProject(root) {
@@ -175,9 +182,14 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
           state.indexedAt = Date.now()
           state.indexMs = state.indexedAt - started
           state.coverage = indexed.coverage
+          // Extensions the map has no file of: they never appear in the counts above.
+          const unknown = typeof engine.unknownFormats === 'function'
+            ? await engine.unknownFormats(root, indexed.project, signal) ?? null
+            : undefined
+          if (!signal.aborted && state.coverage && unknown !== undefined) state.coverage = { ...state.coverage, unknownFormats: unknown }
           state.partial = indexed.status === 'degraded' ||
             ['skipped_count', 'not_indexed_files_count', 'parse_partial_count', 'parse_unusable_count']
-              .some(key => Number(indexed[key]) > 0)
+              .some(key => Number(indexed[key]) > 0) || (Array.isArray(unknown) && unknown.length > 0)
         } catch (error) {
           if (!signal.aborted) state.error = error.code === 'engine-missing' ? 'engine-missing' : 'analysis-failed'
           return
@@ -343,6 +355,60 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
     }
   }
 
+  // Adds a note to the result of a search, read or edit the agent just ran. The call itself is never
+  // blocked or changed, and any failure or delay simply leaves the result as it was.
+  async function noteFor(session, exec, control) {
+    if (exec.parent !== undefined) return ''
+    const root = await rootOf(session, control)
+    if (control.aborted || !root) return ''
+    const state = await enabledProject(root)
+    if (!state?.project || state.job || state.error) return ''
+    const id = session.id
+    const query = searchTermsOf(exec.name, exec.arguments)
+    if (query) {
+      // Plain words ("버튼", "unsent") are not names the map can match exactly.
+      if (!hasIdentifier(query)) return ''
+      const found = await engine.search(root, state.project, query, { auto: true, limit: 5, signal: control })
+      const fresh = found.filter(row => !seen.has(id, 'sym:' + row.id))
+      if (!fresh.length || control.aborted) return ''
+      for (const row of fresh) seen.add(id, 'sym:' + row.id)
+      metrics.record({ kind: 'search', session: id, tool: exec.name, files: [...new Set(fresh.map(row => row.file))] })
+      return searchText(fresh, { minutes: Math.max(0, Math.round((now() - state.indexedAt) / 60_000)), partial: state.partial === true })
+    }
+    const file = filePathOf(exec.name, exec.arguments, root)
+    if (!file) return ''
+    if (exec.name === 'read') {
+      if (seen.has(id, 'file:' + file) || typeof engine.fileStatus !== 'function') return ''
+      const text = fileText(file, await engine.fileStatus(root, state.project, file, control))
+      if (text && !control.aborted) {
+        seen.add(id, 'file:' + file)
+        metrics.record({ kind: 'file', session: id, tool: 'read', files: [file] })
+      }
+      return control.aborted ? '' : text
+    }
+    // edit / write: who calls into this file, from the index made before the edit.
+    if (seen.has(id, 'impact:' + file) || typeof engine.scopedImpact !== 'function') return ''
+    seen.add(id, 'impact:' + file)
+    const impact = await engine.scopedImpact(root, state.project, [file], control)
+    if (!impact.candidates.length || control.aborted) return ''
+    metrics.record({ kind: 'impact', session: id, tool: exec.name, files: [file, ...new Set(impact.candidates.map(row => row.file))].slice(0, 6) })
+    return impactText(file, impact.candidates, { partial: impact.partial === true })
+  }
+
+  async function postExecute(exec, result, next) {
+    const downstream = await next()
+    try {
+      const session = exec?.agent?.session
+      if (!session || downstream?.kind !== 'accept' || lifecycle.signal.aborted) return downstream
+      if (['read', 'edit', 'write'].includes(exec.name) && result?.isError === true) return downstream
+      const limit = exec.name === 'edit' || exec.name === 'write' ? EDIT_NOTE_MS : SEARCH_NOTE_MS
+      const text = await bounded(exec.signal, control => noteFor(session, exec, control), limit)
+      return text ? { ...downstream, additionalContexts: [...(downstream.additionalContexts ?? []), noticeOf(text)] } : downstream
+    } catch {
+      return downstream
+    }
+  }
+
   function workingDirectoryChanged(session) {
     const active = turns.get(session)
     if (active) active.moved = true
@@ -367,7 +433,7 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
     return { available: true, result }
   }
 
-  return { refresh, snapshot, view, toggle, preStep, turnEnded, workingDirectoryChanged, sessionDisposed, lookup,
+  return { refresh, snapshot, view, toggle, preStep, postExecute, turnEnded, workingDirectoryChanged, sessionDisposed, lookup,
     dispose: () => { lifecycle.abort(); activeByRoot.clear(); engine.dispose?.() } }
 }
 
@@ -415,6 +481,23 @@ export function createHandler({ rootOfSession, service }) {
   }
 }
 
+// Counts only: which tool, which project-relative files, when. No file text and no prompts. Used to measure
+// whether the agent opens what the map pointed at.
+function createMetrics(file) {
+  return {
+    record(entry) {
+      void (async () => {
+        try {
+          const info = await stat(file).catch(() => null)
+          if (info && info.size > METRICS_LIMIT) return
+          await mkdir(dirname(file), { recursive: true, mode: 0o700 })
+          await appendFile(file, JSON.stringify({ at: Date.now(), ...entry }) + '\n', { mode: 0o600 })
+        } catch { /* measuring must never get in the way */ }
+      })()
+    },
+  }
+}
+
 export function apply(ctx, config = {}) {
   const configuredHome = process.env.DSH_HOME?.trim()
   const dataDir = join(isAbsolute(configuredHome ?? '') ? configuredHome : join(homedir(), '.dsh'), name)
@@ -423,6 +506,7 @@ export function apply(ctx, config = {}) {
     rootOf,
     preferences: createPreferences(join(dataDir, 'workspaces')),
     engine: createEngine({ executable: config.executable, cacheDir: join(dataDir, 'engine') }),
+    metrics: createMetrics(join(dataDir, 'metrics.ndjson')),
   })
   const handler = createHandler({
     service,
@@ -439,6 +523,7 @@ export function apply(ctx, config = {}) {
     path: ROUTE, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: handler,
   }), 'dsh-code-map: route')
   ctx.effect(() => ctx.on('agent/pre-step', service.preStep), 'dsh-code-map: context')
+  ctx.effect(() => ctx.on('tools/post-execute', service.postExecute), 'dsh-code-map: tool notes')
   ctx.effect(() => ctx.on('session/event', (session, event) => {
     if (event.type === 'turn/end') void service.turnEnded(session, event).catch(() => {})
     if (event.type === 'working-directory/change') service.workingDirectoryChanged(session)

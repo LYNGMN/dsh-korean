@@ -38,7 +38,7 @@ function render({ inputActions, draft = '', attachmentIds = [] } = {}) {
     value.children.forEach(visit)
   }
   visit(View({ sessionId: 'a', inputActions, useInput: select => select({ draft, attachmentIds, phase: 'plain' }) }))
-  return { nodes, notices, button: nodes.find(node => node.tag === 'button' && node.props['aria-label']?.includes('검증 요청 넣기')) }
+  return { nodes, notices, button: nodes.find(node => node.tag === 'button' && node.props['aria-label']?.includes('확인 요청 넣기')) }
 }
 
 test('선택된 초안은 보존하고 함수 위치를 포함한 검증 문장만 넣는다', () => {

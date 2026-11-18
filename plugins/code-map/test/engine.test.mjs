@@ -27,12 +27,14 @@ test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는�
       '',
     ].join('\n'))
     await writeFile(join(source, 'other.js'), 'export function unrelated(key) { return key }\n')
+    await writeFile(join(source, 'sheet.gs'), 'function onOpen() { return 1 }\n')
+    await writeFile(join(source, 'notes.xyz'), 'plain text the engine cannot read\n')
     await writeFile(join(source, 'otherUser.js'), [
       'import { unrelated } from "./other.js"',
       'export function otherCaller(key) { return unrelated(key) }',
       '',
     ].join('\n'))
-    git('add', 'cache.js', 'user.js', 'other.js', 'otherUser.js')
+    git('add', 'cache.js', 'user.js', 'other.js', 'otherUser.js', 'sheet.gs', 'notes.xyz')
     git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false',
       'commit', '-qm', 'fixture')
 
@@ -41,6 +43,17 @@ test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는�
     const { project, coverage } = await engine.index(root)
     for (const key of ['notIndexed', 'partial', 'unusable', 'skipped']) assert.equal(coverage[key], 0, key)
     assert.deepEqual(await engine.impact(root, project), { files: [], candidates: [], changed: 0, total: 0, more: false })
+
+    // Apps Script files are read as JavaScript; a type the engine still cannot read is reported by name.
+    const gs = await engine.search(root, project, 'onOpen', { auto: true })
+    assert.equal(gs[0]?.file, 'sheet.gs')
+    assert.deepEqual(await engine.unknownFormats(root, project), [{ ext: '.xyz', files: 1 }])
+    // What the agent sees right after it reads a file: mapped, or not mapped at all.
+    assert.deepEqual(await engine.fileStatus(root, project, 'cache.js'), { status: 'no_recorded_issue', freshness: 'metadata_match', ranges: [] })
+    assert.equal((await engine.fileStatus(root, project, 'notes.xyz')).freshness, 'not_tracked')
+    const named = await engine.search(root, project, 'loadUser', { auto: true, limit: 5 })
+    assert.equal(named[0].file, 'user.js')
+    assert.equal(typeof named[0].callers, 'number')
 
     const hits = await engine.search(root, project, 'readCache 함수를 확인해 줘', { auto: true })
     assert.equal(hits[0].file, 'cache.js')
