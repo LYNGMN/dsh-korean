@@ -156,24 +156,49 @@ function formatsOf(survey) {
 // tests are missing from "who uses this", which is worth saying, but it is not a read failure.
 const isTestPath = file => /(^|\/)(tests?|__tests__|specs?|e2e)\//i.test(file) || /\.(test|spec)\.[a-z0-9]+$/i.test(file)
 
+// Files without an extension are settings or prose (.gitignore, LICENSE) unless they are well-known build files.
+const BUILD_NAMES = new Set(['dockerfile', 'makefile', 'jenkinsfile', 'procfile', 'rakefile', 'gemfile', 'brewfile', 'vagrantfile', 'justfile'])
+const isQuietFile = file => {
+  const ext = extOf(file)
+  if (ext) return QUIET.has(ext)
+  return !BUILD_NAMES.has(basename(file).toLowerCase())
+}
+
+const FILE_LIMIT = 12
+
 function unmappedOf(survey) {
   if (!survey) return null
   const counts = new Map()
+  const lookFiles = []
   let look = 0
   let tests = 0
   let quiet = 0
   for (const file of survey.tracked) {
     if (survey.files.has(file)) continue
-    const ext = extOf(file)
-    if (QUIET.has(ext)) quiet += 1
+    if (isQuietFile(file)) quiet += 1
     else if (isTestPath(file)) tests += 1
     else {
       look += 1
-      const key = ext ? ext : '(확장자 없음)'
+      if (lookFiles.length < FILE_LIMIT) lookFiles.push(file)
+      const key = extOf(file) ? '.' + extOf(file) : basename(file)
       counts.set(key, (counts.get(key) ?? 0) + 1)
     }
   }
-  return { look, tests, quiet, lookTop: top(counts, 3).map(item => ({ ...item, ext: item.ext.replace(/^\.\(/, '(') })) }
+  const lookTop = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3).map(([ext, files]) => ({ ext, files }))
+  return { look, tests, quiet, lookFiles, lookTop }
+}
+
+// The index result names the files it read only partly or not at all, with the lines it choked on.
+function firstLine(ranges) {
+  const line = Number.parseInt(String(ranges ?? ''), 10)
+  return Number.isSafeInteger(line) && line > 0 ? line : undefined
+}
+
+function filesOf(group) {
+  if (!group || !Array.isArray(group.files)) return null
+  const files = group.files.flatMap(item => typeof item?.path === 'string' && item.path && !item.path.includes('\0')
+    ? [{ file: item.path.slice(0, 300), ...(firstLine(item.error_ranges) && { line: firstLine(item.error_ranges) }) }] : [])
+  return { files: files.slice(0, FILE_LIMIT), more: group.truncated === true || files.length > FILE_LIMIT }
 }
 
 export function coverageOf(result) {
@@ -182,6 +207,8 @@ export function coverageOf(result) {
     partial: count(result?.parse_partial_count),
     unusable: count(result?.parse_unusable_count),
     skipped: count(result?.skipped_count),
+    partialFiles: filesOf(result?.parse_partial),
+    unusableFiles: filesOf(result?.parse_unusable),
   }
 }
 

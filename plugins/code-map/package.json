@@ -1,6 +1,6 @@
 {
   "name": "@lyngmn/dsh-code-map",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Adds a Code Map conversation tab with relevant code locations and places to check after a change. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
