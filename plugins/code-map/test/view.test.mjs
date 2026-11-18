@@ -215,3 +215,43 @@ test('고친 파일이 많으면 다섯 개까지 보이고 나머지는 접어 
   assert.match(text, /외 3개 더 보기/)
   assert.equal(fileButtons(nodes).length, 8)
 })
+
+const withFiles = { ...allRead, root: '/repo', coverage: { ...allRead.coverage, partial: 20, unusable: 1,
+  partialFiles: { files: [{ file: 'rss-bot/Settings_Bluesky.html', line: 1245 }, { file: 'rss-bot/Settings_Discord.html' }], more: true },
+  unusableFiles: { files: [{ file: 'rss-bot/Settings_DebugReport.html' }], more: false },
+  unmapped: { look: 2, tests: 0, quiet: 0, lookFiles: ['tools/run.sh', 'public/page.html'], lookTop: [] } } }
+
+test('노랑 행을 펼치면 어느 파일인지 보이고 누르면 첫 오류 줄로 열린다', () => {
+  const opened = []
+  const { nodes, text } = render(withFiles, hostWith(opened))
+  const listed = nodes.filter(node => node.tag === 'details' && node.props.className === 'dcm-gapfiles')
+  assert.equal(listed.length, 3, '코드 후보·일부만 읽음·읽지 못함 세 행')
+  assert.match(text, /파일 2개 보기 \(일부\)/, '목록이 잘렸으면 일부라고 쓴다')
+  assert.match(text, /목록이 길어서 2개까지만 보여요/)
+  const link = fileButtons(nodes).find(node => node.props['aria-label'].includes('Settings_Bluesky.html:1245'))
+  link.props.onClick()
+  assert.equal(opened[0].address, 'dsh-resource://file/session/a/rss-bot/Settings_Bluesky.html')
+  assert.equal(JSON.stringify(opened[0].options), '{"destination":"sidebar","params":{"line":1245}}')
+})
+
+test('파일 목록은 어느 행에도 없으면 그리지 않고 회색 행에는 붙이지 않는다', () => {
+  const { nodes } = render(allRead, hostWith([]))
+  assert.equal(nodes.filter(node => node.props?.className === 'dcm-gapfiles').length, 0)
+  const calm = render({ ...withFiles, coverage: { ...withFiles.coverage, unmapped: { ...withFiles.coverage.unmapped, tests: 5, quiet: 9 } } }, hostWith([]))
+  const rows = calm.nodes.filter(node => node.props?.className === 'dcm-gap' && node.props['data-tone'] === 'idle')
+  assert.ok(rows.every(row => !JSON.stringify(row.children).includes('dcm-gapfiles')))
+})
+
+test('빈 상태 안내는 한 번만 나오고 파일이 있을 때만 누르면 열린다고 말한다', () => {
+  const empty = render(ready, hostWith([])).text
+  assert.equal(empty.split('여기에 나와요').length - 1, 1)
+  assert.doesNotMatch(empty, /파일 이름을 누르면 오른쪽에서 열려요/)
+  assert.match(render(changed, hostWith([])).text, /파일 이름을 누르면 오른쪽에서 열려요/)
+})
+
+test('빠진 것이 없으면 설명을 붙이지 않고 코드는 모두 들어 있다고만 말한다', () => {
+  const { text } = render(allRead, hostWith([]))
+  assert.match(text, /코드는 모두 지도에 들어 있어요/)
+  assert.doesNotMatch(text, /파일 안 일부 줄을 못 읽었어요/)
+  assert.match(render(withFiles, hostWith([])).text, /파일 안 일부 줄을 못 읽었어요/)
+})

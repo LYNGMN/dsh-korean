@@ -9,9 +9,9 @@ const rootPath = '/repos/kit'
 test('색인 결과의 개수를 그대로 읽고, 없는 값은 0이 아니라 모름으로 둔다', () => {
   assert.deepEqual(coverageOf({
     not_indexed_files_count: 88, parse_partial_count: 8, parse_unusable_count: 2, skipped_count: 0,
-  }), { notIndexed: 88, partial: 8, unusable: 2, skipped: 0 })
+  }), { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, partialFiles: null, unusableFiles: null })
   assert.deepEqual(coverageOf({ not_indexed_files_count: -1, parse_partial_count: '8' }),
-    { notIndexed: null, partial: null, unusable: null, skipped: null })
+    { notIndexed: null, partial: null, unusable: null, skipped: null, partialFiles: null, unusableFiles: null })
   assert.equal(coverageOf(undefined).notIndexed, null)
 })
 
@@ -25,7 +25,7 @@ test('이름이나 경로가 있는 요청만 자동으로 위치를 찾는다',
 })
 
 test('색인 때 읽지 못한 범위와 걸린 시간이 화면용 정보에 담긴다', async () => {
-  const coverage = { notIndexed: 88, partial: 8, unusable: 2, skipped: 0 }
+  const coverage = { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, partialFiles: null, unusableFiles: null }
   const service = configured({ index: async () => ({ project: 'kit', status: 'indexed', coverage, parse_partial_count: 8 }) })
   await service.refresh('session-1', rootPath)
   const view = service.snapshot('session-1', rootPath)
@@ -157,4 +157,18 @@ test('코드 후보 공백이 있으면 일부만 읽은 것으로 알리고 문
   const failed = await run(null)
   assert.equal(failed.partial, true, '조사를 못 했으면 엔진 숫자(89)로 판단해 경고한다')
   assert.equal(failed.coverage.unmapped, null)
+})
+
+test('엔진이 알려 주는 일부만 읽은 파일과 읽지 못한 파일의 이름과 첫 줄을 싣는다', () => {
+  const many = Array.from({ length: 15 }, (_v, index) => ({ path: 'a/f' + index + '.html', error_ranges: '1245-1245,1336-1336' }))
+  const coverage = coverageOf({
+    parse_partial_count: 15, parse_unusable_count: 1,
+    parse_partial: { files: [...many, { path: '', error_ranges: '1-1' }, { path: 'x\0y' }], truncated: true },
+    parse_unusable: { files: [{ path: 'rss-bot/Settings_DebugReport.html', whole_file: true, range_end: 1090 }], truncated: false },
+  })
+  assert.equal(coverage.partialFiles.files.length, 12, '목록은 열두 개까지만')
+  assert.deepEqual({ ...coverage.partialFiles.files[0] }, { file: 'a/f0.html', line: 1245 })
+  assert.equal(coverage.partialFiles.more, true)
+  assert.deepEqual(JSON.parse(JSON.stringify(coverage.unusableFiles)), { files: [{ file: 'rss-bot/Settings_DebugReport.html' }], more: false })
+  assert.equal(coverageOf({}).partialFiles, null, '목록을 모르면 없다고 하지 않고 null')
 })

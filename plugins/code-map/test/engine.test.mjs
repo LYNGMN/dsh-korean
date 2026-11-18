@@ -99,6 +99,8 @@ test('지도에 없는 파일을 코드 후보, 테스트, 문서·이미지로 
     await writeFile(join(source, 'notes.xyz'), 'plain text the engine cannot read\n')
     await writeFile(join(source, 'tests', 'a.test.js'), 'test("a", () => {})\n')
     await writeFile(join(source, 'logo.png'), 'not really a picture\n')
+    await writeFile(join(source, '.hiddenrc'), 'setting=1\n')
+    await writeFile(join(source, 'LICENSE'), 'text\n')
     git('add', '-A')
     git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture')
     const root = await repositoryOf(source)
@@ -107,7 +109,8 @@ test('지도에 없는 파일을 코드 후보, 테스트, 문서·이미지로 
     const { unknownFormats, unmapped } = await engine.gaps(root, project)
     // An unreadable format might be code, so it needs a look; the engine's own test-folder skip and media are filed apart.
     assert.deepEqual(unknownFormats, [{ ext: '.xyz', files: 1 }])
-    assert.deepEqual(unmapped, { look: 1, tests: 1, quiet: 1, lookTop: [{ ext: '.xyz', files: 1 }] })
+    // Dotfiles and extensionless prose count as quiet; only the unreadable format needs a look, and its name is listed.
+    assert.deepEqual(unmapped, { look: 1, tests: 1, quiet: 3, lookFiles: ['notes.xyz'], lookTop: [{ ext: '.xyz', files: 1 }] })
     assert.deepEqual(await engine.unmapped(root, project), unmapped)
   } finally {
     engine?.dispose()

@@ -40,15 +40,15 @@ window.__ModuleLoader__.load({
    (--on-*), never colored text, so no state turns into a muddy tint on either theme. Every fill also carries
    an icon and words. */
 .dcm-view { --cm-wait: #1d4ed8; --on-wait: #fff; --cm-ok: #15803d; --on-ok: #fff; --cm-warn: #fbbf24; --on-warn: #1f1700;
-  --cm-err: #b42318; --on-err: #fff; --cm-idle: #475467; --on-idle: #fff; }
+  --cm-err: #b42318; --on-err: #fff; --cm-idle: #e4e7ec; --on-idle: #344054; }
 @media (prefers-color-scheme: dark) {
   .dcm-view { --cm-wait: #8db3ff; --on-wait: #0b1530; --cm-ok: #6ee7a0; --on-ok: #052e16; --cm-warn: #fbbf24; --on-warn: #1f1700;
-    --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #c0c7d4; --on-idle: #161b26; }
+    --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #3a4152; --on-idle: #e5e9f2; }
 }
 :is([data-theme="dark"], .dark) .dcm-view { --cm-wait: #8db3ff; --on-wait: #0b1530; --cm-ok: #6ee7a0; --on-ok: #052e16; --cm-warn: #fbbf24; --on-warn: #1f1700;
-  --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #c0c7d4; --on-idle: #161b26; }
+  --cm-err: #ff8f86; --on-err: #3b0a07; --cm-idle: #3a4152; --on-idle: #e5e9f2; }
 :is([data-theme="light"], .light) .dcm-view { --cm-wait: #1d4ed8; --on-wait: #fff; --cm-ok: #15803d; --on-ok: #fff; --cm-warn: #fbbf24; --on-warn: #1f1700;
-  --cm-err: #b42318; --on-err: #fff; --cm-idle: #475467; --on-idle: #fff; }
+  --cm-err: #b42318; --on-err: #fff; --cm-idle: #e4e7ec; --on-idle: #344054; }
 .dcm-view [data-tone="wait"] { --tone: var(--cm-wait); --on-tone: var(--on-wait); }
 .dcm-view [data-tone="ok"] { --tone: var(--cm-ok); --on-tone: var(--on-ok); }
 .dcm-view [data-tone="warn"] { --tone: var(--cm-warn); --on-tone: var(--on-warn); }
@@ -145,6 +145,10 @@ window.__ModuleLoader__.load({
   .dcm-gap strong { text-align: start; justify-self: start; }
 }
 .dcm-gap > div { display: grid; gap: 2px; min-width: 0; }
+.dcm-gapfiles { grid-column: 1 / -1; }
+.dcm-gapfiles summary { min-height: 44px; padding: 4px 0; font-size: 14px; color: var(--cm-wait); }
+.dcm-gapfiles summary::before { border-color: var(--cm-wait); }
+.dcm-gapfiles[open] { padding-bottom: 6px; }
 .dcm-gap small { display: block; font-size: 13px; line-height: 1.5; color: var(--cm-muted); font-weight: 400; text-wrap: balance; }
 .dcm-gap-title { margin-top: 8px; }
 .dcm-files { list-style: none; margin: 0; padding: 0; display: grid; }
@@ -233,7 +237,8 @@ window.__ModuleLoader__.load({
       const quiet = []
       if (map) {
         const hint = map.lookTop?.length ? '주로 ' + map.lookTop.map(item => item.ext + ' ' + item.files + '개').join(', ') : ''
-        look.push({ label: '지도에 없는 코드·알 수 없는 파일', value: map.look, hint })
+        look.push({ label: '지도에 없는 코드·알 수 없는 파일', value: map.look, hint,
+          files: Array.isArray(map.lookFiles) ? { files: map.lookFiles.map(file => ({ file })), more: map.look > map.lookFiles.length } : null })
         quiet.push({ label: '테스트 파일', short: '테스트', value: map.tests,
           hint: '지도가 건너뛴 폴더라서 테스트가 부르는 곳은 안 나와요.' })
         quiet.push({ label: '문서·설정·이미지 등', short: '문서·설정·이미지', value: map.quiet, hint: '코드가 아니라서 지도 대상이 아니에요.' })
@@ -248,8 +253,8 @@ window.__ModuleLoader__.load({
           look.push({ label: '형식을 몰라 건너뛴 파일', value: list === null ? null : list.length, text })
         }
       }
-      look.push({ label: '일부만 읽은 파일', value: coverage.partial })
-      look.push({ label: '읽지 못한 파일', value: coverage.unusable })
+      look.push({ label: '일부만 읽은 파일', value: coverage.partial, hint: '파일 안 일부 줄을 못 읽었어요. 그 줄의 함수와 호출은 빠질 수 있어요.', files: coverage.partialFiles })
+      look.push({ label: '읽지 못한 파일', value: coverage.unusable, hint: '파일 대부분을 못 읽었어요. 직접 열어서 확인해 주세요.', files: coverage.unusableFiles })
       const unknown = look.some(row => row.value === null || row.value === undefined)
       const some = look.some(row => row.value > 0)
       return { state: unknown ? 'unknown' : some ? 'some' : 'none', look, quiet }
@@ -261,28 +266,35 @@ window.__ModuleLoader__.load({
       return gaps === 'some' || data.partial ? 'some' : gaps
     }
 
-    function GapRow({ row, calm }) {
+    function GapRow({ row, calm, onOpen }) {
       const unknown = row.value === null || row.value === undefined
       const tone = !calm && (unknown || row.value > 0) ? 'warn' : 'idle'
+      const listed = row.files?.files ?? []
       return h('li', { className: 'dcm-gap', 'data-tone': tone },
-        h('div', null, h('span', null, row.label), (row.hint || (row.value > 0 && row.text)) && h('small', null, row.hint || row.text)),
-        h('strong', null, amount(row.value)))
+        h('div', null, h('span', null, row.label), (calm || unknown || row.value > 0) && (row.hint || row.text) && h('small', null, row.hint || row.text)),
+        h('strong', null, amount(row.value)),
+        listed.length > 0 && h('details', { className: 'dcm-gapfiles' },
+          h('summary', null, '파일 ' + listed.length + '개 보기' + (row.files.more ? ' (일부)' : '')),
+          h('ul', { className: 'dcm-files' }, listed.map(item => h('li', { key: item.file },
+            h(PathText, { value: item.file + (item.line ? ':' + item.line : ''), file: item.file, line: item.line, onOpen })))),
+          row.files.more && h('p', { className: 'dcm-muted' }, '목록이 길어서 ' + listed.length + '개까지만 보여요.')))
     }
 
-    function Coverage({ coverage }) {
+    function Coverage({ coverage, onOpen }) {
       if (!coverage) return null
-      const { look, quiet } = gapsOf(coverage)
+      const { look, quiet, state } = gapsOf(coverage)
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '지도가 못 읽은 범위'),
-          h('p', { className: 'dcm-muted' }, '“확인이 필요한 범위”에 있는 코드는 위 결과에서 빠질 수 있어요.')),
+          h('p', { className: 'dcm-muted' }, state === 'none' ? '코드는 모두 지도에 들어 있어요.'
+            : '“확인이 필요한 범위”의 파일은 위 결과에서 빠질 수 있어요. ' + (onOpen ? '파일 이름을 눌러 직접 확인해 주세요.' : '직접 확인해 주세요.'))),
         h('div', null,
           h('h4', { className: 'dcm-gap-title' }, '확인이 필요한 범위'),
-          h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 코드 범위' }, look.map(row => h(GapRow, { key: row.label, row })))),
+          h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 코드 범위' }, look.map(row => h(GapRow, { key: row.label, row, onOpen })))),
         !!quiet.length && h('details', { className: 'dcm-quietbox' },
           h('summary', null, h('span', null, '지도 대상이 아닌 파일'), ' ',
             h('small', null, quiet.map(row => row.short + ' ' + amount(row.value)).join(' · '))),
-          h('ul', { className: 'dcm-gaps', 'aria-label': '지도 대상이 아닌 파일' }, quiet.map(row => h(GapRow, { key: row.label, row, calm: true })))),
+          h('ul', { className: 'dcm-gaps', 'aria-label': '지도 대상이 아닌 파일' }, quiet.map(row => h(GapRow, { key: row.label, row, calm: true, onOpen })))),
         h('p', { className: 'dcm-muted' },
           '지도에 없는 파일이나 실행할 때만 이어지는 호출은 쓰는 곳에 나오지 않아요. 안 나온다고 쓰는 곳이 없다는 뜻은 아니에요.'))
     }
@@ -413,7 +425,7 @@ window.__ModuleLoader__.load({
     }
 
     function RequestImpact({ result, onDraft, onOpen }) {
-      if (result?.status !== 'ready') return h('p', { className: 'dcm-muted' }, '코딩 요청이 끝나고 지도가 확인하면 여기에 나와요.')
+      if (result?.status !== 'ready') return null
       return h(React.Fragment, null,
         h(ChangedFiles, { files: result.files, onOpen }),
         !!result.candidates.length && h(LocationList, { rows: result.candidates, onDraft, onOpen }),
@@ -423,10 +435,14 @@ window.__ModuleLoader__.load({
     }
 
     function Impact({ data, onDraft, onOpen }) {
+      const result = data.requestImpact
+      const filled = result?.status === 'ready' && result.files.length > 0
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '함께 확인할 곳'),
-          h('p', { className: 'dcm-muted' }, '이번 요청에서 고친 파일과 이어진 곳이에요.' + (onOpen ? ' 파일 이름을 누르면 오른쪽에서 열려요.' : ''))),
+          h('p', { className: 'dcm-muted' }, filled
+            ? '이번 요청에서 고친 파일과 이어진 곳이에요.' + (onOpen ? ' 파일 이름을 누르면 오른쪽에서 열려요.' : '')
+            : '코딩 요청이 끝나면 고친 파일과 이어진 곳이 여기에 나와요.')),
         h('div', { 'aria-live': 'polite', className: 'dcm-details' },
           h(RequestImpact, { result: data.requestImpact, onDraft, onOpen })),
         h(RepositoryImpact, { data, onOpen }))
@@ -596,7 +612,7 @@ window.__ModuleLoader__.load({
           h(Welcome, { data, act: action, busy }),
           mapped && h(Summary, { data }),
           data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft, onOpen }),
-          mapped && h(Coverage, { coverage: data.coverage }),
+          mapped && h(Coverage, { coverage: data.coverage, onOpen }),
           mapped && h('details', { className: 'dcm-all dcm-search', 'aria-busy': data.state === 'indexing' || undefined },
             h('summary', null, '직접 찾아보기'),
             h('div', null,
