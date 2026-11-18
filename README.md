@@ -4,7 +4,7 @@
 
 # 한국어 DeepSeek Harness 키트
 
-**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 14개를 명령 한 번으로 설치합니다.
+**DeepSeek Harness를 한국어로, 휴대폰에서도.**<br>한국어 언어팩을 비롯한 플러그인 11개를 명령 한 번으로 설치합니다.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,7 +30,7 @@
 
 </div>
 
-DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 14개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
+DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다. 한국어 언어팩을 비롯해 LYNGMN이 만든 플러그인 11개가 들어 있고, 명령 한 번으로 모두 설치합니다. DeepSeek 공식 키트가 아닙니다.
 
 플러그인 이름은 모두 `@lyngmn/dsh-<이름>`입니다. DSH 플러그인 화면에 플러그인마다 카드가 생기고, 하나씩 켜고 끌 수 있습니다.
 
@@ -76,20 +76,8 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>쓰던 API 키가 막히면 예비 키로 넘어가요.</td>
 </tr>
 <tr>
-<td align="center" nowrap><img src="plugins/search-brave/icon.svg" width="40" height="40" alt=""><br><strong>Brave Search</strong></td>
-<td>웹 검색에 Brave Search API를 연결해요. API 키가 필요해요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/search-exa/icon.svg" width="40" height="40" alt=""><br><strong>Exa Search</strong></td>
-<td>웹 검색에 Exa Search API를 연결해요. API 키가 필요해요.</td>
-</tr>
-<tr>
-<td align="center" nowrap><img src="plugins/search-fallback/icon.svg" width="40" height="40" alt=""><br><strong>검색 자동 전환</strong></td>
-<td>검색 공급자가 실패하면 다음 공급자로 다시 찾아요.</td>
-</tr>
-<tr>
 <td align="center" nowrap><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>검색</strong></td>
-<td>여러 웹검색 엔진과, 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 플러그인 페이지에서 엔진별 키·순서·결과 수를 정하고, 이번 검색만 <code>/search naver 30 …</code>·<code>/search korea max …</code>처럼 바꿀 수 있어요.<br>키 없이: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing / 키 필요: 네이버·카카오·TinyFish·Jina / 묶음: 한국(네이버+카카오)</td>
+<td>Exa·Brave를 비롯한 여러 웹검색 엔진과, 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 플러그인 페이지에서 엔진별 키·순서·결과 수를 정하고, 이번 검색만 <code>/search naver 30 서울 날씨</code>·<code>/search exa max 서울 날씨</code>처럼 바꿀 수 있어요. 웹 검색 엔진은 DSH 설정과 같은 값을 보여 주고 바꿔요.<br>키 없이: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing / 키 필요: Exa·Brave·네이버·카카오·TinyFish·Jina / 묶음: 한국(네이버+카카오) <code>/search ko</code>·<code>ko-group</code>·<code>ko-seq</code><br>예전 Brave Search·Exa Search·검색 자동 전환 플러그인을 합쳤어요. <code>/brave</code>·<code>/exa</code>와 <code>brave_search</code>·<code>exa_search</code>는 그대로 써요.</td>
 </tr>
 <tr>
 <td align="center" nowrap><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>자동 검토 복구</strong></td>
@@ -184,7 +172,7 @@ cd ~/dsh-korean && ./install.sh --dry-run
 
 ### 4. 확인
 
-DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 14개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
+DSH를 완전히 끄고(⌘Q) 다시 켭니다. 플러그인 화면에 카드 11개가 아이콘과 한국어 제목으로 보이면 설치된 것입니다. 화면이 한국어가 아니면 **설정 → 일반 → 언어**에서 한국어를 고릅니다.
 
 ### 하나만 설치하기
 

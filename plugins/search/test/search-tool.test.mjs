@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply } from '../index.js'
-import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseToolArgs } from '../search-tool.js'
+import { COMMAND_TEXT, commandPrompt, createCountGrants, formatToolOutput, parseCommandInput, parseCount, parseSingleInput, parseToolArgs, shortEngineName } from '../search-tool.js'
 
 const ENGINES = ['auto', 'you', 'naver', 'kakao', 'bing']
 
@@ -17,12 +17,15 @@ test('parseToolArgs checks the query, the engine and max_results', () => {
 test('parseCommandInput reads an engine, an alias, or none', () => {
   assert.deepEqual(parseCommandInput('auto Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
   assert.deepEqual(parseCommandInput('free Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
-  assert.deepEqual(parseCommandInput('자동 Node.js 24', ENGINES), { engine: 'auto', question: 'Node.js 24' })
   assert.deepEqual(parseCommandInput('NAVER 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('네이버 서울 날씨', ENGINES), { engine: 'naver', question: '서울 날씨' })
-  assert.deepEqual(parseCommandInput('다음 서울 날씨', ENGINES), { engine: 'kakao', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('daum 서울 날씨', ENGINES), { engine: 'kakao', question: '서울 날씨' })
   assert.deepEqual(parseCommandInput('korea 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
-  assert.deepEqual(parseCommandInput('한국 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
+  assert.deepEqual(parseCommandInput('ko 서울 날씨', [...ENGINES, 'korea']), { engine: 'korea', question: '서울 날씨' })
+  // Words a question often starts with stay part of the question (review, 2026-11-18).
+  for (const question of ['다음 주 날씨', '한국 경제 전망', '국내 여행지 추천', '무료 영화 사이트', '자동 저장 방법', 'korean food recipes']) {
+    assert.deepEqual(parseCommandInput(question, [...ENGINES, 'korea']), { engine: 'auto', question })
+  }
   assert.deepEqual(parseCommandInput('서울 날씨 알려 줘', ENGINES), { engine: 'auto', question: '서울 날씨 알려 줘' })
   assert.deepEqual(parseCommandInput('naver', ENGINES), { engine: 'naver', question: '' })
   assert.deepEqual(parseCommandInput('   ', ENGINES), { engine: 'auto', question: '' })
@@ -45,9 +48,12 @@ test('the tool searches the chosen engine and names the engine that answered', a
   assert.match(formatToolOutput('X', { sources: [], truncated: false }), /No results found\./)
 })
 
+/** A DSH settings service whose language preference is `preference`. */
+const settingsIn = (preference) => ({ describe: () => [{ ns: 'locale', value: { preference } }] })
+
 test('/search steers the agent to engine_search with the engine and refuses an empty question', () => {
   const commands = []
-  apply({ get: () => undefined, web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
+  apply({ get: (name) => (name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
   const [search] = commands
   assert.equal(search.name, 'search')
   const steered = []
@@ -57,7 +63,7 @@ test('/search steers the agent to engine_search with the engine and refuses an e
   assert.match(steered[0].content[0].text, /engine_search tool, engine "naver", instead/)
   const empty = search.handler({ rawInput: 'auto', agent: { steer: () => assert.fail('must not steer') } })
   assert.equal(empty.kind, 'error')
-  assert.match(empty.text, /auto, korea, you, parallel/)
+  assert.match(empty.text, /auto, ko, ko-group, ko-seq, exa, brave, you, parallel/)
   assert.ok(COMMAND_TEXT.ko.hint.includes('<질문>'))
 })
 
@@ -107,8 +113,8 @@ test('a count grant matches only the same engine and count, and expires after 30
 test('/search with a count tells the agent the count, grants it, and the tool then asks the engine for it', async (t) => {
   const commands = []
   const tools = []
-  const ctx = { get: () => undefined, web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }
-  apply(ctx, { providers: ['you', 'kakao'] })
+  const ctx = { get: (name) => (name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }
+  apply(ctx, { providers: ['you', 'kakao'], providersKnown: ['you', 'kakao'] })
   const [search] = commands
   const steered = []
   const capped = search.handler({ rawInput: 'kakao 80 맛집', agent: { steer: (m) => steered.push(m) } })
@@ -133,4 +139,85 @@ test('/search with a count tells the agent the count, grants it, and the tool th
   // "max" is the engine maximum (100), held to the keyless maximum (50) without a key.
   await run('max')
   assert.deepEqual(counts, ['10', '30', '10', '50'])
+})
+
+test('parseSingleInput reads an optional count before the question for /exa and /brave', () => {
+  assert.deepEqual(parseSingleInput('20 전기차'), { count: 20, question: '전기차' })
+  assert.deepEqual(parseSingleInput('max 전기차'), { count: 'max', question: '전기차' })
+  assert.deepEqual(parseSingleInput('2026 월드컵'), { question: '2026 월드컵' })
+  assert.deepEqual(parseSingleInput('  '), { question: '' })
+})
+
+test('/brave and brave_search keep their names and follow a count the user set', async (t) => {
+  const commands = []
+  const tools = []
+  const credentials = { resolve: async (ref) => (ref === 'BRAVE_API_KEY' ? { value: 'bk' } : undefined) }
+  apply({ get: (name) => (name === 'credentials' ? credentials : name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }, {})
+  const brave = commands.find((c) => c.name === 'brave')
+  const tool = tools.find((x) => x.name === 'brave_search')
+  assert.ok(brave && tool)
+  assert.match(tool.description, /Brave only/)
+  assert.equal(tool.parameters.properties.engine, undefined)
+
+  const steered = []
+  const reply = brave.handler({ rawInput: '30 전기차', agent: { steer: (m) => steered.push(m) } })
+  assert.match(steered[0].content[0].text, /^전기차\n\n\(Search instruction for this request: do the web searches with the brave_search tool and count "30"/)
+  assert.match(reply.text, /20/, '30 is above Brave\'s maximum of 20')
+  assert.equal(brave.handler({ rawInput: 'max', agent: { steer: () => assert.fail('must not steer') } }).kind, 'error')
+
+  const counts = []
+  const real = globalThis.fetch
+  t.after(() => { globalThis.fetch = real })
+  globalThis.fetch = async (url) => {
+    counts.push(new URL(String(url)).searchParams.get('count'))
+    return new Response(JSON.stringify({ web: { results: [] } }), { status: 200 })
+  }
+  await tool.execute({ query: 'q', count: '30' }, {})
+  await tool.execute({ query: 'q', count: '5' }, {})
+  await tool.execute({ query: 'q', engine: 'exa' }, {})
+  assert.deepEqual(counts, ['20', '10', '10'], 'the granted count (held to 20), then the page setting; engine cannot be switched')
+})
+
+test('ko is short for korea, and the Korean modes show their finders and groups to the model', () => {
+  const engines = ['auto', 'korea', 'korea-group', 'korea-seq', 'naver']
+  assert.equal(parseCommandInput('ko 서울 날씨', engines).engine, 'korea')
+  assert.equal(parseCommandInput('ko-group 30 서울 날씨', engines).engine, 'korea-group')
+  assert.equal(parseCommandInput('ko-group 30 서울 날씨', engines).count, 30)
+  assert.equal(parseCommandInput('ko-seq max 서울', engines).engine, 'korea-seq')
+  assert.equal(parseCommandInput('korea-seq 서울', engines).engine, 'korea-seq')
+  assert.deepEqual(['korea', 'korea-group', 'korea-seq', 'naver'].map(shortEngineName), ['ko', 'ko-group', 'ko-seq', 'naver'])
+
+  const merged = formatToolOutput('NAVER + KAKAO', {
+    sources: [{ url: 'https://b.kr', title: 'B', from: ['NAVER', 'KAKAO'], snippet: 's' }, { url: 'https://a.kr', from: ['NAVER'] }],
+    truncated: false,
+    summary: 'NAVER 2, KAKAO 1, in both 1'
+  })
+  assert.match(merged, /Found: NAVER 2, KAKAO 1, in both 1\./)
+  assert.match(merged, /- \[B\]\(https:\/\/b\.kr\) — \[NAVER \+ KAKAO\] s/)
+  const grouped = formatToolOutput('NAVER + KAKAO', {
+    sources: [{ url: 'https://a.kr', group: 'NAVER', from: ['NAVER'] }, { url: 'https://x.kr', group: 'KAKAO', from: ['KAKAO'] }],
+    truncated: false
+  })
+  assert.match(grouped, /NAVER results:\n- .*a\.kr.*\n\nKAKAO results:\n- .*x\.kr/)
+})
+
+test('the search instruction under the question follows the DSH language', () => {
+  const commands = []
+  apply({ get: (name) => (name === 'settings' ? settingsIn('ko') : undefined), web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
+  const steer = (name, rawInput) => {
+    const steered = []
+    commands.find((c) => c.name === name).handler({ rawInput, agent: { steer: (m) => steered.push(m) } })
+    return steered[0].content[0].text
+  }
+  assert.equal(steer('search', 'naver 30 서울 날씨'),
+    '서울 날씨\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 engine_search 도구로 해 주세요. 엔진: "naver", 개수: "30". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.equal(steer('search', 'ko 서울 날씨'),
+    '서울 날씨\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 engine_search 도구로 해 주세요. 엔진: "korea". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.equal(steer('exa', 'max 오픈AI 새 모델'),
+    '오픈AI 새 모델\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 exa_search 도구로 해 주세요. 개수: "max". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.match(steer('brave', '서울 날씨'), /^서울 날씨\n\n\(이번 요청 검색 안내: 웹 검색은 web_search 대신 brave_search 도구로 해 주세요\. 결과/)
+  // Every language has the four instructions, each naming the tool.
+  for (const text of Object.values(COMMAND_TEXT)) {
+    for (const key of ['steerEngine', 'steerEngineCount', 'steerSingle', 'steerSingleCount']) assert.match(text[key], /\{tool\}/, key)
+  }
 })

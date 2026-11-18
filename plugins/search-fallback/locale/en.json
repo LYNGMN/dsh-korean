@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Search Fallback",
-    "description": "When a web search provider fails or finds nothing, the same query runs on the next one. Pick the order in the web search settings. Not an official DeepSeek plugin."
-  }
-}

@@ -1,6 +1,6 @@
 {
   "name": "dsh-korean-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "한국어 DeepSeek Harness 키트: 한국어 언어팩과 LYNGMN이 만든 DSH 플러그인 모음",
   "author": "LYNGMN",
