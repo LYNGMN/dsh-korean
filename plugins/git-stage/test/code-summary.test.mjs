@@ -34,3 +34,15 @@ test('꺼진 저장소·저장소 아님·알 수 없는 상태는 아무것도 
   assert.equal(ready.kind, 'ready')
   assert.equal(ready.indexing, true)
 })
+
+test('지도에 한 개도 없는 형식은 칩으로 더하고, 모르면 확인 안 됨, 옛 코드 지도는 그리지 않는다', () => {
+  const base = { notIndexed: 0, partial: 0, unusable: 0 }
+  const labels = coverage => codeGapsOf(coverage).map(gap => gap.label)
+  assert.deepEqual(labels({ ...base, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }] }).slice(3),
+    ['형식 모름 .gs 28개', '형식 모름 .xyz 2개'])
+  assert.deepEqual(labels({ ...base, unknownFormats: null }).slice(3), ['형식 모름 확인 안 됨'])
+  assert.equal(codeGapsOf(base).length, 3)
+  assert.deepEqual(labels({ ...base, unknownFormats: [{ ext: 'a', files: 1 }, { ext: 'b', files: 1 }, { ext: 'c', files: 1 }, { ext: 'd', files: 1 }] }).at(-1),
+    '형식 모름 외 1종')
+  assert.equal(codeGapsOf({ ...base, unknownFormats: [{ ext: '.gs', files: -1 }] }).length, 3, '깨진 값은 건너뛴다')
+})

@@ -283,7 +283,7 @@ window.__ModuleLoader__.load({
     
     function codeGapsOf(coverage) {
       if (!coverage || typeof coverage !== 'object') return null
-      return [
+      const gaps = [
         ['notIndexed', '미인덱스', coverage.notIndexed],
         ['partial', '부분 파싱', coverage.partial],
         ['unusable', '파싱 불가', coverage.unusable],
@@ -291,6 +291,19 @@ window.__ModuleLoader__.load({
         const value = countOf(raw)
         return { key, label: `${name} ${value === null ? '확인 안 됨' : `${value}개`}`, warn: value !== 0 }
       })
+      // 지도에 한 개도 없는 파일 형식(예: .gs). 옛 코드 지도는 이 값이 없으니 그때는 그리지 않는다.
+      const formats = coverage.unknownFormats
+      if (formats === null) gaps.push({ key: 'formats', label: '형식 모름 확인 안 됨', warn: true })
+      else if (Array.isArray(formats)) {
+        for (const item of formats.slice(0, 3)) {
+          const files = countOf(item?.files)
+          if (typeof item?.ext === 'string' && files !== null) {
+            gaps.push({ key: `format${item.ext}`, label: `형식 모름 ${item.ext.slice(0, 12)} ${files}개`, warn: true })
+          }
+        }
+        if (formats.length > 3) gaps.push({ key: 'formats-more', label: `형식 모름 외 ${formats.length - 3}종`, warn: true })
+      }
+      return gaps
     }
     
     function codeRequestLine(request) {

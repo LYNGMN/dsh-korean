@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { delimiter, isAbsolute, join } from 'node:path'
+import { basename, delimiter, isAbsolute, join } from 'node:path'
 import { openGraph } from './mcp.js'
 
 export const rootKey = root => createHash('sha256').update(root).digest('hex')
@@ -11,6 +12,26 @@ const text = (value, max) => typeof value === 'string' && value.length <= max &&
 const regex = value => value.replace(/[.*+?^$(){}|[\]\\]/g, '\\$&')
 const textEnv = ['HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'TEMP', 'TMP', 'TMPDIR',
   'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'LOCALAPPDATA', 'APPDATA', 'LANG', 'LC_ALL']
+
+// Extensions the engine does not know but that hold code. Without this the
+// files are skipped silently: they never show up as "not indexed" either.
+export const EXTRA_EXTENSIONS = Object.freeze({ '.gs': 'javascript' })
+
+// The engine reads extra_extensions from $XDG_CONFIG_HOME/codebase-memory-mcp,
+// so the plugin points it at its own folder and leaves the user's config alone.
+function prepareConfig(home) {
+  const dir = join(home, 'codebase-memory-mcp')
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({ extra_extensions: EXTRA_EXTENSIONS }) + '\n', { mode: 0o600 })
+}
+
+const NOT_CODE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg', 'pdf', 'zip', 'gz', 'woff', 'woff2', 'ttf',
+  'otf', 'mp3', 'mp4', 'mov', 'lock', 'ds_store', 'bak', 'log', 'map', 'min'])
+const extOf = path => {
+  const name = basename(path).toLowerCase()
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(dot + 1) : ''
+}
 
 function environment() {
   const env = Object.fromEntries(textEnv.flatMap(key => process.env[key] ? [[key, process.env[key]]] : []))
@@ -87,7 +108,9 @@ function location(row) {
   const id = text(row.qn, 380)
   const name = text(row.name || id.split('.').at(-1), 120)
   const line = Number.parseInt(row.lines, 10)
-  return file && id && name ? { id, file, name, kind: text(row.label, 50), ...(line > 0 && { line }) } : null
+  const incoming = row.in === '' || row.in === undefined || row.in === null ? NaN : Number(row.in)
+  return file && id && name ? { id, file, name, kind: text(row.label, 50), ...(line > 0 && { line }),
+    ...(Number.isSafeInteger(incoming) && incoming >= 0 && { callers: incoming }) } : null
 }
 
 function locations(result) {
@@ -130,7 +153,9 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
   if (executable !== undefined && (typeof executable !== 'string' || !isAbsolute(executable))) {
     throw new TypeError('code-map executable must be an absolute path')
   }
-  const baseEnv = environment()
+  const configHome = cacheDir && join(cacheDir, 'xdg-config')
+  if (configHome) prepareConfig(configHome)
+  const baseEnv = { ...environment(), ...(configHome && { XDG_CONFIG_HOME: configHome }) }
   const workers = new Map()
 
   function stop(root) {
@@ -186,7 +211,7 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
       }
       return { ...result, coverage: coverageOf(result) }
     },
-    async search(root, project, query, { auto = false, signal } = {}) {
+    async search(root, project, query, { auto = false, signal, limit } = {}) {
       const terms = patterns(query, auto)
       const common = { project, limit: 8, max_output_tokens: 2400, format: 'json' }
       const options = { signal }
@@ -202,9 +227,44 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
         }, options)
         rows.push(...locations(result))
       }
-      return uniqueLocations(rows).slice(0, auto ? 3 : 8)
+      return uniqueLocations(rows).slice(0, limit ?? (auto ? 3 : 8))
+    },
+    // What the map knows about one file right now: parsed fully, partly, or not at all.
+    async fileStatus(root, project, file, signal) {
+      if (safeFile(file) !== file || !file) throw new Error('analysis-failed')
+      const result = await call(root, 'check_index_coverage', { project, paths: [file], format: 'json' }, { signal, timeout: 2000 })
+      const entry = Array.isArray(result.paths) ? result.paths[0] : undefined
+      if (!entry || typeof entry.status !== 'string') throw new Error('analysis-failed')
+      const ranges = (Array.isArray(entry.coverage) ? entry.coverage : []).flatMap(item => Array.isArray(item?.ranges) ? item.ranges : [])
+        .map(range => [Number(range?.start), Number(range?.end)]).filter(([a, b]) => Number.isSafeInteger(a) && Number.isSafeInteger(b)).slice(0, 3)
+      return { status: text(entry.status, 40), freshness: text(entry.freshness, 40), ranges }
     },
     callers,
+    // Extensions the map holds no file of at all, with how many tracked files use them.
+    // null means the answer could not be worked out (large repo, git or engine failure).
+    async unknownFormats(root, project, signal) {
+      try {
+        const tracked = (await runGit(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--'], signal))
+          .split('\0').filter(Boolean)
+        const known = new Set()
+        for (let offset = 0; ; offset += 500) {
+          if (offset >= 3000) return null
+          const page = await call(root, 'search_graph', { project, label: 'File', format: 'json', limit: 500, offset,
+            max_output_tokens: 60000 }, { signal, timeout: 10_000 })
+          for (const row of records(page)) if (typeof row.file === 'string') known.add(extOf(row.file))
+          if (!page.has_more) break
+        }
+        const counts = new Map()
+        for (const file of tracked) {
+          const ext = extOf(file)
+          if (ext && !known.has(ext) && !NOT_CODE.has(ext)) counts.set(ext, (counts.get(ext) ?? 0) + 1)
+        }
+        return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5)
+          .map(([ext, files]) => ({ ext: '.' + ext, files }))
+      } catch {
+        return null
+      }
+    },
     async scopedImpact(root, project, files, signal) {
       const paths = [...new Set(files)].filter(file => safeFile(file) === file && file).slice(0, 8)
       if (!paths.length) return { candidates: [], partial: files.length > 0 }

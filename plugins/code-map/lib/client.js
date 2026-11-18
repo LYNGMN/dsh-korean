@@ -16,7 +16,9 @@ window.__ModuleLoader__.load({
   --cm-blue-bg: #edf3ff;
   --cm-good: #206543;
   --cm-good-bg: #eaf6ee;
-  box-sizing: border-box; max-width: 56rem; width: 100%; margin-inline: auto;
+  --cm-warn: #8a4b00;
+  --cm-warn-bg: #fff4e0;
+  box-sizing: border-box; max-width: 44rem; width: 100%; margin-inline: auto;
   padding: clamp(16px, 4vw, 36px); color: var(--cm-fg); color-scheme: inherit;
   font: inherit; word-break: keep-all; container-type: inline-size; scrollbar-width: thin; scrollbar-color: var(--cm-edge) transparent;
 }
@@ -24,19 +26,21 @@ window.__ModuleLoader__.load({
   .dcm-view { --cm-fg: var(--dsw-alias-label-primary, #f0f3f8); --cm-muted: var(--dsw-alias-label-secondary, #b7c3d4);
     --cm-surface: var(--dsw-alias-background-main, #171c27); --cm-soft: var(--dsw-alias-interactive-bg-hover, #222a38);
     --cm-line: var(--dsw-alias-border-l3, #3e4c62); --cm-edge: #8191ab; --cm-focus: #a9c2ff;
-    --cm-blue: #bcd0ff; --cm-blue-bg: #24365e; --cm-good: #b4e5c5; --cm-good-bg: #1b382e; }
+    --cm-blue: #bcd0ff; --cm-blue-bg: #24365e; --cm-good: #b4e5c5; --cm-good-bg: #1b382e; --cm-warn: #ffd49a; --cm-warn-bg: #3a2d12; }
 }
 :is([data-theme="dark"], .dark) .dcm-view {
   --cm-fg: var(--dsw-alias-label-primary, #f0f3f8); --cm-muted: var(--dsw-alias-label-secondary, #b7c3d4);
   --cm-surface: var(--dsw-alias-background-main, #171c27); --cm-soft: var(--dsw-alias-interactive-bg-hover, #222a38);
   --cm-line: var(--dsw-alias-border-l3, #3e4c62); --cm-edge: #8191ab; --cm-focus: #a9c2ff;
   --cm-blue: #bcd0ff; --cm-blue-bg: #24365e; --cm-good: #b4e5c5; --cm-good-bg: #1b382e;
+  --cm-warn: #ffd49a; --cm-warn-bg: #3a2d12;
 }
 :is([data-theme="light"], .light) .dcm-view {
   --cm-fg: var(--dsw-alias-label-primary, #1b2230); --cm-muted: var(--dsw-alias-label-secondary, #536176);
   --cm-surface: var(--dsw-alias-background-main, #fff); --cm-soft: var(--dsw-alias-interactive-bg-hover, #f3f6fb);
   --cm-line: var(--dsw-alias-border-l3, #d9e1eb); --cm-edge: #718198; --cm-focus: #315ac7;
   --cm-blue: #2650b5; --cm-blue-bg: #edf3ff; --cm-good: #206543; --cm-good-bg: #eaf6ee;
+  --cm-warn: #8a4b00; --cm-warn-bg: #fff4e0;
 }
 .dcm-view *, .dcm-view *::before { box-sizing: border-box; }
 .dcm-view h2, .dcm-view h3, .dcm-view p { margin: 0; }
@@ -55,9 +59,16 @@ window.__ModuleLoader__.load({
 .dcm-state[data-ready] { color: var(--cm-good); background: var(--cm-good-bg); }
 .dcm-stack { display: grid; gap: 14px; align-items: start; }
 .dcm-footer, .dcm-status, .dcm-welcome { grid-column: 1 / -1; }
-@container (min-width: 740px) {
-  .dcm-stack[data-ready] { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
-}
+.dcm-summary { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; row-gap: 4px; align-items: start;
+  padding: clamp(14px, 3vw, 22px); background: var(--cm-surface); border: 1px solid var(--cm-line); border-radius: 14px;
+  border-inline-start: 4px solid var(--cm-blue); }
+.dcm-summary[data-kind="warn"] { border-inline-start-color: var(--cm-warn); }
+.dcm-summary-icon { grid-row: 1 / span 3; width: 28px; height: 28px; color: var(--cm-blue); }
+.dcm-summary[data-kind="warn"] .dcm-summary-icon { color: var(--cm-warn); }
+.dcm-summary-icon svg { display: block; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dcm-view .dcm-summary h3 { font-size: 20px; line-height: 28px; grid-column: 2; text-wrap: balance; }
+.dcm-view .dcm-summary p { grid-column: 2; font-size: 14px; }
+.dcm-view .dcm-summary p[data-warn] { color: var(--cm-warn); font-weight: 600; }
 .dcm-card { background: var(--cm-surface); border: 1px solid var(--cm-line); border-radius: 14px; display: grid;
   align-content: start; gap: 12px; min-width: 0; padding: clamp(14px, 3vw, 24px); }
 .dcm-start { border-inline-start: 3px solid var(--cm-focus); }
@@ -73,9 +84,9 @@ window.__ModuleLoader__.load({
 .dcm-view .dcm-button:disabled { opacity: .62; cursor: default; }
 .dcm-view .dcm-primary { color: var(--cm-blue); background: var(--cm-blue-bg); border-color: var(--cm-focus); }
 .dcm-view :is(button, input, a):focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
-.dcm-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
-.dcm-field { display: grid; gap: 6px; min-width: 0; }
-.dcm-field label { font-size: 13px; font-weight: 600; }
+.dcm-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.dcm-form label { grid-column: 1 / -1; }
+.dcm-form label { font-size: 13px; font-weight: 600; }
 .dcm-view input { font: inherit; font-size: 16px; color: var(--cm-fg); min-width: 0; width: 100%;
   min-height: 44px; padding: 8px 11px; border: 1px solid var(--cm-edge); border-radius: 8px; background: var(--cm-surface); }
 .dcm-view input::placeholder { color: var(--cm-muted); opacity: 1; }
@@ -94,10 +105,23 @@ window.__ModuleLoader__.load({
 .dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
 .dcm-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .dcm-start .dcm-button, .dcm-start .dcm-link { justify-self: start; }
-.dcm-gaps { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 0; list-style: none; }
-.dcm-gap { display: inline-flex; align-items: center; padding: 3px 10px; border: 1px solid var(--cm-line); border-radius: 999px;
-  font-size: 12px; line-height: 18px; white-space: nowrap; color: var(--cm-muted); background: var(--cm-surface); }
-.dcm-gap[data-warn] { color: var(--cm-fg); border-color: var(--cm-edge); border-style: dashed; font-weight: 600; }
+.dcm-gaps { display: grid; margin: 0; padding: 0; list-style: none; }
+.dcm-gap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 10px 0;
+  border-top: 1px solid var(--cm-line); font-size: 14px; line-height: 1.5; }
+.dcm-gap strong { font-weight: 600; text-align: end; text-wrap: balance; }
+@container (max-width: 520px) {
+  .dcm-gap { grid-template-columns: minmax(0, 1fr); }
+  .dcm-gap strong { text-align: start; }
+}
+.dcm-gap[data-warn] strong { color: var(--cm-warn); }
+.dcm-search { border: 1px solid var(--cm-line); border-radius: 14px; background: var(--cm-surface); }
+.dcm-search summary { padding-inline: 16px; }
+.dcm-search .dcm-form { margin-top: 4px; }
+.dcm-search > div { display: grid; gap: 12px; padding: 4px 16px 16px; }
+.dcm-quiet { justify-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px;
+  padding: 0 12px; font: inherit; font-size: 13px; color: var(--cm-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.dcm-quiet:hover { color: var(--cm-fg); }
+.dcm-quiet:disabled { opacity: .62; cursor: default; }
 @media (max-width: 470px) {
   .dcm-head { column-gap: 8px; }
   .dcm-view .dcm-actions .dcm-button { padding-inline: 10px; }
@@ -108,7 +132,7 @@ window.__ModuleLoader__.load({
     const STATE = {
       loading: '불러오는 중',
       off: '꺼짐',
-      indexing: '준비 중',
+      indexing: '읽는 중',
       ready: '준비됨',
       'no-repo': '저장소 없음',
       'engine-missing': '분석 도구 필요',
@@ -117,8 +141,8 @@ window.__ModuleLoader__.load({
     }
 
     const FOCUS_NOTE = {
-      'no-identifier': '최근 코딩 요청에 함수나 파일 이름이 없어서 위치를 자동으로 붙이지 않았어요. 아래에서 직접 찾아 보세요.',
-      'no-match': '최근 코딩 요청의 이름과 맞는 위치를 지도에서 찾지 못했어요. 아래에서 다른 이름으로 찾아 보세요.',
+      'no-identifier': '최근 코딩 요청에 함수나 파일 이름이 없어서 위치를 자동으로 붙이지 않았어요. 여기서 직접 찾아 보세요.',
+      'no-match': '최근 코딩 요청의 이름과 맞는 위치를 지도에서 찾지 못했어요. 여기서 다른 이름으로 찾아 보세요.',
     }
 
     function Button({ children, primary, ...props }) {
@@ -130,37 +154,113 @@ window.__ModuleLoader__.load({
         index ? ['/', h('wbr', { key: index }), part] : [part]))
     }
 
-    function count(value) {
-      return value === null || value === undefined ? '확인 안 됨' : value + '개'
+    const ICONS = {
+      info: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 16v-4' }], ['path', { d: 'M12 8h.01' }]],
+      warn: [['path', { d: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' }],
+        ['path', { d: 'M12 9v4' }], ['path', { d: 'M12 17h.01' }]],
+      wait: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 6v6l4 2' }]],
     }
 
-    // Always shown, even at zero: the numbers say how much of the repository
-    // the map could not read, so a short list is not mistaken for a full one.
+    function Icon({ kind }) {
+      return h('span', { className: 'dcm-summary-icon', 'aria-hidden': 'true' },
+        h('svg', { viewBox: '0 0 24 24', focusable: 'false' }, ICONS[kind].map(([tag, props], index) => h(tag, { key: index, ...props }))))
+    }
+
+    function amount(value) {
+      if (value === null || value === undefined) return '확인 안 됨'
+      return value === 0 ? '없음' : value + '개'
+    }
+
+    // The numbers say how much of the repository the map could not read, so
+    // they are listed even at zero: a short result is not mistaken for a full one.
+    function gapsOf(coverage) {
+      if (!coverage) return { rows: [], state: 'unknown' }
+      const formats = coverage.unknownFormats
+      const rows = [
+        ['지도에 넣지 못한 파일', amount(coverage.notIndexed), coverage.notIndexed],
+        ['일부만 읽은 파일', amount(coverage.partial), coverage.partial],
+        ['읽지 못한 파일', amount(coverage.unusable), coverage.unusable],
+      ]
+      if (formats !== undefined) {
+        // File types the map holds no file of never show up in the counts above.
+        const list = Array.isArray(formats) ? formats : null
+        const text = list === null ? '확인 안 됨' : !list.length ? '없음'
+          : list.slice(0, 3).map(item => item.ext + ' ' + item.files + '개').join(', ') +
+            (list.length > 3 ? ' 외 ' + (list.length - 3) + '종' : '')
+        rows.push(['형식을 몰라 건너뛴 파일', text, list === null ? null : list.length])
+      }
+      const unknown = rows.some(row => row[2] === null || row[2] === undefined)
+      const some = rows.some(row => row[2] > 0)
+      return { rows, state: unknown ? 'unknown' : some ? 'some' : 'none' }
+    }
+
     function Coverage({ coverage }) {
       if (!coverage) return null
-      const gaps = [
-        ['미인덱스', coverage.notIndexed],
-        ['부분 파싱', coverage.partial],
-        ['파싱 불가', coverage.unusable],
-      ]
-      return h('div', { className: 'dcm-details' },
+      const { rows } = gapsOf(coverage)
+      return h('section', { className: 'dcm-card' },
+        h('div', { className: 'dcm-card-title' },
+          h('h3', null, '지도가 못 읽은 범위'),
+          h('p', { className: 'dcm-muted' }, '여기에 있는 파일은 위 결과에서 빠질 수 있어요.')),
         h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 범위' },
-          gaps.map(([label, value]) => h('li', { key: label, className: 'dcm-gap', 'data-warn': value > 0 || undefined },
-            label + ' ' + count(value)))),
+          rows.map(([label, text, value]) => h('li', { key: label, className: 'dcm-gap', 'data-warn': value === null || value > 0 || undefined },
+            h('span', null, label), h('strong', null, text)))),
         h('p', { className: 'dcm-muted' },
-          '지도에 없는 파일이나 실행할 때만 이어지는 호출은 사용처에 나오지 않아요. 사용처가 없다고 나와도 의존이 없다는 뜻은 아니에요.'))
+          '지도에 없는 파일이나 실행할 때만 이어지는 호출은 쓰는 곳에 나오지 않아요. 안 나온다고 쓰는 곳이 없다는 뜻은 아니에요.'))
+    }
+
+    function summaryOf(data) {
+      if (data.state === 'indexing' || data.state === 'loading') {
+        return { kind: 'wait', title: '지도를 읽는 중이에요', lines: ['끝나면 이번 요청에서 바뀐 곳과 확인할 곳을 알려 드려요.'] }
+      }
+      const result = data.requestImpact
+      const gaps = gapsOf(data.coverage).state
+      let kind = 'info'
+      let title
+      const lines = []
+      if (!result) {
+        title = '아직 이번 요청에서 바뀐 게 없어요'
+        lines.push('코딩을 요청하면 바뀐 곳과 함께 확인할 곳을 알려 드려요.')
+      } else if (result.status === 'pending') {
+        kind = 'wait'
+        title = '이번 요청에서 바뀐 곳을 확인하고 있어요'
+      } else if (result.status === 'unavailable') {
+        kind = 'warn'
+        title = '이번 요청에서 바뀐 곳을 확인하지 못했어요'
+      } else if (result.files.length) {
+        title = '이번 요청에서 파일 ' + result.files.length + '개를 고쳤어요'
+        lines.push(result.analyzing ? '영향 줄 수 있는 곳을 확인하고 있어요.'
+          : result.candidates.length ? '영향 줄 수 있는 곳이 ' + result.candidates.length + '곳 있어요.'
+            : '지도에서 영향 줄 수 있는 곳을 찾지 못했어요.')
+        if (result.partial) lines.push('일부 파일의 연결은 확인하지 못했어요.')
+      } else {
+        title = result.partial ? '확인할 수 있는 범위에서는 바뀐 파일을 찾지 못했어요' : '이번 요청에서 바뀐 파일이 없어요'
+        if (result.partial) kind = 'warn'
+      }
+      const warning = gaps === 'some' ? '지도가 읽지 못한 범위가 있어서 빠진 곳이 있을 수 있어요. 아래를 확인해 주세요.'
+        : gaps === 'unknown' ? '지도가 읽지 못한 범위를 확인하지 못했어요. 빠진 곳이 있을 수 있어요.' : null
+      if (warning) kind = 'warn'
+      return { kind, title, lines, warning }
+    }
+
+    function Summary({ data }) {
+      const { kind, title, lines, warning } = summaryOf(data)
+      return h('section', { className: 'dcm-summary', 'data-kind': kind, 'aria-live': 'polite', 'aria-label': '이번 요청 결과' },
+        h(Icon, { kind }),
+        h('h3', { 'data-qa-multiline': '' }, title),
+        lines.map(line => h('p', { key: line, className: 'dcm-muted' }, line)),
+        warning && h('p', { 'data-warn': '' }, warning))
     }
 
     function CallersResult({ callers }) {
       const shown = callers.candidates.length
       const total = Number.isSafeInteger(callers.total) ? callers.total : null
       return h('div', { className: 'dcm-details', 'aria-live': 'polite' },
-        h('h4', { className: 'dcm-symbol', title: callers.name }, callers.name + ' 사용처'),
+        h('h4', { className: 'dcm-symbol', title: callers.name }, callers.name + ' 쓰는 곳'),
         shown ? h(LocationList, { rows: callers.candidates })
           : h('p', { className: 'dcm-muted' }, total === 0
-            ? '지도에서 찾은 사용처가 없어요. 확인 안 됨과는 달라서, 아래 읽지 못한 범위를 함께 봐 주세요.'
-            : total ? '사용처 ' + total + '곳이 있지만 위치를 표시하지 못했어요.' : '지도에서 확인된 사용처를 표시할 수 없어요.'),
-        total > shown && shown > 0 && h('p', { className: 'dcm-muted' }, '사용처 ' + total + '곳 중 ' + shown + '곳만 보여요.'))
+            ? '지도에서 쓰는 곳을 찾지 못했어요. 확인 안 됨과는 달라서, 읽지 못한 범위를 함께 봐 주세요.'
+            : total ? '쓰는 곳이 ' + total + '곳 있지만 위치를 표시하지 못했어요.' : '지도에서 확인된 쓰는 곳을 표시할 수 없어요.'),
+        total > shown && shown > 0 && h('p', { className: 'dcm-muted' }, '쓰는 곳 ' + total + '곳 중 ' + shown + '곳만 보여요.'))
     }
 
     function LocationList({ rows, onCallers, onDraft, busy }) {
@@ -173,56 +273,51 @@ window.__ModuleLoader__.load({
             h(PathText, { value: location }),
             row.hop && h('span', { className: 'dcm-muted' }, row.hop === 1 ? '직접 사용' : '한 곳을 거쳐 연결')),
           traceable && h(Button, { onClick: () => onCallers(row), disabled: busy,
-            'aria-label': row.name + ' 사용처 찾기' }, '사용처'),
+            'aria-label': row.name + ' 쓰는 곳 찾기' }, '쓰는 곳'),
           onDraft && h(Button, { onClick: () => onDraft(row),
-            'aria-label': '검증 요청 넣기 · ' + row.name }, '검증 요청 넣기'))
+            'aria-label': '확인 요청 넣기 · ' + row.name }, '확인 요청 넣기'))
       }))
     }
 
     function ChangedFiles({ files }) {
       return files.length > 0 && h('div', { className: 'dcm-details' },
-        h('h4', null, '변경한 파일'),
-        files.map(path => h(PathText, { key: path, value: path })))
+        h('h4', null, '고친 파일'),
+        files.slice(0, 5).map(path => h(PathText, { key: path, value: path })),
+        files.length > 5 && h('p', { className: 'dcm-muted' }, '외 ' + (files.length - 5) + '개'))
     }
 
     function RepositoryImpact({ data }) {
       const result = data.impact
       return h('details', { className: 'dcm-all' },
-        h('summary', null, '저장소 전체 변경'),
-        h('p', { className: 'dcm-muted' }, '마지막 커밋(HEAD) 이후의 변경이에요.'),
+        h('summary', null, '마지막 저장 이후 바뀐 전체'),
+        h('p', { className: 'dcm-muted' }, '마지막으로 저장한 상태에서 바뀐 파일 전체예요.'),
         result
           ? h(React.Fragment, null,
             h('p', null, result.changed
-              ? '변경 파일 ' + result.changed + '개 · 확인 후보 ' + result.total + '곳' + (result.more ? ' 이상' : '')
-              : '분석에서 확인된 변경 파일이 없어요.'),
+              ? '바뀐 파일 ' + result.changed + '개 · 확인할 곳 ' + result.total + '곳' + (result.more ? ' 이상' : '')
+              : '분석에서 확인된 바뀐 파일이 없어요.'),
             h(ChangedFiles, { files: result.files }),
             !!result.candidates.length && h(LocationList, { rows: result.candidates }))
           : h('p', { className: 'dcm-muted' }, data.impactUnavailable
-            ? '저장소 전체의 변경 영향을 읽지 못했어요.'
+            ? '저장소 전체에서 바뀐 곳을 읽지 못했어요.'
             : '지도 준비가 끝나면 결과를 볼 수 있어요.'))
     }
 
     function RequestImpact({ result, onDraft }) {
-      if (!result) return h('p', { className: 'dcm-muted' }, '코딩 요청이 끝나면 이번에 바뀐 파일을 보여 줘요.')
-      if (result.status === 'pending') return h('p', { className: 'dcm-muted' }, '이번 요청의 변경 범위를 확인하고 있어요.')
-      if (result.status === 'unavailable') return h('p', { className: 'dcm-muted' }, '이번 요청의 변경 범위를 확인할 수 없어요.')
+      if (result?.status !== 'ready') return h('p', { className: 'dcm-muted' }, '코딩 요청이 끝나고 지도가 확인하면 여기에 나와요.')
       return h(React.Fragment, null,
-        h('p', null, result.files.length
-          ? '변경 파일 ' + result.files.length + '개' + (result.analyzing ? '' : ' · 파일 단위 확인 후보 ' + result.candidates.length + '곳')
-          : result.partial ? '확인할 수 있는 범위에서 변경 파일을 찾지 못했어요.' : '이번 요청 중 바뀐 파일이 없어요.'),
         h(ChangedFiles, { files: result.files }),
         !!result.candidates.length && h(LocationList, { rows: result.candidates, onDraft }),
-        result.analyzing && h('p', { className: 'dcm-muted' }, '호출 관계를 확인하고 있어요.'),
-        result.partial && h('p', { className: 'dcm-muted' }, '일부 파일의 연결은 확인하지 못했어요.'),
         !result.analyzing && !result.partial && !!result.files.length && !result.candidates.length &&
-          h('p', { className: 'dcm-muted' }, '코드 지도에서 확인된 사용처가 없어요. 읽지 못한 범위가 있으면 의존이 없다는 뜻은 아니에요.'))
+          h('p', { className: 'dcm-muted' }, '지도에서 확인된 곳이 없어요. 읽지 못한 범위가 있으면 이어진 곳이 없다는 뜻은 아니에요.'),
+        !result.files.length && h('p', { className: 'dcm-muted' }, '확인할 곳이 아직 없어요.'))
     }
 
     function Impact({ data, onDraft }) {
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '함께 확인할 곳'),
-          h('p', { className: 'dcm-muted' }, '이번 요청 중 확인된 변경이에요.')),
+          h('p', { className: 'dcm-muted' }, '이번 요청에서 고친 파일과 이어진 곳이에요.')),
         h('div', { 'aria-live': 'polite', className: 'dcm-details' },
           h(RequestImpact, { result: data.requestImpact, onDraft })),
         h(RepositoryImpact, { data }))
@@ -359,7 +454,7 @@ window.__ModuleLoader__.load({
             (span.end > 0 ? '\n\n' : '') + verification + (hasDraft ? '\n\n' : ''),
             { ...span, start: span.end })
           if (inserted) {
-            setNotice('검증 요청을 입력창에 넣었어요.')
+            setNotice('확인 요청을 입력창에 넣었어요.')
             return
           }
         } catch { /* A disposed or locked composer is reported below. */ }
@@ -370,7 +465,8 @@ window.__ModuleLoader__.load({
       const onDraft = typeof inputActions?.captureInsertion === 'function' &&
         typeof inputActions?.insertText === 'function' ? draftVerification : undefined
       const rows = found ?? data.focus ?? []
-      const displayedState = ready && data.partial ? '일부 코드 준비됨' : STATE[data.state]
+      const displayedState = ready && data.partial ? '일부만 읽었어요' : STATE[data.state]
+      const mapped = data.enabled && (ready || data.state === 'indexing')
       return h('div', { className: 'dcm-view' },
         h('header', { className: 'dcm-head' },
           h('h2', null, '코드 지도'),
@@ -379,31 +475,32 @@ window.__ModuleLoader__.load({
             h('span', { className: 'dcm-state', 'data-ready': ready || undefined, role: 'status' }, displayedState)),
           data.enabled && h('div', { className: 'dcm-actions' },
             h(Button, { onClick: () => action('refresh'), disabled: busy || data.state === 'indexing' },
-              ['analysis-failed', 'engine-missing'].includes(data.state) ? '다시 준비' : '지도 갱신'),
-            h(Button, { onClick: () => action('disable'), disabled: busy }, '끄기'))),
-        h('div', { className: 'dcm-stack', 'data-ready': ready || undefined },
+              ['analysis-failed', 'engine-missing'].includes(data.state) ? '다시 준비' : '지도 갱신'))),
+        h('div', { className: 'dcm-stack' },
           h(Welcome, { data, act: action, busy }),
-          data.enabled && (ready || data.state === 'indexing') && h('section', { className: 'dcm-card dcm-start', 'aria-busy': data.state === 'indexing' },
-              h('div', { className: 'dcm-card-title' },
-                h('h3', null, '어디부터 볼까요?'),
-                !!data.focus?.length && found === null && h('p', { className: 'dcm-muted' }, '최근 코딩 요청에서 DSH가 참고한 위치예요.'),
-                !data.focus?.length && found === null && FOCUS_NOTE[data.focusNote] &&
-                  h('p', { className: 'dcm-muted' }, FOCUS_NOTE[data.focusNote])),
+          mapped && h(Summary, { data }),
+          data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft }),
+          mapped && h(Coverage, { coverage: data.coverage }),
+          mapped && h('details', { className: 'dcm-all dcm-search', 'aria-busy': data.state === 'indexing' || undefined },
+            h('summary', null, '직접 찾아보기'),
+            h('div', null,
+              !!data.focus?.length && found === null && h('p', { className: 'dcm-muted' }, '최근 코딩 요청에서 DSH가 참고한 위치예요.'),
+              !data.focus?.length && found === null && FOCUS_NOTE[data.focusNote] &&
+                h('p', { className: 'dcm-muted' }, FOCUS_NOTE[data.focusNote]),
               h('form', { className: 'dcm-form', onSubmit: find },
-                h('div', { className: 'dcm-field' },
-                  h('label', { htmlFor: field }, '함수나 파일 이름'),
-                  h('input', { id: field, type: 'text', value: query, onChange: event => setQuery(event.target.value),
-                    placeholder: '예시 · sendResume', maxLength: 160, autoComplete: 'off', spellCheck: false })),
+                h('label', { htmlFor: field }, '함수나 파일 이름'),
+                h('input', { id: field, type: 'text', value: query, onChange: event => setQuery(event.target.value),
+                  placeholder: '예시 · sendResume', maxLength: 160, autoComplete: 'off', spellCheck: false }),
                 h(Button, { primary: true, type: 'submit', disabled: !ready || busy || !query.trim() }, '찾기')),
               h('div', { 'aria-live': 'polite' }, rows.length
                 ? h(LocationList, { rows, onCallers: ready ? showCallers : null, busy })
                 : found && h('p', { className: 'dcm-muted' }, '이름이 맞는 위치를 찾지 못했어요. 파일명이나 함수 이름으로 다시 찾아 보세요.')),
-              callers && h(CallersResult, { callers }),
-              data.coverage && h(Coverage, { coverage: data.coverage })),
-          data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft }),
+              callers && h(CallersResult, { callers }))),
           data.enabled && data.indexedAt && h('p', { className: 'dcm-muted dcm-footer' },
-            '지도 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt) +
+            '마지막 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt) +
             (Number.isFinite(data.indexMs) ? ' · ' + Math.max(0.1, Math.round(data.indexMs / 100) / 10) + '초 걸림' : '')),
+          data.enabled && h('button', { type: 'button', className: 'dcm-quiet', onClick: () => action('disable'), disabled: busy },
+            '이 저장소에서 지도 끄기'),
           h('p', { className: 'dcm-muted dcm-status', role: 'status' }, notice)))
     }
 

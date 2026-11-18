@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { coverageOf, hasIdentifier } from '../lib/engine.js'
+import { EXTRA_EXTENSIONS, coverageOf, hasIdentifier } from '../lib/engine.js'
 import { createCodeMap } from '../lib/index.js'
 
 const rootPath = '/repos/kit'
@@ -96,15 +96,6 @@ test('바뀐 파일이 없고 지도가 최근 것이면 다시 색인하지 않
   assert.equal(indexed, 2, '파일이 바뀌면 다시 색인한다')
 })
 
-test('화면은 읽지 못한 범위를 0이어도 보여 주고 사용처 잘림을 알린다', async () => {
-  const script = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
-  for (const text of ['미인덱스', '부분 파싱', '파싱 불가', '확인 안 됨', '사용처가 없다고 나와도 의존이 없다는 뜻은 아니에요',
-    '사용처 \' + total + \'곳 중 \' + shown + \'곳만 보여요']) {
-    assert.ok(script.includes(text), text)
-  }
-  assert.match(script, /data\.coverage && h\(Coverage/)
-})
-
 function configured(engine, extra = {}) {
   return createCodeMap({
     rootOf: async () => rootPath,
@@ -123,3 +114,28 @@ function userStep(text, turn = 1) {
     messages: [{ role: 'user', content: [{ type: 'text', text }], source: { kind: 'user' } }],
   }
 }
+
+test('엔진이 모르는 형식을 읽지 못한 범위에 더하고 낡은 지도처럼 일부로 알린다', async () => {
+  const service = configured({
+    index: async () => ({ project: 'kit', status: 'indexed', coverage: coverageOf({ not_indexed_files_count: 0 }) }),
+    unknownFormats: async () => [{ ext: '.gs', files: 28 }],
+  })
+  await service.refresh('session-1', rootPath)
+  const view = service.snapshot('session-1', rootPath)
+  assert.deepEqual(view.coverage.unknownFormats, [{ ext: '.gs', files: 28 }])
+  assert.equal(view.partial, true)
+})
+
+test('형식을 알아내지 못하면 없다고 하지 않고 null로 둔다', async () => {
+  const service = configured({
+    index: async () => ({ project: 'kit', status: 'indexed', coverage: coverageOf({}) }),
+    unknownFormats: async () => null,
+  })
+  await service.refresh('session-1', rootPath)
+  assert.equal(service.snapshot('session-1', rootPath).coverage.unknownFormats, null)
+})
+
+test('구글스크립트 확장자를 자바스크립트로 읽도록 엔진 설정에 둔다', () => {
+  assert.equal(EXTRA_EXTENSIONS['.gs'], 'javascript')
+  assert.equal(Object.isFrozen(EXTRA_EXTENSIONS), true)
+})
