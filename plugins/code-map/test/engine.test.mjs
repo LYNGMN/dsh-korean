@@ -38,7 +38,8 @@ test('공식 바이너리로 검색, 호출 경로 및 변경 영향을 읽는�
 
     const root = await repositoryOf(source)
     engine = createEngine({ executable, cacheDir, runtimeDir })
-    const { project } = await engine.index(root)
+    const { project, coverage } = await engine.index(root)
+    for (const key of ['notIndexed', 'partial', 'unusable', 'skipped']) assert.equal(coverage[key], 0, key)
     assert.deepEqual(await engine.impact(root, project), { files: [], candidates: [], changed: 0, total: 0, more: false })
 
     const hits = await engine.search(root, project, 'readCache 함수를 확인해 줘', { auto: true })

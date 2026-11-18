@@ -94,6 +94,10 @@ window.__ModuleLoader__.load({
 .dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
 .dcm-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 .dcm-start .dcm-button, .dcm-start .dcm-link { justify-self: start; }
+.dcm-gaps { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 0; list-style: none; }
+.dcm-gap { display: inline-flex; align-items: center; padding: 3px 10px; border: 1px solid var(--cm-line); border-radius: 999px;
+  font-size: 12px; line-height: 18px; white-space: nowrap; color: var(--cm-muted); background: var(--cm-surface); }
+.dcm-gap[data-warn] { color: var(--cm-fg); border-color: var(--cm-edge); border-style: dashed; font-weight: 600; }
 @media (max-width: 470px) {
   .dcm-head { column-gap: 8px; }
   .dcm-view .dcm-actions .dcm-button { padding-inline: 10px; }
@@ -112,6 +116,11 @@ window.__ModuleLoader__.load({
       unavailable: '연결 확인 필요',
     }
 
+    const FOCUS_NOTE = {
+      'no-identifier': '최근 코딩 요청에 함수나 파일 이름이 없어서 위치를 자동으로 붙이지 않았어요. 아래에서 직접 찾아 보세요.',
+      'no-match': '최근 코딩 요청의 이름과 맞는 위치를 지도에서 찾지 못했어요. 아래에서 다른 이름으로 찾아 보세요.',
+    }
+
     function Button({ children, primary, ...props }) {
       return h('button', { type: 'button', className: 'dcm-button' + (primary ? ' dcm-primary' : ''), ...props }, children)
     }
@@ -119,6 +128,39 @@ window.__ModuleLoader__.load({
     function PathText({ value }) {
       return h('code', null, value.split('/').flatMap((part, index) =>
         index ? ['/', h('wbr', { key: index }), part] : [part]))
+    }
+
+    function count(value) {
+      return value === null || value === undefined ? '확인 안 됨' : value + '개'
+    }
+
+    // Always shown, even at zero: the numbers say how much of the repository
+    // the map could not read, so a short list is not mistaken for a full one.
+    function Coverage({ coverage }) {
+      if (!coverage) return null
+      const gaps = [
+        ['미인덱스', coverage.notIndexed],
+        ['부분 파싱', coverage.partial],
+        ['파싱 불가', coverage.unusable],
+      ]
+      return h('div', { className: 'dcm-details' },
+        h('ul', { className: 'dcm-gaps', 'aria-label': '지도에서 읽지 못한 범위' },
+          gaps.map(([label, value]) => h('li', { key: label, className: 'dcm-gap', 'data-warn': value > 0 || undefined },
+            label + ' ' + count(value)))),
+        h('p', { className: 'dcm-muted' },
+          '지도에 없는 파일이나 실행할 때만 이어지는 호출은 사용처에 나오지 않아요. 사용처가 없다고 나와도 의존이 없다는 뜻은 아니에요.'))
+    }
+
+    function CallersResult({ callers }) {
+      const shown = callers.candidates.length
+      const total = Number.isSafeInteger(callers.total) ? callers.total : null
+      return h('div', { className: 'dcm-details', 'aria-live': 'polite' },
+        h('h4', { className: 'dcm-symbol', title: callers.name }, callers.name + ' 사용처'),
+        shown ? h(LocationList, { rows: callers.candidates })
+          : h('p', { className: 'dcm-muted' }, total === 0
+            ? '지도에서 찾은 사용처가 없어요. 확인 안 됨과는 달라서, 아래 읽지 못한 범위를 함께 봐 주세요.'
+            : total ? '사용처 ' + total + '곳이 있지만 위치를 표시하지 못했어요.' : '지도에서 확인된 사용처를 표시할 수 없어요.'),
+        total > shown && shown > 0 && h('p', { className: 'dcm-muted' }, '사용처 ' + total + '곳 중 ' + shown + '곳만 보여요.'))
     }
 
     function LocationList({ rows, onCallers, onDraft, busy }) {
@@ -173,7 +215,7 @@ window.__ModuleLoader__.load({
         result.analyzing && h('p', { className: 'dcm-muted' }, '호출 관계를 확인하고 있어요.'),
         result.partial && h('p', { className: 'dcm-muted' }, '일부 파일의 연결은 확인하지 못했어요.'),
         !result.analyzing && !result.partial && !!result.files.length && !result.candidates.length &&
-          h('p', { className: 'dcm-muted' }, '코드 지도에서 확인된 사용처가 없어요.'))
+          h('p', { className: 'dcm-muted' }, '코드 지도에서 확인된 사용처가 없어요. 읽지 못한 범위가 있으면 의존이 없다는 뜻은 아니에요.'))
     }
 
     function Impact({ data, onDraft }) {
@@ -344,7 +386,9 @@ window.__ModuleLoader__.load({
           data.enabled && (ready || data.state === 'indexing') && h('section', { className: 'dcm-card dcm-start', 'aria-busy': data.state === 'indexing' },
               h('div', { className: 'dcm-card-title' },
                 h('h3', null, '어디부터 볼까요?'),
-                !!data.focus?.length && found === null && h('p', { className: 'dcm-muted' }, '최근 코딩 요청에서 DSH가 참고한 위치예요.')),
+                !!data.focus?.length && found === null && h('p', { className: 'dcm-muted' }, '최근 코딩 요청에서 DSH가 참고한 위치예요.'),
+                !data.focus?.length && found === null && FOCUS_NOTE[data.focusNote] &&
+                  h('p', { className: 'dcm-muted' }, FOCUS_NOTE[data.focusNote])),
               h('form', { className: 'dcm-form', onSubmit: find },
                 h('div', { className: 'dcm-field' },
                   h('label', { htmlFor: field }, '함수나 파일 이름'),
@@ -354,14 +398,12 @@ window.__ModuleLoader__.load({
               h('div', { 'aria-live': 'polite' }, rows.length
                 ? h(LocationList, { rows, onCallers: ready ? showCallers : null, busy })
                 : found && h('p', { className: 'dcm-muted' }, '이름이 맞는 위치를 찾지 못했어요. 파일명이나 함수 이름으로 다시 찾아 보세요.')),
-              callers && h('div', { className: 'dcm-details', 'aria-live': 'polite' },
-                h('h4', { className: 'dcm-symbol', title: callers.name }, callers.name + ' 사용처'),
-                callers.candidates.length
-                  ? h(LocationList, { rows: callers.candidates })
-                  : h('p', { className: 'dcm-muted' }, '지도에서 확인된 사용처를 표시할 수 없어요.'))),
+              callers && h(CallersResult, { callers }),
+              data.coverage && h(Coverage, { coverage: data.coverage })),
           data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft }),
           data.enabled && data.indexedAt && h('p', { className: 'dcm-muted dcm-footer' },
-            '지도 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt)),
+            '지도 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt) +
+            (Number.isFinite(data.indexMs) ? ' · ' + Math.max(0.1, Math.round(data.indexMs / 100) / 10) + '초 걸림' : '')),
           h('p', { className: 'dcm-muted dcm-status', role: 'status' }, notice)))
     }
 

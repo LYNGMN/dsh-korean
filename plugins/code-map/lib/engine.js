@@ -103,6 +103,27 @@ function patterns(query, auto) {
 }
 
 const periodOrSlash = word => /[./]/.test(word)
+
+// Counts come straight from the index result. A missing field stays null, so
+// the screen can say "unknown" instead of showing a reassuring zero.
+const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null
+
+export function coverageOf(result) {
+  return {
+    notIndexed: count(result?.not_indexed_files_count),
+    partial: count(result?.parse_partial_count),
+    unusable: count(result?.parse_unusable_count),
+    skipped: count(result?.skipped_count),
+  }
+}
+
+// True when the request names something the index can look up exactly: a
+// path or an identifier-shaped word. Plain Korean sentences do not.
+export function hasIdentifier(query) {
+  if (typeof query !== 'string') return false
+  const terms = patterns(query, true)
+  return terms.paths.length + terms.names.length > 0
+}
 const uniqueLocations = rows => [...new Map(rows.map(row => [row.id, row])).values()]
 
 export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
@@ -163,7 +184,7 @@ export function createEngine({ executable, cacheDir, runtimeDir } = {}) {
       if (!['indexed', 'degraded'].includes(result.status) || typeof result.project !== 'string') {
         throw new Error('analysis-failed')
       }
-      return result
+      return { ...result, coverage: coverageOf(result) }
     },
     async search(root, project, query, { auto = false, signal } = {}) {
       const terms = patterns(query, auto)

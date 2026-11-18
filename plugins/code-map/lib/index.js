@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { access, mkdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
-import { createEngine, repositoryOf, rootKey } from './engine.js'
+import { createEngine, hasIdentifier, repositoryOf, rootKey } from './engine.js'
 import { captureChanges, compareChanges } from './changes.js'
 
 export const name = 'dsh-code-map'
@@ -14,6 +14,8 @@ const SOURCE = 'dsh-code-map'
 const SESSION = /^[\w.:-]{1,200}$/
 const CONTEXT_LIMIT_MS = 950
 const MAX_SESSIONS = 128
+// A turn that changed nothing skips re-indexing while the map is this fresh.
+const IDLE_REFRESH_MS = 10 * 60_000
 const CODE = /코드|함수|메서드|저장소|컴포넌트|테스트|인덱스|라우트|플러그인|호출|[a-z][A-Z]|[a-z][a-z0-9_-]*\.(?:[cm]?js|tsx?|py|go|rs|yml|yaml|json|css)\b|\b(?:code|bug|function|test|caller|plugin|module|route|repo|component|method|refactor)\b/u
 const TASK = /고치|고쳐|수정|변경|추가|개선|만들|구현|확인|어디|찾[아기]|분석|점검|리팩|오류|버그|조사|\b(?:fix|change|update|add|find|where|check|review|implement|refactor|bug|trace|debug|show|explain)\b/iu
 
@@ -137,8 +139,11 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
       enabled: !!state?.enabled,
       focus: state?.enabled && session?.root === root ? session.focus : [],
       ...(state?.enabled && session?.root === root && { requestImpact: session.requestImpact }),
+      ...(state?.enabled && session?.root === root && session.focusNote && { focusNote: session.focusNote }),
       ...(state?.enabled && {
         indexedAt: state.indexedAt,
+        indexMs: state.indexMs,
+        coverage: state.coverage,
         partial: state.partial,
         impact: state.impact,
         impactUnavailable: state.impactUnavailable,
@@ -163,12 +168,16 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
         state.impact = undefined
         state.impactUnavailable = false
         try {
+          const started = Date.now()
           const indexed = await engine.index(root, signal)
           if (signal.aborted) return
           state.project = indexed.project
           state.indexedAt = Date.now()
+          state.indexMs = state.indexedAt - started
+          state.coverage = indexed.coverage
           state.partial = indexed.status === 'degraded' ||
-            Number(indexed.skipped_count) > 0 || Number(indexed.not_indexed_files_count) > 0
+            ['skipped_count', 'not_indexed_files_count', 'parse_partial_count', 'parse_unusable_count']
+              .some(key => Number(indexed[key]) > 0)
         } catch (error) {
           if (!signal.aborted) state.error = error.code === 'engine-missing' ? 'engine-missing' : 'analysis-failed'
           return
@@ -210,6 +219,8 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
         current.error = undefined
         current.project = undefined
         current.indexedAt = undefined
+        current.indexMs = undefined
+        current.coverage = undefined
         current.impact = undefined
         for (const active of activeByRoot.get(root) ?? []) {
           active.disabled = true
@@ -255,6 +266,10 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
       if (taskSignal.aborted || active.disabled || turns.get(session) !== active) return
       active.before = captured
       entry.focus = found.slice(0, 3)
+      // Say why nothing was attached, so an empty list is not read as "no match exists".
+      if (!entry.focus.length && state.project && !state.job && !state.error) {
+        entry.focusNote = hasIdentifier(prompt) ? 'no-match' : 'no-identifier'
+      }
       return entry.focus
     })
     return rows?.length && !signal?.aborted ? { ...decision, messages: [...decision.messages, contextOf(rows)] } : decision
@@ -264,8 +279,10 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
     if (!root || active.disabled || lifecycle.signal.aborted || !projects.get(root)?.enabled) return
     const latest = sessions.get(session.id)
     if (latest && latest.sequence > active.sequence) return
-    const focus = active.entry?.root === root ? active.entry.focus : []
-    remember(session.id, { root, sequence: active.sequence, focus, requestImpact: result })
+    const same = active.entry?.root === root
+    const focus = same ? active.entry.focus : []
+    remember(session.id, { root, sequence: active.sequence, focus, requestImpact: result,
+      ...(same && active.entry.focusNote && { focusNote: active.entry.focusNote }) })
   }
 
   async function turnEnded(session, event) {
@@ -304,7 +321,10 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
       // Refresh the independent repository-wide view even when this turn
       // could not be attributed.
       if (sameRoot) {
-        await refresh(session.id, root, { again: true })
+        const known = projects.get(root)
+        const idle = result.status === 'ready' && !result.files.length && !result.partial &&
+          known?.project && !known.error && !known.job && Date.now() - known.indexedAt < IDLE_REFRESH_MS
+        if (!idle) await refresh(session.id, root, { again: true })
         const state = projects.get(root)
         if (result.status === 'ready' && result.files.length && !active.overlapped && !active.disabled) {
           const analysisSignal = AbortSignal.any([lifecycle.signal, AbortSignal.timeout(8000)])
