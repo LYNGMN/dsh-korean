@@ -408,7 +408,8 @@ window.__ModuleLoader__.load({
       link: 'var(--dsw-alias-link, #2563eb)',
       success: 'var(--dsw-alias-label-success, #15803d)',
       danger: 'var(--dsw-alias-label-danger, #b91c1c)',
-      codeBg: 'var(--dsw-alias-bg-layer-3, #f3f4f6)'
+      // A tint of the text colour, so the chip shows on any DSH background in both themes.
+      codeBg: 'color-mix(in srgb, currentColor 10%, transparent)'
     }
 
     const styles = {
@@ -419,7 +420,7 @@ window.__ModuleLoader__.load({
       code: {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         fontSize: '0.92em',
-        padding: '1px 6px',
+        padding: '1px 4px',
         borderRadius: 4,
         background: color.codeBg,
         color: color.primary,
