@@ -44,7 +44,11 @@ test('키트 플러그인 모두를 한 번에 link:로 넣는다', () => {
   const result = run([])
   assert.equal(result.status, 0, result.stderr)
   const links = FOLDERS.map((folder) => `link:${join(ROOT, 'plugins', folder)}`)
-  assert.deepEqual(calls(), [`plugin --profile desktop add ${links.join(' ')}`])
+  const made = calls()
+  assert.equal(made.length, 1)
+  assert.ok(made[0].startsWith('plugin --profile desktop add '))
+  // The shell lists folders in glob order ("search-brave/" before "search/"); the order does not matter.
+  assert.deepEqual(made[0].slice('plugin --profile desktop add '.length).split(' ').sort(), links.sort())
 })
 
 test('다른 이름으로 깔린 같은 플러그인은 허락을 받고 먼저 뺀다', () => {
