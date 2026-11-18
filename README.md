@@ -70,6 +70,11 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>대화 보기 방식에 '작업 단계' 탭을 더해 작업실 만들기부터 배포까지 Git 작업이 어디쯤인지, 다음에 무엇을 승인해야 하는지 보여 줘요.</td>
 </tr>
 <tr>
+<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>코드 지도</strong></td>
+<td>작업 단계 옆에서 관련 코드와 변경 뒤 함께 확인할 곳을 보여 주고, 지도가 읽지 못한 범위도 알려 줘요. Codebase Memory 실행 파일이 필요해요. <a href="plugins/code-map/README.md">설치 안내</a></td>
+</tr>
+<tr>
 <td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""></td>
 <td nowrap><strong>검색</strong></td>
 <td>Exa·Brave·네이버·카카오를 비롯한 여러 웹검색 엔진과, 정한 순서로 차례로 쓰는 자동 엔진(<code>auto</code>), 엔진 고르기 창이 있는 <code>/search</code> 명령을 더해요. 엔진별 키·순서·결과 수는 플러그인 페이지에서 정해요.<br>이번 검색만 바꾸려면 <code>/search naver 30 서울 날씨</code>나 <code>/search exa max 서울 날씨</code>처럼 써요.<br>키 없이: You.com·Parallel·Keenable·Tavily·Firecrawl·Bing<br>키 필요: Exa·Brave·네이버·카카오·TinyFish·Jina<br>묶음: 한국(네이버+카카오) <code>/search ko</code>·<code>ko-group</code>·<code>ko-seq</code><br>예전 Brave Search·Exa Search·검색 자동 전환을 합쳤어요. <code>/brave</code>·<code>/exa</code>와 <code>brave_search</code>·<code>exa_search</code>는 그대로 써요.</td>

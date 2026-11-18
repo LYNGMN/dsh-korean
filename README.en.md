@@ -70,6 +70,11 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>Adds a Work stages tab to the conversation views that shows where the session's Git work stands, from branch to deploy, and what needs your approval next.</td>
 </tr>
 <tr>
+<td align="center"><img src="plugins/code-map/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Code Map</strong></td>
+<td>Shows relevant code locations and change-impact candidates in a conversation tab next to Work stages, and says which parts the map could not read. Requires the Codebase Memory executable. <a href="plugins/code-map/README.md">Setup</a></td>
+</tr>
+<tr>
 <td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""></td>
 <td><strong>Search</strong></td>
 <td>Adds web search engines, Exa, Brave, Naver and Kakao among them, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page.<br>To change a single search, write <code>/search naver 30 서울 날씨</code> or <code>/search exa max 서울 날씨</code>.<br>No key needed: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing<br>Key required: Exa, Brave, Naver, Kakao, TinyFish, Jina<br>Group: Korea (Naver + Kakao) <code>/search ko</code>, <code>ko-group</code>, <code>ko-seq</code><br>It replaces the old Brave Search, Exa Search and search fallback plugins. <code>/brave</code>, <code>/exa</code>, <code>brave_search</code> and <code>exa_search</code> keep working.</td>
