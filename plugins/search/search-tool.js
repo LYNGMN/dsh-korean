@@ -274,9 +274,17 @@ export function parseCommandInput(raw, engines) {
 }
 
 /** The steering text the command hands to the agent. */
-export function commandPrompt(question, engine, count) {
-  const countPart = count === undefined ? '' : ` and count "${count}"`
-  return `${question}\n\n(Search instruction for this request: do the web searches with the ${TOOL_NAME} tool, engine "${engine}"${countPart}, instead of web_search. You may still use web_fetch to read a result.)`
+export function commandPrompt(question, engine, count, t = englishText) {
+  const key = count === undefined ? 'steerEngine' : 'steerEngineCount'
+  return `${question}\n\n${t(key, { tool: TOOL_NAME, engine, count })}`
+}
+
+/**
+ * The instruction a command adds under the question. The user sees it in the
+ * chat, so it follows the DSH language; the tool and engine names stay as they are.
+ */
+function englishText(key, params) {
+  return String(COMMAND_TEXT.en[key]).replace(/\{(\w+)\}/g, (_, name) => String(params?.[name] ?? ''))
 }
 
 /** User-facing text of the slash command, by DSH language. */
@@ -292,7 +300,11 @@ export const COMMAND_TEXT = Object.freeze({
     searchingCapped: 'Searching with {engine}, at most {count} results (its maximum).',
     singleHint: '[max|count] <question>',
     singleUsage: 'Usage: /{command} [max|count] <question>',
-    singleFailed: '/{command} failed: {message}'
+    singleFailed: '/{command} failed: {message}',
+    steerEngine: '(Search instruction for this request: do the web searches with the {tool} tool, engine "{engine}", instead of web_search. You may still use web_fetch to read a result.)',
+    steerEngineCount: '(Search instruction for this request: do the web searches with the {tool} tool, engine "{engine}" and count "{count}", instead of web_search. You may still use web_fetch to read a result.)',
+    steerSingle: '(Search instruction for this request: do the web searches with the {tool} tool, instead of web_search. You may still use web_fetch to read a result.)',
+    steerSingleCount: '(Search instruction for this request: do the web searches with the {tool} tool and count "{count}", instead of web_search. You may still use web_fetch to read a result.)'
   },
   ko: {
     description: '이번 요청만 고른 엔진으로 웹검색해요(/search auto, /search naver 30)',
@@ -305,7 +317,11 @@ export const COMMAND_TEXT = Object.freeze({
     searchingCapped: '{engine}로 최대 {count}개 검색해요.',
     singleHint: '[max|개수] <질문>',
     singleUsage: '사용법: /{command} [max|개수] <질문>',
-    singleFailed: '/{command} 실패: {message}'
+    singleFailed: '/{command} 실패: {message}',
+    steerEngine: '(이번 요청 검색 안내: 웹 검색은 web_search 대신 {tool} 도구로 해 주세요. 엔진: "{engine}". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)',
+    steerEngineCount: '(이번 요청 검색 안내: 웹 검색은 web_search 대신 {tool} 도구로 해 주세요. 엔진: "{engine}", 개수: "{count}". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)',
+    steerSingle: '(이번 요청 검색 안내: 웹 검색은 web_search 대신 {tool} 도구로 해 주세요. 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)',
+    steerSingleCount: '(이번 요청 검색 안내: 웹 검색은 web_search 대신 {tool} 도구로 해 주세요. 개수: "{count}". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)'
   }
 })
 
@@ -336,7 +352,7 @@ export function registerSearchCommand(ctx, { engines, titles, grants, maxFor = (
         invocation.agent.steer(Object.freeze({
           role: 'user',
           id: randomUUID(),
-          content: Object.freeze([Object.freeze({ type: 'text', text: commandPrompt(question, engine, count) })]),
+          content: Object.freeze([Object.freeze({ type: 'text', text: commandPrompt(question, engine, count, t) })]),
           source: Object.freeze({ kind: 'user' })
         }))
       } catch (error) {
@@ -379,9 +395,9 @@ export function parseSingleInput(raw) {
 }
 
 /** The steering text `/brave` and `/exa` hand to the agent. */
-export function singlePrompt(question, toolName, count) {
-  const countPart = count === undefined ? '' : ` and count "${count}"`
-  return `${question}\n\n(Search instruction for this request: do the web searches with the ${toolName} tool${countPart}, instead of web_search. You may still use web_fetch to read a result.)`
+export function singlePrompt(question, toolName, count, t = englishText) {
+  const key = count === undefined ? 'steerSingle' : 'steerSingleCount'
+  return `${question}\n\n${t(key, { tool: toolName, count })}`
 }
 
 function localized(value, locale) {
@@ -411,7 +427,7 @@ export function registerSingleEngineCommand(ctx, { commandName, toolName, engine
             invocation.agent.steer(Object.freeze({
               role: 'user',
               id: randomUUID(),
-              content: Object.freeze([Object.freeze({ type: 'text', text: singlePrompt(question, toolName, count) })]),
+              content: Object.freeze([Object.freeze({ type: 'text', text: singlePrompt(question, toolName, count, t) })]),
               source: Object.freeze({ kind: 'user' })
             }))
           } catch (error) {
