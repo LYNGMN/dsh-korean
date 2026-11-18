@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { Config, AutoSearchProvider, KoreaSearchProvider, QUOTA_COOLDOWN_MS, apply, errorDetail } from '../index.js'
+import { Config, AutoSearchProvider, KoreaSearchProvider, KOREA_MODES, LEGACY_ORDERS, QUOTA_COOLDOWN_MS, apply, errorDetail, readKeyFile, readWebSearchProvider } from '../index.js'
+import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   PROVIDER_IDS,
   buildRequest,
@@ -10,6 +13,7 @@ import {
   normalizeOrder,
   readVolatile,
   resultCount,
+  LEGACY_KNOWN_ENGINES,
   looksRelevant,
   normalizeSettings,
   parseMcpMessage,
@@ -51,39 +55,61 @@ function stubFetch(t, respond) {
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 
-test('apply registers every engine, the automatic and the Korean one, the engine_search tool and /search', () => {
+test('apply registers every engine, the automatic and the Korean one, the legacy orders, the tools and the commands', () => {
   const { providers, tools, commands } = register()
-  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto', 'korea'])
+  assert.deepEqual(providers.map((p) => p.id), [...PROVIDER_IDS, 'auto', 'korea', 'exa-brave', 'brave-exa', 'exa-brave-free', 'free-only', 'exa-brave-auto'])
   for (const p of providers) {
     assert.equal(p.available(), true)
     assert.ok(p.title)
     assert.match(p.description.ko, /[가-힣]/)
     assert.ok(p.description.en)
   }
-  assert.deepEqual(tools.map((tool) => tool.name), ['engine_search'])
-  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', 'korea', ...PROVIDER_IDS])
-  assert.deepEqual(commands.map((command) => command.name), ['search'])
+  assert.deepEqual(tools.map((tool) => tool.name), ['engine_search', 'exa_search', 'brave_search'])
+  assert.deepEqual(tools[0].parameters.properties.engine.enum, ['auto', 'korea', 'korea-group', 'korea-seq', ...PROVIDER_IDS])
+  assert.equal(tools[1].parameters.properties.engine, undefined)
+  assert.deepEqual(commands.map((command) => command.name), ['search', 'exa', 'brave'])
 })
 
 test('the providers list in the config limits what is registered and the automatic order follows it', () => {
-  const { providers } = register({ providers: ['bing', 'tavily', 'nope'] })
-  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto'])
-  const settings = normalizeSettings({ providers: ['bing', 'naver'], autoOrder: ['bing', 'naver', 'naver', 'x'] })
+  const { providers } = register({ providers: ['bing', 'tavily', 'nope'], providersKnown: PROVIDER_IDS })
+  // A fixed legacy order needs one of its engines; exa-brave-auto is the automatic order.
+  assert.deepEqual(providers.map((p) => p.id), ['tavily', 'bing', 'auto', 'exa-brave-free', 'free-only', 'exa-brave-auto'])
+  const settings = normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS, autoOrder: ['bing', 'naver', 'naver', 'x'], autoKnown: PROVIDER_IDS })
   assert.deepEqual(settings.autoOrder(), ['bing', 'naver'])
-  assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'] }).autoOrder(), ['naver', 'bing'])
+  assert.deepEqual(normalizeSettings({ providers: ['bing', 'naver'], providersKnown: PROVIDER_IDS }).autoOrder(), ['naver', 'bing'])
+})
+
+test('a providers list saved before Exa and Brave existed still registers them, unless providersKnown says it was left out', () => {
+  const legacy = ['you', 'parallel', 'keenable', 'tavily', 'tinyfish', 'jina', 'firecrawl', 'naver', 'kakao', 'bing']
+  // The desktop profile kept the 1.1 list after the card saved its order (2026-11-18).
+  assert.deepEqual(normalizeSettings({ providers: legacy }).providers, PROVIDER_IDS)
+  assert.deepEqual(normalizeSettings({ providers: legacy, autoOrder: legacy }).autoOrder(), PROVIDER_IDS)
+  const { providers, tools, commands } = register({ providers: legacy })
+  assert.ok(providers.some((p) => p.id === 'exa') && providers.some((p) => p.id === 'brave'))
+  assert.deepEqual(tools.map((tool) => tool.name), ['engine_search', 'exa_search', 'brave_search'])
+  assert.deepEqual(commands.map((command) => command.name), ['search', 'exa', 'brave'])
+  // Written with every engine known: Exa left out stays out.
+  assert.deepEqual(normalizeSettings({ providers: ['brave', 'naver'], providersKnown: PROVIDER_IDS }).providers, ['brave', 'naver'])
+  assert.deepEqual(normalizeSettings({ providers: [] }).providers, [])
 })
 
 test('the automatic order is a volatile setting: no language priority, read again on every search', () => {
-  // The default order does not put Korean engines first.
+  // The default order does not put Korean engines first; Exa, then Brave lead (2026-11-17 decision).
   assert.deepEqual(normalizeOrder(undefined), PROVIDER_IDS)
-  assert.equal(PROVIDER_IDS[0], 'you')
+  assert.deepEqual(PROVIDER_IDS.slice(0, 3), ['exa', 'brave', 'you'])
   assert.deepEqual(normalizeOrder([]), [])
-  assert.deepEqual(normalizeOrder([' kakao', 'you', 'kakao', 'google']), ['kakao', 'you'])
+  assert.deepEqual(normalizeOrder([' kakao', 'you', 'kakao', 'google'], PROVIDER_IDS, PROVIDER_IDS), ['kakao', 'you'])
+  // An order saved before Exa and Brave existed (no autoKnown) gets them at their default place.
+  assert.deepEqual(normalizeOrder(['kakao', 'you']), ['kakao', 'exa', 'brave', 'you'])
+  assert.deepEqual(normalizeOrder(LEGACY_KNOWN_ENGINES), PROVIDER_IDS)
+  assert.deepEqual(normalizeOrder(['bing']), ['exa', 'brave', 'bing'])
+  // Once the page saves autoKnown, an unchecked Exa or Brave stays out.
+  assert.deepEqual(normalizeOrder(['kakao', 'you'], PROVIDER_IDS, PROVIDER_IDS), ['kakao', 'you'])
   assert.equal(readVolatile({ get: () => ['bing'] })[0], 'bing')
   assert.equal(readVolatile('plain'), 'plain')
 
   let current = ['kakao', 'bing']
-  const settings = normalizeSettings({ autoOrder: { get: () => current } })
+  const settings = normalizeSettings({ autoOrder: { get: () => current }, autoKnown: { get: () => PROVIDER_IDS } })
   assert.deepEqual(settings.autoOrder(), ['kakao', 'bing'])
   current = ['you']
   assert.deepEqual(settings.autoOrder(), ['you'])
@@ -102,9 +128,9 @@ test('the automatic order is a volatile setting: no language priority, read agai
   assert.deepEqual(config.providers, PROVIDER_IDS)
 })
 
-test('the bundle patch does not pick web.searchProvider and names every key', async () => {
+test('the bundle patch picks the automatic engine for web_search and names every key', async () => {
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  assert.doesNotMatch(patch, /^- id: web\b/m)
+  assert.match(patch, /^- id: web\n  config:\n    searchProvider: auto\n    fetchProvider: http$/m)
   for (const names of Object.values(SETTINGS.keyNames)) for (const name of names) assert.match(patch, new RegExp(name))
 })
 
@@ -249,7 +275,7 @@ test('the search uses a stored key when there is one and the keyless tier otherw
   await provider('tavily', { counts: { tavily: 3 } }).search({ query: 'q', maxResults: 15 })
   assert.equal(calls[0].init.headers['x-tavily-access-mode'], 'keyless')
   assert.equal(JSON.parse(calls[0].init.body).max_results, 3)
-  assert.equal(calls[0].init.headers['user-agent'], 'dsh-search/1.1.0')
+  assert.equal(calls[0].init.headers['user-agent'], 'dsh-search/1.2.0')
 
   await provider('tavily', {}, { TAVILY_API_KEY: 'secret-tavily' }).search({ query: 'q' })
   assert.equal(calls[1].init.headers.authorization, 'Bearer secret-tavily')
@@ -350,7 +376,8 @@ const fails = (message, extra = {}) => () => { throw Object.assign(new Error(mes
 
 function auto(map, { now = () => 0, order } = {}) {
   const providers = new Map(Object.entries(map).map(([id, behaviour]) => [id, fake(id, behaviour)]))
-  const settings = normalizeSettings({ autoOrder: order })
+  // An order saved now knows every engine, so none is added to it.
+  const settings = normalizeSettings({ autoOrder: order, autoKnown: order === undefined ? undefined : PROVIDER_IDS })
   return { auto: new AutoSearchProvider({ providers, settings, now }), providers }
 }
 
@@ -411,7 +438,9 @@ test('korea searches Naver and Kakao together, alternating results and merging U
   ])
   const korea = new KoreaSearchProvider({ providers })
   const result = await korea.search({ query: '서울' })
-  assert.deepEqual(result.sources.map((s) => s.url), ['https://a.kr', 'https://x.kr', 'https://b.kr/', 'https://c.kr'])
+  // A page both engines found comes first; the rest alternate, one from each engine.
+  assert.deepEqual(result.sources.map((s) => s.url), ['https://b.kr/', 'https://a.kr', 'https://x.kr', 'https://c.kr'])
+  assert.deepEqual(result.sources.map((s) => s.snippet), ['[NAVER + KAKAO]', '[NAVER]', '[KAKAO]', '[NAVER]'])
   assert.equal(result.answeredBy, 'NAVER + KAKAO')
   assert.equal(providers.get('naver').calls, 1)
   assert.equal(providers.get('kakao').calls, 1)
@@ -429,6 +458,76 @@ test('korea searches Naver and Kakao together, alternating results and merging U
     ['kakao', fake('kakao', fails('kakao needs a key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))]
   ]) })
   await assert.rejects(none.search({ query: 'q' }), (error) => error.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' && /naver needs a key; kakao: kakao needs a key/.test(error.message))
+})
+
+test('korea modes: the detailed answer marks finders and counts, korea-group lists by engine, korea-seq goes in turn', async () => {
+  const two = (urls) => () => ({ sources: urls.map((url) => ({ url, snippet: 's' })), truncated: false })
+  const map = () => new Map([
+    ['naver', fake('naver', two(['https://a.kr', 'https://b.kr/', 'https://c.kr']))],
+    ['kakao', fake('kakao', two(['https://x.kr', 'https://B.kr']))]
+  ])
+  const merged = await new KoreaSearchProvider({ providers: map() }).searchDetailed({ query: '서울' })
+  assert.equal(merged.layout, 'merged')
+  assert.equal(merged.summary, 'NAVER 3, KAKAO 2, in both 1')
+  assert.deepEqual(merged.sources[0].from, ['NAVER', 'KAKAO'])
+  assert.equal(merged.sources[0].snippet, 's')
+
+  const grouped = await new KoreaSearchProvider({ providers: map(), mode: 'group' }).searchDetailed({ query: '서울' })
+  assert.equal(grouped.layout, 'grouped')
+  assert.deepEqual(grouped.sources.map((s) => [s.group, s.url]), [
+    ['NAVER', 'https://a.kr'], ['NAVER', 'https://b.kr/'], ['NAVER', 'https://c.kr'], ['KAKAO', 'https://x.kr']
+  ])
+  assert.equal(new KoreaSearchProvider({ providers: map(), mode: 'group' }).id, KOREA_MODES.group)
+
+  // One engine without a key: the summary says so.
+  const half = new KoreaSearchProvider({ providers: new Map([
+    ['naver', fake('naver', fails('no key', { code: 'WEB_PROVIDER_CREDENTIAL_MISSING' }))],
+    ['kakao', fake('kakao', two(['https://x.kr']))]
+  ]) })
+  assert.equal((await half.searchDetailed({ query: 'q' })).summary, 'KAKAO 1, NAVER has no key')
+
+  // korea-seq is an automatic engine over Naver then Kakao: Kakao only when Naver finds nothing.
+  const { tools, providers } = register()
+  assert.ok(!providers.some((p) => p.id === 'korea-group' || p.id === 'korea-seq'), 'only korea is a web_search provider')
+  assert.ok(tools[0].parameters.properties.engine.enum.includes('korea-seq'))
+  const seqMap = new Map([['naver', fake('naver', nothing)], ['kakao', fake('kakao', found('https://k.kr'))]])
+  const seq = new AutoSearchProvider({ providers: seqMap, settings: normalizeSettings({}), now: () => 0, id: KOREA_MODES.sequence, order: ['naver', 'kakao'] })
+  const answer = await seq.search({ query: 'q' })
+  assert.deepEqual(answer.sources.map((s) => s.url), ['https://k.kr'])
+  assert.equal(seqMap.get('naver').calls, 1)
+})
+
+test('the legacy order names follow web.searchProvider: only the picked one, or all when it cannot be read', () => {
+  const describe = (value) => ({ get: (name) => (name === 'settings' ? { describe: () => [{ ns: 'search', value: {} }, { ns: 'web', value }] } : undefined) })
+  assert.equal(readWebSearchProvider(describe({ searchProvider: 'exa-brave' })), 'exa-brave')
+  assert.equal(readWebSearchProvider(describe({})), undefined)
+  assert.equal(readWebSearchProvider({ get: () => undefined }), null)
+  assert.equal(readWebSearchProvider({ get: () => { throw new Error('not ready') } }), null)
+
+  const ids = (value) => {
+    const found = []
+    const listeners = []
+    const onUpdate = (...args) => listeners.forEach((listener) => listener(...args))
+    apply({
+      ...describe(value),
+      on: (name, listener) => { if (name === 'settings/document-updated') listeners.push(listener) },
+      web: { registerSearchProvider: (p) => found.push(p.id) },
+      tools: { register() {} },
+      commands: { register() {} }
+    }, {})
+    return { found, onUpdate }
+  }
+  const picked = ids({ searchProvider: 'brave-exa' })
+  assert.deepEqual(picked.found.filter((id) => id in LEGACY_ORDERS), ['brave-exa'])
+  const plain = ids({ searchProvider: 'auto' })
+  assert.deepEqual(plain.found.filter((id) => id in LEGACY_ORDERS), [])
+  // Switching later (a patch or the CLI) registers the one now picked.
+  const later = { searchProvider: 'auto' }
+  const live = ids(later)
+  later.searchProvider = 'exa-brave'
+  live.onUpdate('web', 2)
+  live.onUpdate('web', 3)
+  assert.deepEqual(live.found.filter((id) => id in LEGACY_ORDERS), ['exa-brave'])
 })
 
 test('korea is registered as a provider and an engine of the tool, but not part of auto', () => {
@@ -473,4 +572,118 @@ test('korea hands the per-search count to both members', async () => {
   const korea = new KoreaSearchProvider({ providers: new Map([['naver', member('naver')], ['kakao', member('kakao')]]) })
   await korea.search({ query: '서울', userCount: 'max' })
   assert.deepEqual(seen.sort(), [['kakao', 'max'], ['naver', 'max']])
+})
+
+test('Exa and Brave requests: headers, options and their own result limits', () => {
+  const exa = buildRequest('exa', { query: 'q', count: 500, keys: ['ek'], settings: SETTINGS })
+  assert.equal(exa.url, 'https://api.exa.ai/search')
+  assert.equal(exa.init.method, 'POST')
+  assert.equal(exa.init.headers['x-api-key'], 'ek')
+  assert.deepEqual(JSON.parse(exa.init.body), { query: 'q', numResults: 100, type: 'auto', contents: { highlights: { maxCharacters: 400 } } })
+
+  const options = normalizeSettings({ safeSearch: 'strict', brave: { country: 'KR', searchLang: 'ko', uiLang: 'ko-KR' }, exa: { type: 'fast', snippetChars: 200 } })
+  const brave = buildRequest('brave', { query: '서울', count: 50, keys: ['bk'], settings: options })
+  const url = new URL(brave.url)
+  assert.equal(url.origin + url.pathname, 'https://api.search.brave.com/res/v1/web/search')
+  assert.equal(brave.init.headers['x-subscription-token'], 'bk')
+  assert.deepEqual(Object.fromEntries(url.searchParams), { q: '서울', count: '20', text_decorations: 'false', safesearch: 'strict', country: 'KR', search_lang: 'ko', ui_lang: 'ko-KR' })
+  assert.equal(JSON.parse(buildRequest('exa', { query: 'q', count: 5, keys: ['ek'], settings: options }).init.body).type, 'fast')
+  assert.equal(normalizeSettings({ exa: { type: 'nope' } }).exa.type, 'auto')
+})
+
+test('Exa and Brave responses become sources with snippets, dates and no duplicates', () => {
+  const exa = parseResponse('exa', JSON.stringify({ results: [
+    { url: 'https://a.example', title: ' A ', highlights: ['first', '', 'second'], publishedDate: '2026-01-02T00:00:00Z' },
+    { url: 'https://a.example/', title: 'dup' },
+    { url: 'https://b.example', summary: 'x'.repeat(500) },
+    { url: 'ftp://c.example' }
+  ] }), { query: 'q', count: 10, keyed: true, snippetChars: 50 })
+  assert.deepEqual(exa.sources[0], { url: 'https://a.example', title: 'A', snippet: 'first … second', publishedAt: '2026-01-02T00:00:00Z' })
+  assert.equal(exa.sources.length, 2)
+  assert.equal(Array.from(exa.sources[1].snippet).length, 50)
+
+  const brave = parseResponse('brave', JSON.stringify({ web: { results: [
+    { url: 'https://d.example', title: 'D', description: 'a <strong>bold</strong> &amp; plain', page_age: '2025-12-01T10:00:00' }
+  ] } }), { query: 'q', count: 10, keyed: true })
+  assert.deepEqual(brave.sources, [{ url: 'https://d.example', title: 'D', snippet: 'a bold & plain', publishedAt: '2025-12-01T10:00:00' }])
+  assert.deepEqual(parseResponse('brave', '{}', { query: 'q', count: 10, keyed: true }).sources, [])
+})
+
+test('Exa and Brave need a key; they also read the key file their earlier bundles documented', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-search-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const file = join(dir, 'brave-api-key')
+  await writeFile(file, '  file-key\n')
+  assert.equal(await readKeyFile(file), 'file-key')
+  assert.equal(await readKeyFile(join(dir, 'missing')), '')
+  assert.equal(await readKeyFile(undefined), '')
+  await assert.rejects(readKeyFile(dir), (error) => error.code === 'WEB_PROVIDER_ERROR' && error.message.includes(dir))
+
+  const calls = stubFetch(t, () => json({ web: { results: [{ url: 'https://k.example', title: 'K' }] } }))
+  const none = provider('exa', { keyFiles: { exa: join(dir, 'missing') } })
+  await assert.rejects(none.search({ query: 'q' }), (error) => error.code === 'WEB_PROVIDER_CREDENTIAL_MISSING' && /EXA_API_KEY/.test(error.message))
+  assert.equal(calls.length, 0)
+  const brave = provider('brave', { keyFiles: { brave: file } })
+  const result = await brave.search({ query: 'q' })
+  assert.equal(result.sources[0].url, 'https://k.example')
+  assert.equal(calls[0].init.headers['x-subscription-token'], 'file-key')
+  // The credential store wins over the file.
+  await provider('brave', { keyFiles: { brave: file } }, { BRAVE_API_KEY: 'store-key' }).search({ query: 'q' })
+  assert.equal(calls[1].init.headers['x-subscription-token'], 'store-key')
+})
+
+test('the earlier Search Fallback names still answer: fixed Exa → Brave orders and the automatic order', async () => {
+  const { providers } = register({}, {})
+  const byId = Object.fromEntries(providers.map((p) => [p.id, p]))
+  for (const id of Object.keys(LEGACY_ORDERS)) {
+    assert.ok(byId[id], id)
+    assert.match(byId[id].description.ko, /예전 검색 자동 전환/)
+  }
+  assert.deepEqual(byId['exa-brave'].wantedOrder(), ['exa', 'brave'])
+  assert.deepEqual(byId['brave-exa'].wantedOrder(), ['brave', 'exa'])
+  assert.deepEqual(byId['exa-brave-auto'].wantedOrder(), PROVIDER_IDS)
+  // Search Fallback 1.0.1 on main offered these two as well.
+  assert.deepEqual(byId['exa-brave-free'].wantedOrder(), ['exa', 'brave', 'you', 'parallel', 'keenable', 'tavily', 'bing'])
+  assert.deepEqual(byId['free-only'].wantedOrder(), ['you', 'parallel', 'keenable', 'tavily', 'bing'])
+
+  const map = new Map([['exa', fake('exa', fails('credits', { quota: true }))], ['brave', fake('brave', found('https://brave.example'))], ['you', fake('you', found('https://you.example'))]])
+  const exaBrave = new AutoSearchProvider({ providers: map, settings: normalizeSettings({}), now: () => 0, id: 'exa-brave', order: LEGACY_ORDERS['exa-brave'].order })
+  const result = await exaBrave.search({ query: 'q' })
+  assert.equal(result.answeredBy, 'BRAVE')
+  assert.equal(map.get('you').calls, 0, 'a fixed order never reaches other engines')
+})
+
+test('the automatic engine gives each engine only the time left in its budget', async () => {
+  let clock = 0
+  const limits = []
+  const slow = (id, spend) => ({ id, title: id, calls: 0, async search(request) { limits.push([id, request.timeLimitMs]); clock += spend; return { sources: [], truncated: false } } })
+  const providers = new Map([['you', slow('you', 30000)], ['bing', slow('bing', 19000)], ['naver', slow('naver', 0)]])
+  const a = new AutoSearchProvider({ providers, settings: normalizeSettings({ autoOrder: ['you', 'bing', 'naver'], autoKnown: PROVIDER_IDS }), now: () => clock })
+  await a.search({ query: 'q' })
+  // 50 s in all: you gets 50, bing the 20 left; with 1 s left naver is not started.
+  assert.deepEqual(limits, [['you', 50000], ['bing', 20000]])
+})
+
+test('names an older bundle still registers are skipped one by one, and the rest still loads', () => {
+  const warnings = []
+  const existing = new Map([['brave', { id: 'brave' }], ['exa-brave', { id: 'exa-brave' }]])
+  const registered = []
+  const tools = []
+  const commands = []
+  const ctx = {
+    get: () => undefined,
+    logger: () => ({ warn: (line) => warnings.push(line) }),
+    web: {
+      searchProviders: existing,
+      registerSearchProvider: (p) => { if (existing.has(p.id)) throw new Error('duplicate'); existing.set(p.id, p); registered.push(p.id) }
+    },
+    tools: { register: (tool) => { if (tool.name === 'brave_search') throw new Error('tool "brave_search" is already registered'); tools.push(tool.name) } },
+    commands: { register: (command) => { if (command.name === 'brave') throw new Error('command "brave" is already registered'); commands.push(command.name) } }
+  }
+  apply(ctx, {})
+  assert.ok(!registered.includes('brave') && !registered.includes('exa-brave'))
+  assert.ok(registered.includes('exa') && registered.includes('auto') && registered.includes('brave-exa'))
+  assert.deepEqual(tools, ['engine_search', 'exa_search'])
+  assert.deepEqual(commands, ['search', 'exa'])
+  assert.equal(warnings.length, 4, warnings.join('\n'))
 })

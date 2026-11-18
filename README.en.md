@@ -4,7 +4,7 @@
 
 # Korean DeepSeek Harness Kit
 
-**DeepSeek Harness in Korean, and on your phone.**<br>14 plugins, including a Korean language pack, installed with one command.
+**DeepSeek Harness in Korean, and on your phone.**<br>11 plugins, including a Korean language pack, installed with one command.
 
 <p>
   <a href="https://github.com/LYNGMN/dsh-korean/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/LYNGMN/dsh-korean/check.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=check"></a>
@@ -30,7 +30,7 @@
 
 </div>
 
-A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 14 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
+A collection of plugins for using DeepSeek Harness (DSH) in Korean. It bundles 11 plugins by LYNGMN, including a Korean language pack, and installs them all with one command. This is not an official DeepSeek project.
 
 Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plugins screen, where you can turn it on or off.
 
@@ -76,20 +76,8 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>Switches to a spare API key when the current one stops working.</td>
 </tr>
 <tr>
-<td align="center"><img src="plugins/search-brave/icon.svg" width="40" height="40" alt=""><br><strong>Brave Search</strong></td>
-<td>Uses the Brave Search API for web search. Requires an API key.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/search-exa/icon.svg" width="40" height="40" alt=""><br><strong>Exa Search</strong></td>
-<td>Uses the Exa Search API for web search. Requires an API key.</td>
-</tr>
-<tr>
-<td align="center"><img src="plugins/search-fallback/icon.svg" width="40" height="40" alt=""><br><strong>Search fallback</strong></td>
-<td>When a search provider fails, retries with the next one.</td>
-</tr>
-<tr>
 <td align="center"><img src="plugins/search/icon.svg" width="40" height="40" alt=""><br><strong>Search</strong></td>
-<td>Adds several web search engines, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page; one search can ask for more with <code>/search naver 30 …</code> or <code>/search korea max …</code>.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao)</td>
+<td>Adds web search engines, Exa and Brave among them, an automatic engine (<code>auto</code>) that tries them in the order you set, and the <code>/search</code> command with an engine picker. Keys, order and result counts per engine are set on the plugin page; one search can ask for more with <code>/search naver 30 seoul weather</code> or <code>/search exa max seoul weather</code>. The web search engine shows and changes the same value as DSH settings.<br>Keyless: You.com, Parallel, Keenable, Tavily, Firecrawl, Bing / key needed: Exa, Brave, Naver, Kakao, TinyFish, Jina / combined: Korea (Naver + Kakao) <code>/search ko</code>, <code>ko-group</code>, <code>ko-seq</code><br>Replaces the earlier Brave Search, Exa Search and Search fallback plugins; <code>/brave</code>, <code>/exa</code>, <code>brave_search</code> and <code>exa_search</code> keep working.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/auto-review-resilience/icon.svg" width="40" height="40" alt=""><br><strong>Auto review recovery</strong></td>
@@ -188,7 +176,7 @@ Shows what the installer would do without changing anything: which plugins it wo
 
 ### 4. Check
 
-Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 14 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
+Quit DSH completely (⌘Q) and reopen it. If the plugins screen shows 11 cards with icons, the install worked. To switch DSH to Korean, choose Korean under **Settings → General → Language**.
 
 ### Installing a single plugin
 
