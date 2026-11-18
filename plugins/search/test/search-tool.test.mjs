@@ -45,9 +45,12 @@ test('the tool searches the chosen engine and names the engine that answered', a
   assert.match(formatToolOutput('X', { sources: [], truncated: false }), /No results found\./)
 })
 
+/** A DSH settings service whose language preference is `preference`. */
+const settingsIn = (preference) => ({ describe: () => [{ ns: 'locale', value: { preference } }] })
+
 test('/search steers the agent to engine_search with the engine and refuses an empty question', () => {
   const commands = []
-  apply({ get: () => undefined, web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
+  apply({ get: (name) => (name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
   const [search] = commands
   assert.equal(search.name, 'search')
   const steered = []
@@ -107,8 +110,8 @@ test('a count grant matches only the same engine and count, and expires after 30
 test('/search with a count tells the agent the count, grants it, and the tool then asks the engine for it', async (t) => {
   const commands = []
   const tools = []
-  const ctx = { get: () => undefined, web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }
-  apply(ctx, { providers: ['you', 'kakao'] })
+  const ctx = { get: (name) => (name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }
+  apply(ctx, { providers: ['you', 'kakao'], providersKnown: ['you', 'kakao'] })
   const [search] = commands
   const steered = []
   const capped = search.handler({ rawInput: 'kakao 80 맛집', agent: { steer: (m) => steered.push(m) } })
@@ -146,7 +149,7 @@ test('/brave and brave_search keep their names and follow a count the user set',
   const commands = []
   const tools = []
   const credentials = { resolve: async (ref) => (ref === 'BRAVE_API_KEY' ? { value: 'bk' } : undefined) }
-  apply({ get: (name) => (name === 'credentials' ? credentials : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }, {})
+  apply({ get: (name) => (name === 'credentials' ? credentials : name === 'settings' ? settingsIn('en') : undefined), web: { registerSearchProvider() {} }, tools: { register: (tool) => tools.push(tool) }, commands: { register: (c) => commands.push(c) } }, {})
   const brave = commands.find((c) => c.name === 'brave')
   const tool = tools.find((x) => x.name === 'brave_search')
   assert.ok(brave && tool)
@@ -193,4 +196,25 @@ test('ko is short for korea, and the Korean modes show their finders and groups 
     truncated: false
   })
   assert.match(grouped, /NAVER results:\n- .*a\.kr.*\n\nKAKAO results:\n- .*x\.kr/)
+})
+
+test('the search instruction under the question follows the DSH language', () => {
+  const commands = []
+  apply({ get: (name) => (name === 'settings' ? settingsIn('ko') : undefined), web: { registerSearchProvider() {} }, tools: { register() {} }, commands: { register: (c) => commands.push(c) } }, {})
+  const steer = (name, rawInput) => {
+    const steered = []
+    commands.find((c) => c.name === name).handler({ rawInput, agent: { steer: (m) => steered.push(m) } })
+    return steered[0].content[0].text
+  }
+  assert.equal(steer('search', 'naver 30 서울 날씨'),
+    '서울 날씨\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 engine_search 도구로 해 주세요. 엔진: "naver", 개수: "30". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.equal(steer('search', 'ko 서울 날씨'),
+    '서울 날씨\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 engine_search 도구로 해 주세요. 엔진: "korea". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.equal(steer('exa', 'max 오픈AI 새 모델'),
+    '오픈AI 새 모델\n\n(이번 요청 검색 안내: 웹 검색은 web_search 대신 exa_search 도구로 해 주세요. 개수: "max". 결과 페이지를 읽을 때는 web_fetch를 써도 돼요.)')
+  assert.match(steer('brave', '서울 날씨'), /^서울 날씨\n\n\(이번 요청 검색 안내: 웹 검색은 web_search 대신 brave_search 도구로 해 주세요\. 결과/)
+  // Every language has the four instructions, each naming the tool.
+  for (const text of Object.values(COMMAND_TEXT)) {
+    for (const key of ['steerEngine', 'steerEngineCount', 'steerSingle', 'steerSingleCount']) assert.match(text[key], /\{tool\}/, key)
+  }
 })
