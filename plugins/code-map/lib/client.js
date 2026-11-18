@@ -3,6 +3,8 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const { createElement: h, useEffect, useId, useRef, useState } = React
+    // The services DSH hands this plugin; the view falls back to plain paths without them.
+    const host = { current: null }
     const CSS = `
 .dcm-view {
   --cm-fg: var(--dsw-alias-label-primary, #1b2230);
@@ -99,7 +101,7 @@ window.__ModuleLoader__.load({
 .dcm-details { display: grid; gap: 8px; margin-top: 5px; }
 .dcm-details h4 { margin: 0; font-size: 14px; line-height: 1.4; }
 .dcm-all { border-top: 1px solid var(--cm-line); }
-.dcm-all summary { display: list-item; min-height: 44px; padding: 11px 6px; cursor: pointer;
+.dcm-all summary, .dcm-more summary { display: list-item; min-height: 44px; padding: 11px 6px; cursor: pointer;
   color: var(--cm-fg); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .dcm-all[open] summary { margin-bottom: 8px; }
 .dcm-view summary:focus-visible { outline: 2px solid var(--cm-focus); outline-offset: 2px; }
@@ -114,6 +116,11 @@ window.__ModuleLoader__.load({
   .dcm-gap strong { text-align: start; }
 }
 .dcm-gap[data-warn] strong { color: var(--cm-warn); }
+.dcm-files { list-style: none; margin: 0; padding: 0; display: grid; }
+.dcm-view .dcm-file { display: flex; align-items: center; width: 100%; max-width: 100%; text-align: start; font: inherit; padding: 6px 0; margin: 0; min-height: 44px;
+  background: none; border: 0; cursor: pointer; color: var(--cm-blue); }
+.dcm-view .dcm-file code { color: var(--cm-blue); text-decoration: underline; text-underline-offset: 3px; }
+.dcm-view .dcm-file:hover code { text-decoration-thickness: 2px; }
 .dcm-search { border: 1px solid var(--cm-line); border-radius: 14px; background: var(--cm-surface); }
 .dcm-search summary { padding-inline: 16px; }
 .dcm-search .dcm-form { margin-top: 4px; }
@@ -149,9 +156,23 @@ window.__ModuleLoader__.load({
       return h('button', { type: 'button', className: 'dcm-button' + (primary ? ' dcm-primary' : ''), ...props }, children)
     }
 
-    function PathText({ value }) {
-      return h('code', null, value.split('/').flatMap((part, index) =>
+    function PathText({ value, file = value, onOpen, line }) {
+      const code = h('code', null, value.split('/').flatMap((part, index) =>
         index ? ['/', h('wbr', { key: index }), part] : [part]))
+      if (!onOpen) return code
+      return h('button', { type: 'button', className: 'dcm-file', 'data-qa-multiline': '', onClick: () => onOpen(file, line),
+        'aria-label': '오른쪽 사이드바에서 열기 · ' + value }, code)
+    }
+
+    // A repository-relative path becomes the address DSH's own file menu opens
+    // in the right sidebar: relative to the session folder, or absolute when
+    // the file lies outside it.
+    const encodeSegment = segment => encodeURIComponent(segment).replace(/%3A/gi, ':')
+    function fileAddress(sessionId, cwd, root, file) {
+      const absolute = root ? root.replace(/\/+$/, '') + '/' + file.replace(/^(?:\.?\/)+/, '') : file
+      const base = cwd ? cwd.replace(/\/+$/, '') : ''
+      const path = base && absolute.startsWith(base + '/') ? absolute.slice(base.length + 1) : absolute
+      return 'dsh-resource://file/session/' + encodeSegment(sessionId) + '/' + path.split('/').map(encodeSegment).join('/')
     }
 
     const ICONS = {
@@ -251,26 +272,26 @@ window.__ModuleLoader__.load({
         warning && h('p', { 'data-warn': '' }, warning))
     }
 
-    function CallersResult({ callers }) {
+    function CallersResult({ callers, onOpen }) {
       const shown = callers.candidates.length
       const total = Number.isSafeInteger(callers.total) ? callers.total : null
       return h('div', { className: 'dcm-details', 'aria-live': 'polite' },
         h('h4', { className: 'dcm-symbol', title: callers.name }, callers.name + ' 쓰는 곳'),
-        shown ? h(LocationList, { rows: callers.candidates })
+        shown ? h(LocationList, { rows: callers.candidates, onOpen })
           : h('p', { className: 'dcm-muted' }, total === 0
             ? '지도에서 쓰는 곳을 찾지 못했어요. 확인 안 됨과는 달라서, 읽지 못한 범위를 함께 봐 주세요.'
             : total ? '쓰는 곳이 ' + total + '곳 있지만 위치를 표시하지 못했어요.' : '지도에서 확인된 쓰는 곳을 표시할 수 없어요.'),
         total > shown && shown > 0 && h('p', { className: 'dcm-muted' }, '쓰는 곳 ' + total + '곳 중 ' + shown + '곳만 보여요.'))
     }
 
-    function LocationList({ rows, onCallers, onDraft, busy }) {
+    function LocationList({ rows, onCallers, onDraft, busy, onOpen }) {
       return h('ul', { className: 'dcm-list' }, rows.map(row => {
         const location = row.file + (row.line ? ':' + row.line : '')
         const traceable = onCallers && (row.kind === 'Function' || row.kind === 'Method')
         return h('li', { key: row.id ?? location },
           h('div', { className: 'dcm-evidence' },
             h('strong', { className: 'dcm-symbol', title: row.name }, row.name),
-            h(PathText, { value: location }),
+            h(PathText, { value: location, file: row.file, line: row.line, onOpen }),
             row.hop && h('span', { className: 'dcm-muted' }, row.hop === 1 ? '직접 사용' : '한 곳을 거쳐 연결')),
           traceable && h(Button, { onClick: () => onCallers(row), disabled: busy,
             'aria-label': row.name + ' 쓰는 곳 찾기' }, '쓰는 곳'),
@@ -279,14 +300,19 @@ window.__ModuleLoader__.load({
       }))
     }
 
-    function ChangedFiles({ files }) {
+    function ChangedFiles({ files, onOpen }) {
+      const list = items => h('ul', { className: 'dcm-files' }, items.map(path => h('li', { key: path }, h(PathText, { value: path, onOpen }))))
+      // The heading sits in its own block so it is not read as a title with a button beside it.
       return files.length > 0 && h('div', { className: 'dcm-details' },
-        h('h4', null, '고친 파일'),
-        files.slice(0, 5).map(path => h(PathText, { key: path, value: path })),
-        files.length > 5 && h('p', { className: 'dcm-muted' }, '외 ' + (files.length - 5) + '개'))
+        h('div', null, h('h4', null, '고친 파일')),
+        h('div', null,
+          list(files.slice(0, 5)),
+          files.length > 5 && h('details', { className: 'dcm-more' },
+            h('summary', null, '외 ' + (files.length - 5) + '개 더 보기'),
+            list(files.slice(5)))))
     }
 
-    function RepositoryImpact({ data }) {
+    function RepositoryImpact({ data, onOpen }) {
       const result = data.impact
       return h('details', { className: 'dcm-all' },
         h('summary', null, '마지막 저장 이후 바뀐 전체'),
@@ -296,31 +322,31 @@ window.__ModuleLoader__.load({
             h('p', null, result.changed
               ? '바뀐 파일 ' + result.changed + '개 · 확인할 곳 ' + result.total + '곳' + (result.more ? ' 이상' : '')
               : '분석에서 확인된 바뀐 파일이 없어요.'),
-            h(ChangedFiles, { files: result.files }),
-            !!result.candidates.length && h(LocationList, { rows: result.candidates }))
+            h(ChangedFiles, { files: result.files, onOpen }),
+            !!result.candidates.length && h(LocationList, { rows: result.candidates, onOpen }))
           : h('p', { className: 'dcm-muted' }, data.impactUnavailable
             ? '저장소 전체에서 바뀐 곳을 읽지 못했어요.'
             : '지도 준비가 끝나면 결과를 볼 수 있어요.'))
     }
 
-    function RequestImpact({ result, onDraft }) {
+    function RequestImpact({ result, onDraft, onOpen }) {
       if (result?.status !== 'ready') return h('p', { className: 'dcm-muted' }, '코딩 요청이 끝나고 지도가 확인하면 여기에 나와요.')
       return h(React.Fragment, null,
-        h(ChangedFiles, { files: result.files }),
-        !!result.candidates.length && h(LocationList, { rows: result.candidates, onDraft }),
+        h(ChangedFiles, { files: result.files, onOpen }),
+        !!result.candidates.length && h(LocationList, { rows: result.candidates, onDraft, onOpen }),
         !result.analyzing && !result.partial && !!result.files.length && !result.candidates.length &&
           h('p', { className: 'dcm-muted' }, '지도에서 확인된 곳이 없어요. 읽지 못한 범위가 있으면 이어진 곳이 없다는 뜻은 아니에요.'),
         !result.files.length && h('p', { className: 'dcm-muted' }, '확인할 곳이 아직 없어요.'))
     }
 
-    function Impact({ data, onDraft }) {
+    function Impact({ data, onDraft, onOpen }) {
       return h('section', { className: 'dcm-card' },
         h('div', { className: 'dcm-card-title' },
           h('h3', null, '함께 확인할 곳'),
-          h('p', { className: 'dcm-muted' }, '이번 요청에서 고친 파일과 이어진 곳이에요.')),
+          h('p', { className: 'dcm-muted' }, '이번 요청에서 고친 파일과 이어진 곳이에요.' + (onOpen ? ' 파일 이름을 누르면 오른쪽에서 열려요.' : ''))),
         h('div', { 'aria-live': 'polite', className: 'dcm-details' },
-          h(RequestImpact, { result: data.requestImpact, onDraft })),
-        h(RepositoryImpact, { data }))
+          h(RequestImpact, { result: data.requestImpact, onDraft, onOpen })),
+        h(RepositoryImpact, { data, onOpen }))
     }
 
     function Welcome({ data, act, busy }) {
@@ -461,6 +487,13 @@ window.__ModuleLoader__.load({
         setNotice('입력창에 넣지 못했어요. 잠시 뒤 다시 눌러 주세요.')
       }
 
+      const onOpen = host.current?.sidebarRight && data.root ? (file, line) => {
+        try {
+          const cwd = host.current.sessions?.list?.getSnapshot?.()?.byId?.[sessionId]?.cwd
+          host.current.sidebarRight.openResource(fileAddress(sessionId, cwd, data.root, file),
+            { destination: 'sidebar', ...(line ? { params: { line } } : {}) })
+        } catch { setNotice('파일을 사이드바에서 열지 못했어요. 파일 탭에서 직접 열어 주세요.') }
+      } : undefined
       const ready = data.state === 'ready'
       const onDraft = typeof inputActions?.captureInsertion === 'function' &&
         typeof inputActions?.insertText === 'function' ? draftVerification : undefined
@@ -479,7 +512,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dcm-stack' },
           h(Welcome, { data, act: action, busy }),
           mapped && h(Summary, { data }),
-          data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft }),
+          data.enabled && (ready || data.state === 'indexing' || data.requestImpact) && h(Impact, { data, onDraft, onOpen }),
           mapped && h(Coverage, { coverage: data.coverage }),
           mapped && h('details', { className: 'dcm-all dcm-search', 'aria-busy': data.state === 'indexing' || undefined },
             h('summary', null, '직접 찾아보기'),
@@ -493,9 +526,9 @@ window.__ModuleLoader__.load({
                   placeholder: '예시 · sendResume', maxLength: 160, autoComplete: 'off', spellCheck: false }),
                 h(Button, { primary: true, type: 'submit', disabled: !ready || busy || !query.trim() }, '찾기')),
               h('div', { 'aria-live': 'polite' }, rows.length
-                ? h(LocationList, { rows, onCallers: ready ? showCallers : null, busy })
+                ? h(LocationList, { rows, onCallers: ready ? showCallers : null, busy, onOpen })
                 : found && h('p', { className: 'dcm-muted' }, '이름이 맞는 위치를 찾지 못했어요. 파일명이나 함수 이름으로 다시 찾아 보세요.')),
-              callers && h(CallersResult, { callers }))),
+              callers && h(CallersResult, { callers, onOpen }))),
           data.enabled && data.indexedAt && h('p', { className: 'dcm-muted dcm-footer' },
             '마지막 갱신 ' + new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(data.indexedAt) +
             (Number.isFinite(data.indexMs) ? ' · ' + Math.max(0.1, Math.round(data.indexMs / 100) / 10) + '초 걸림' : '')),
@@ -505,8 +538,10 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots'],
+      inject: ['slots', 'sidebarRight', 'sessions'],
       apply(ctx) {
+        host.current = ctx
+        ctx.effect(() => () => { host.current = null }, 'dsh-code-map: host')
         const style = document.createElement('style')
         style.textContent = CSS
         document.head.append(style)

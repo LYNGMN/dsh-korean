@@ -32,7 +32,7 @@
   const params = new URLSearchParams(location.search)
   if (params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark'
   window.__ModuleLoader__ = { load(entry) { window.__entry = entry } }
-  const base = { enabled: true, repo: 'DiscordActions', focus: [], indexedAt: Date.now() - 20000, indexMs: 400 }
+  const base = { enabled: true, repo: 'DiscordActions', root: '/Users/me/Dev/DiscordActions', focus: [], indexedAt: Date.now() - 20000, indexMs: 400 }
   const clean = { notIndexed: 0, partial: 0, unusable: 0, skipped: 0, unknownFormats: [] }
   const rows = [
     { id: 'a', name: 'sendResume', file: 'src/services/resume/send-resume-with-a-very-long-file-name.js', line: 42, hop: 1 },
@@ -40,7 +40,7 @@
   ]
   const CODE = {
     ready: { ...base, state: 'ready', coverage: clean,
-      requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js', 'src/db.js'], candidates: rows },
+      requestImpact: { status: 'ready', files: ['src/cache.js', 'src/user.js', 'src/db.js', 'rss-bot/20_DiscordService.gs', 'rss-bot/Settings_Discord.html', 'docs/Review_261115.md', 'docs/Telegram_Review_261115.md'], candidates: rows },
       impact: { changed: 0, total: 0, files: [], candidates: [] } },
     gaps: { ...base, state: 'ready', partial: true,
       coverage: { notIndexed: 88, partial: 8, unusable: 2, skipped: 0, unknownFormats: [{ ext: '.gs', files: 28 }, { ext: '.xyz', files: 2 }, { ext: '.sh', files: 1 }, { ext: '.abc', files: 1 }] },
@@ -73,6 +73,9 @@
   mod.apply({
     slots: { inject: (_n, fn) => fn(), register: (opts, Component) => { slots[opts.name] = { opts, Component } } },
     effect: fn => fn(),
+    // 가짜 사이드바: 열기 요청을 아래 줄에 적는다.
+    sidebarRight: { openResource: (address, options) => { document.getElementById('opened').textContent = address + ' ' + JSON.stringify(options) } },
+    sessions: { list: { getSnapshot: () => ({ byId: { s1: { cwd: '/Users/me/Dev/DiscordActions' } } }) } },
   })
   const props = {
     sessionId: 's1',
@@ -85,7 +88,7 @@
   function App() {
     const view = slots['conversation.view']
     return h(React.Fragment, null, h(view.Component, props),
-      h('label', { className: 'draft' }, '가짜 입력창', h('textarea', { id: 'draft', rows: 2 })))
+      h('label', { className: 'draft' }, '가짜 입력창', h('textarea', { id: 'draft', rows: 2 }), h('output', { id: 'opened' }, '')))
   }
   ReactDOM.createRoot(document.getElementById('root')).render(h(App))
 </script>

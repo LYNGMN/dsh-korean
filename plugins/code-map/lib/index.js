@@ -142,6 +142,7 @@ export function createCodeMap({ rootOf, preferences, engine, capture = captureCh
     return {
       state: !state?.enabled ? 'off' : state.job ? 'indexing' : state.error ?? (state.project ? 'ready' : 'indexing'),
       repo: basename(root),
+      root,
       worktree: rootKey(root).slice(0, 24),
       enabled: !!state?.enabled,
       focus: state?.enabled && session?.root === root ? session.focus : [],
