@@ -1,0 +1,51 @@
+{
+  "name": "@lyngmn/dsh-search",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Adds several web search engines, an automatic engine that searches in the order you set, and the /search command for picking one. Keys, order and result counts per engine are set on this page. Not an official DeepSeek plugin.",
+  "author": "LYNGMN",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "search-core.js",
+    "search-tool.js",
+    "host-locale.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LYNGMN/dsh-korean.git",
+    "directory": "plugins/search"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.19.0"
+  }
+}
