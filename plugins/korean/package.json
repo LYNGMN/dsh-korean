@@ -1,6 +1,6 @@
 {
   "name": "@lyngmn/dsh-korean",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Adds Korean (한국어) to Settings → General → Language, and a font picker for text, code and terminal fonts. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "icon": "./icon.svg",
