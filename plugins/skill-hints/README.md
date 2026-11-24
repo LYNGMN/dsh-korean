@@ -13,7 +13,7 @@ DSH는 스킬 머리말의 `argument-hint`를 읽지 않고, `/` 메뉴의 스�
 - `~/.dsh/skills`와 `~/.agents/skills`에서 DSH가 읽는 순서대로 찾습니다. 같은 이름이면 앞쪽이 이깁니다.
 - `user-invocable: false`가 아닌 스킬은 모두 대상입니다. 힌트가 없는 스킬도 등록하고, 이때는 입력창 안내 없이 설명만 붙습니다.
 - 입력창 안내는 실제 `SKILL.md` 머리말의 `argument-hint`, 없으면 `~/.agents/skill-hints.json`의 `hint`를 씁니다.
-- 메뉴 설명은 DSH 언어가 한국어면 `~/.agents/skill-hints.json`의 `summary`(없으면 영어), 그 밖의 언어면 실제 `SKILL.md` `description`의 첫 문장을 씁니다. 160자를 넘으면 줄입니다. DSH 언어를 바꾸면 바로 다시 등록합니다.
+- 메뉴 설명은 DSH 언어가 한국어면 `~/.agents/skill-hints.json`의 `summary`(없으면 영어), 그 밖의 언어면 실제 `SKILL.md` `description`을 씁니다. 160자를 넘으면 단어 경계에서 줄입니다. DSH 언어를 바꾸면 바로 다시 등록합니다.
 - 감싸개(`~/.dsh/skills/<이름>.md`)는 그 안에 적힌 실제 `SKILL.md`에서 힌트와 설명을 읽습니다.
 - 같은 이름의 호스트 명령이 이미 있으면 그 명령을 그대로 둡니다.
 

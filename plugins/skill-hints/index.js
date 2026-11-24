@@ -12,7 +12,7 @@ import { createText, registerLocalized } from './host-locale.js'
  * DSH가 원래 스킬을 그대로 불러오게 한다. 힌트가 없는 스킬은 입력 힌트 없이 등록한다.
  *
  * 명령 설명과 결과 알림은 DSH 언어 설정(host-locale.js)을 따른다. 한국어면 오버레이의
- * 한국어 요약(없으면 영어), 그 밖은 원본 SKILL.md description의 첫 문장을 쓰고,
+ * 한국어 요약(없으면 영어), 그 밖은 원본 SKILL.md description 앞부분(160자까지)을 쓰고,
  * 언어가 바뀌면 명령을 다시 등록한다. 힌트 글 자체는 스킬 데이터라 그대로 둔다.
  */
 export const name = 'skill-hints'
@@ -87,24 +87,13 @@ function isDir(path) {
   }
 }
 
-function shorten(text) {
+/** 공백을 정리하고 160자를 넘으면 단어 경계에서 줄여 "…"를 붙인다. */
+export function shorten(text) {
   const t = String(text ?? '').replace(/\s+/gu, ' ').trim()
-  return t.length > DESCRIPTION_MAX ? `${t.slice(0, DESCRIPTION_MAX - 1).trimEnd()}…` : t
-}
-
-// 문장 끝으로 보지 않는 약어(뒤에 공백이 와도 문장이 이어진다).
-const ABBREVIATION = /(?:^|\s|\()(?:e\.g|i\.e|etc|vs|cf)\.$/iu
-
-/** 영어 설명의 첫 문장(마침표·느낌표·물음표 뒤 공백 또는 끝까지). 길면 줄인다. */
-export function firstSentence(text) {
-  const t = String(text ?? '').replace(/\s+/gu, ' ').trim()
-  const end = /[.!?](?=\s|$)/gu
-  let m
-  while ((m = end.exec(t)) !== null) {
-    const head = t.slice(0, m.index + 1)
-    if (!ABBREVIATION.test(head)) return shorten(head)
-  }
-  return shorten(t)
+  if (t.length <= DESCRIPTION_MAX) return t
+  const cut = t.slice(0, DESCRIPTION_MAX - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > 0 ? cut.slice(0, space) : cut).trimEnd()}…`
 }
 
 /** 한국어 요약·힌트 오버레이(`{ skills: { 이름: { summary, hint } } }`). */
@@ -146,7 +135,7 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
       const source = frontmatter(real)
       const extra = overlay[source.name ?? skillName] ?? overlay[skillName] ?? {}
       const hint = source['argument-hint'] || extra.hint
-      const skill = { name: skillName, summaryEn: firstSentence(source.description || meta.description) }
+      const skill = { name: skillName, summaryEn: shorten(source.description || meta.description) }
       if (hint) skill.hint = hint
       const summaryKo = shorten(extra.summary)
       if (summaryKo) skill.summaryKo = summaryKo

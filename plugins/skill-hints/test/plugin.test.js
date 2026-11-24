@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply, discover, firstSentence, frontmatter, skillLine } from '../index.js'
+import { apply, discover, frontmatter, shorten, skillLine } from '../index.js'
 
 function fixture() {
   const base = mkdtempSync(join(tmpdir(), 'skill-hints-'))
@@ -52,13 +52,12 @@ test('discover leaves out user-invocable: false skills', () => {
   assert.equal(found.some((s) => s.name === 'hidden'), false)
 })
 
-test('firstSentence keeps the first sentence and shortens long text', () => {
-  assert.equal(firstSentence('Fix the cause. Then test it.'), 'Fix the cause.')
-  assert.equal(firstSentence('Use for files (e.g. a .env file). More.'), 'Use for files (e.g. a .env file).')
-  assert.equal(firstSentence('Use when Next.js\n  breaks'), 'Use when Next.js breaks')
-  const long = firstSentence('word '.repeat(60))
-  assert.equal(long.length, 160)
-  assert.ok(long.endsWith('…'))
+test('shorten keeps up to 160 characters and cuts long text at a word boundary', () => {
+  assert.equal(shorten('Fix the cause.\n  Then test it.'), 'Fix the cause. Then test it.')
+  const long = shorten('abcd '.repeat(40))
+  assert.ok(long.length <= 160)
+  assert.ok(long.endsWith('abcd…'))
+  assert.equal(shorten('x'.repeat(200)), `${'x'.repeat(159)}…`)
 })
 
 test('earlier root wins for the same name', () => {
@@ -219,12 +218,12 @@ test('a Korean DSH language uses the Korean summary', () => {
   assert.equal(registered.get('plain').input, undefined)
 })
 
-test('an English DSH language uses the first English sentence', () => {
+test('an English DSH language uses the English description', () => {
   const [dsh, shelf] = fixture()
   writeFileSync(join(shelf, 'plain', 'SKILL.md'), '---\nname: plain\ndescription: Do one thing. Then explain why at length.\n---\n')
   const { ctx, registered } = localeHost('en')
   apply(ctx, { roots: [dsh, shelf], overlay: overlayFile({ plain: { summary: '평범한 스킬' } }) })
-  assert.equal(registered.get('plain').description, 'Skill · Do one thing.')
+  assert.equal(registered.get('plain').description, 'Skill · Do one thing. Then explain why at length.')
 })
 
 test('a Korean DSH language falls back to English when there is no Korean summary', () => {
