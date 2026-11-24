@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { COMMAND, ROUTE_PATH, apply, reportText } from '../index.js'
-import { discover, frontmatter, hintsFor } from '../skills.js'
+import { discover, frontmatter, hintsFor, labelsFor } from '../skills.js'
 import { changedCount, createSync } from '../sync.js'
 
 /** ~/.dsh/skills(감싸개 .md)와 ~/.agents/skills(폴더) 두 자리를 흉내 낸다. */
@@ -55,6 +55,17 @@ test('hintsFor gives hints only in Korean', () => {
   const skills = [{ name: 'a', hint: '[x]' }, { name: 'b' }]
   assert.deepEqual(hintsFor(skills, 'ko'), { a: '[x]' })
   assert.deepEqual(hintsFor(skills, 'en'), {})
+})
+
+test('labelsFor gives Korean menu text only for AI-callable skills with a summary', () => {
+  const skills = [
+    { name: 'auto', userOnly: false, summary: '자동', hint: '[대상]' },
+    { name: 'plain-auto', userOnly: false, summary: '그냥 자동' },
+    { name: 'no-summary', userOnly: false },
+    { name: 'mine', userOnly: true, summary: '내 것' },
+  ]
+  assert.deepEqual(labelsFor(skills, 'ko'), { auto: '자동 · [대상]', 'plain-auto': '그냥 자동' })
+  assert.deepEqual(labelsFor(skills, 'en'), {})
 })
 
 test('changedCount reads the summary line of dsh-sync-skills', () => {
@@ -142,7 +153,7 @@ test('apply matches descriptions on start and on a language change, and turns on
   await h.setLocale('en')
   assert.deepEqual(sync.calls, [['apply', 'ko'], ['apply', 'en']])
   body = await (await h.routes[0].fetch()).json()
-  assert.deepEqual(body, { locale: 'en', hints: {}, restart: true })
+  assert.deepEqual(body, { locale: 'en', hints: {}, labels: {}, restart: true })
 })
 
 test('the command is registered in the DSH language and re-registered when it changes', async () => {

@@ -2,7 +2,7 @@
   "name": "@lyngmn/dsh-skill-hints",
   "version": "1.1.0",
   "private": true,
-  "description": "Shows a grey input hint after /skill in the composer, matches skill menu descriptions to your DSH language, swaps the \"user-only\" label repeated on each row for an \"AI-callable\" mark on the few skills AI can also call, and adds /skill-hints to check them. Not an official DeepSeek plugin.",
+  "description": "Shows a grey input hint after /skill in the composer, matches skill menu descriptions to your DSH language, swaps the \"user-only\" label repeated on each row for an \"AI-callable\" mark (with the Korean summary in Korean) on the few skills AI can also call, and adds /skill-hints to check them. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "index.js",

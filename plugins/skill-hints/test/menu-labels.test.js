@@ -20,6 +20,7 @@ class El {
   }
   get children() { return this.childNodes.filter((c) => c instanceof El) }
   get firstChild() { return this.childNodes[0] ?? null }
+  get textContent() { return this.childNodes.map((c) => (c instanceof El ? c.textContent : c.nodeValue)).join('') }
   * descendants() {
     for (const c of this.children) { yield c; yield * c.descendants() }
   }
@@ -63,6 +64,9 @@ test('설명 원문을 메뉴 글로: 사용자 전용은 떼고 나머지는 AI
   assert.equal(relabel('Use when debugging', 'ko'), 'AI 호출 가능 · Use when debugging')
   assert.equal(relabel('Use when debugging', 'en'), 'AI-callable · Use when debugging')
   assert.equal(relabel('Use when debugging', 'fr'), 'AI-callable · Use when debugging', '모르는 언어는 영어')
+  assert.equal(relabel('Use when debugging', 'ko', '원인부터 찾는 디버깅'), 'AI 호출 가능 · 원인부터 찾는 디버깅', '한국어 요약이 있으면 그것을 보인다')
+  assert.equal(relabel('Use when debugging', 'ko', ''), 'AI 호출 가능 · Use when debugging', '빈 요약은 원문')
+  assert.equal(relabel('사용자 전용 · 계획을 세운다', 'ko', '다른 글'), '계획을 세운다', '사용자 전용 줄은 요약을 쓰지 않는다')
 })
 
 function menuCard() {
@@ -112,6 +116,23 @@ test('언어가 바뀌면 AI 표시만 그 언어로 바꾸고 겹치지 않는�
   assert.equal(cleanMenu(card, 'ko'), 1)
   assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when debugging')
   assert.equal(descriptionOf(userOnly), '계획을 세운다')
+})
+
+test('AI 스킬 줄은 이름으로 찾은 한국어 요약을 보이고, 요약이 늦게 와도 바꾼다', () => {
+  const { cleanMenu } = testing()
+  const { card, userOnly, modelSkill } = menuCard()
+  cleanMenu(card, 'ko')
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when debugging')
+  const labels = { 'skill-1': '원인부터 찾는 디버깅 · [증상]', 'skill-0': '쓰이면 안 됨' }
+  assert.equal(cleanMenu(card, 'ko', labels), 1)
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · 원인부터 찾는 디버깅 · [증상]')
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
+  assert.equal(cleanMenu(card, 'ko', labels), 0)
+  const slashed = row('skill', 3, 'Use when x')
+  slashed.children[0].childNodes[0].nodeValue = '/x-skill'
+  const card2 = new El('div', {}, [new El('div', { 'data-trigger-menu': '' }, [slashed])])
+  cleanMenu(card2, 'ko', { 'x-skill': '엑스' })
+  assert.equal(descriptionOf(slashed), 'AI 호출 가능 · 엑스', '이름 앞 / 는 떼고 찾는다')
 })
 
 test('설명 칸이 없거나 모양이 다른 줄은 건너뛴다', () => {

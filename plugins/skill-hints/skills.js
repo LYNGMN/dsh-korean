@@ -115,6 +115,20 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
   return found
 }
 
+/**
+ * 화면에 넘길 AI 호출 가능 스킬의 메뉴 설명 `{ 이름: '요약 · 안내' }`. 한국어일 때만 준다.
+ * 이런 스킬은 AI가 읽는 설명이라 파일은 원문 그대로 두고, `/` 메뉴 글자만 이 요약으로 바꾼다.
+ */
+export function labelsFor(skills, locale) {
+  if (locale !== 'ko') return {}
+  const out = {}
+  for (const skill of skills) {
+    if (skill.userOnly || !skill.summary) continue
+    out[skill.name] = skill.hint ? `${skill.summary} · ${skill.hint}` : skill.summary
+  }
+  return out
+}
+
 /** 화면에 넘길 입력 안내 `{ 이름: 안내 }`. 안내 글이 한국어로 쓰여 있어 한국어일 때만 준다. */
 export function hintsFor(skills, locale) {
   if (locale !== 'ko') return {}

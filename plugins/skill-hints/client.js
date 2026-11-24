@@ -4,9 +4,9 @@
 // 2. 호스트가 메뉴 설명을 새 언어로 다시 썼으면 입력창 아래 띠에 "다시 시작" 알림을 띄운다.
 // 3. `/` 메뉴의 스킬 줄 표시를 뒤집는다. DSH는 사용자 전용 스킬마다 "사용자 전용 · "(`menu.userOnly`)을 붙이는데,
 //    사용자 스킬 대부분이 사용자 전용이라 같은 말이 줄마다 반복된다. 그 표시를 지우고, 표시가 없던 줄(AI도 스스로
-//    부를 수 있는 스킬)에 "AI 호출 가능 · "을 붙인다. 그런 스킬은 AI가 읽는 설명이라 영어 원문 그대로인 까닭도 알 수 있다.
-//    메뉴 글자만 바꾸고 고르기·검색·AI 호출 여부는 그대로다.
-// 안내 목록과 알림 여부는 호스트 경로 `api/dsh-skill-hints`에서 받는다.
+//    부를 수 있는 스킬)에 "AI 호출 가능 · "을 붙인다. 그런 스킬의 파일 설명은 AI가 읽는 글이라 영어 원문 그대로 두고,
+//    한국어면 메뉴에서만 한국어 요약(호스트가 주는 labels)으로 바꿔 보인다. 고르기·검색·AI 호출 여부는 그대로다.
+// 안내 목록, AI 스킬 메뉴 요약, 알림 여부는 호스트 경로 `api/dsh-skill-hints`에서 받는다.
 window.__ModuleLoader__.load({
   id: '@lyngmn/dsh-skill-hints',
   factory(require) {
@@ -56,11 +56,15 @@ window.__ModuleLoader__.load({
       return null
     }
 
-    /** DSH가 그린 스킬 설명(원문)을 메뉴에 보일 글로 바꾼다. 사용자 전용은 표시를 떼고, 나머지는 AI 표시를 붙인다. */
-    function relabel(original, locale) {
+    /**
+     * DSH가 그린 스킬 설명(원문)을 메뉴에 보일 글로 바꾼다. 사용자 전용은 표시를 떼고, 나머지는 AI 표시를 붙인다.
+     * AI 스킬에 한국어 요약(label)이 있으면 원문 대신 그것을 보인다.
+     */
+    function relabel(original, locale, label) {
       const userOnly = stripUserOnly(original)
       if (userOnly !== null) return userOnly
-      return `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${original}`
+      const body = typeof label === 'string' && label !== '' ? label : original
+      return `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${body}`
     }
 
     // 우리가 쓴 글자를 기억한다(text 노드 → { shown, original }). DSH가 새 원문을 쓰면 shown과 달라져 다시 고친다.
@@ -73,7 +77,7 @@ window.__ModuleLoader__.load({
     }
 
     /** 카드 안 `/` 메뉴의 스킬 줄 설명 표시를 맞춘다. 고친 칸 수를 돌려준다. */
-    function cleanMenu(card, locale = 'en') {
+    function cleanMenu(card, locale = 'en', labels = {}) {
       let changed = 0
       for (const menu of card.querySelectorAll(MENU)) {
         for (const row of menu.querySelectorAll(SKILL_ROW)) {
@@ -81,7 +85,8 @@ window.__ModuleLoader__.load({
           if (node === null) continue
           const memo = written.get(node)
           const original = memo !== undefined && memo.shown === node.nodeValue ? memo.original : node.nodeValue
-          const shown = relabel(original, locale)
+          const name = String(row.children[0].textContent ?? '').trim().replace(/^\//u, '')
+          const shown = relabel(original, locale, labels?.[name])
           if (shown === node.nodeValue) continue
           node.nodeValue = shown
           written.set(node, { shown, original })
@@ -93,7 +98,7 @@ window.__ModuleLoader__.load({
 
     // ── 호스트 상태(창 하나에 하나) ─────────────────────────────
     function createStore() {
-      let value = { locale: 'en', hints: {}, restart: false }
+      let value = { locale: 'en', hints: {}, labels: {}, restart: false }
       let inflight = null
       const listeners = new Set()
       const refresh = () => {
@@ -101,7 +106,7 @@ window.__ModuleLoader__.load({
           .then((response) => (response.ok ? response.json() : null))
           .then((body) => {
             if (body && typeof body === 'object') {
-              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, restart: body.restart === true }
+              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, labels: body.labels ?? {}, restart: body.restart === true }
               for (const listener of listeners) listener()
             }
           })
@@ -131,7 +136,7 @@ window.__ModuleLoader__.load({
     function attachHint(card) {
       let ours = null
       const update = () => {
-        cleanMenu(card, store.get().locale) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
+        cleanMenu(card, store.get().locale, store.get().labels) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
         const input = card.querySelector(INPUT)
         if (input === null) return
         const current = input.style.getPropertyValue(VAR)
