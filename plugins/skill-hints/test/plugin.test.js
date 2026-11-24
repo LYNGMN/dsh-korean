@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { COMMAND, ROUTE_PATH, apply, reportText } from '../index.js'
-import { discover, frontmatter, hintsFor, labelsFor } from '../skills.js'
+import { aiAlsoFor, discover, frontmatter, hintsFor, labelsFor } from '../skills.js'
 import { changedCount, createSync } from '../sync.js'
 
 /** ~/.dsh/skills(감싸개 .md)와 ~/.agents/skills(폴더) 두 자리를 흉내 낸다. */
@@ -49,6 +49,29 @@ test('discover follows wrappers, lets the first folder win and drops hidden skil
   assert.equal(by.plain.hint, '[대상]', 'overlay hint fills in')
   assert.equal(by.plain.summary, '그냥 스킬')
   assert.equal(by.auto.userOnly, false)
+})
+
+test('discover marks a user-only name as aiAlso when AI can call the same SKILL.md by another name', () => {
+  const base = mkdtempSync(join(tmpdir(), 'skill-hints-twin-'))
+  const dsh = join(base, 'dsh')
+  const shelf = join(base, 'shelf')
+  for (const dir of ['pack/debug', 'pack/plan', 'pack/quiet', 'linked']) mkdirSync(join(shelf, dir), { recursive: true })
+  mkdirSync(dsh)
+  const real = (dir) => join(shelf, dir, 'SKILL.md')
+  for (const dir of ['pack/debug', 'pack/plan', 'pack/quiet']) writeFileSync(real(dir), `---\nname: ${dir.split('/')[1]}\ndescription: x\n---\n`)
+  writeFileSync(real('linked'), '---\nname: linked\ndescription: model reads this\n---\n')
+  const wrap = (name, extra, dir) => writeFileSync(join(dsh, `${name}.md`),
+    `---\nname: ${name}\ndescription: "w"\n${extra}---\n\n1. \`${real(dir)}\`를 끝까지 읽는다.\n`)
+  wrap('pack-debug', 'disable-model-invocation: true\n', 'pack/debug')
+  wrap('debug', 'user-invocable: false\n', 'pack/debug') // 모델 호출용 원래 이름
+  wrap('pack-plan', 'disable-model-invocation: true\n', 'pack/plan') // 짝 없음
+  wrap('pack-quiet', 'disable-model-invocation: true\n', 'pack/quiet')
+  wrap('quiet', 'user-invocable: false\ndisable-model-invocation: true\n', 'pack/quiet') // 아무도 못 부르는 이름은 짝이 아니다
+  symlinkSync(join(shelf, 'linked'), join(dsh, 'linked')) // 폴더 링크(AI 호출)
+  wrap('pack-linked', 'disable-model-invocation: true\n', 'linked') // 링크를 거치지 않은 경로로 같은 원본
+  const found = discover([dsh, shelf], {})
+  assert.deepEqual(aiAlsoFor(found).sort(), ['pack-debug', 'pack-linked'])
+  assert.equal(found.some((s) => s.name === 'debug'), false, 'the model-only name stays out of the menu')
 })
 
 test('hintsFor gives hints only in Korean', () => {
@@ -153,7 +176,7 @@ test('apply matches descriptions on start and on a language change, and turns on
   await h.setLocale('en')
   assert.deepEqual(sync.calls, [['apply', 'ko'], ['apply', 'en']])
   body = await (await h.routes[0].fetch()).json()
-  assert.deepEqual(body, { locale: 'en', hints: {}, labels: {}, restart: true })
+  assert.deepEqual(body, { locale: 'en', hints: {}, labels: {}, aiAlso: [], restart: true })
 })
 
 test('the command is registered in the DSH language and re-registered when it changes', async () => {

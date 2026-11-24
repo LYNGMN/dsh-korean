@@ -58,11 +58,12 @@ window.__ModuleLoader__.load({
 
     /**
      * DSH가 그린 스킬 설명(원문)을 메뉴에 보일 글로 바꾼다. 사용자 전용은 표시를 떼고, 나머지는 AI 표시를 붙인다.
-     * AI 스킬에 한국어 요약(label)이 있으면 원문 대신 그것을 보인다.
+     * AI 스킬에 한국어 요약(label)이 있으면 원문 대신 그것을 보인다. 사용자 전용 이름이라도 AI가 다른 이름으로
+     * 같은 스킬을 부를 수 있으면(aiAlso) 표시를 떼고 AI 표시를 붙인다.
      */
-    function relabel(original, locale, label) {
+    function relabel(original, locale, label, aiAlso = false) {
       const userOnly = stripUserOnly(original)
-      if (userOnly !== null) return userOnly
+      if (userOnly !== null) return aiAlso ? `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${userOnly}` : userOnly
       const body = typeof label === 'string' && label !== '' ? label : original
       return `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${body}`
     }
@@ -77,7 +78,7 @@ window.__ModuleLoader__.load({
     }
 
     /** 카드 안 `/` 메뉴의 스킬 줄 설명 표시를 맞춘다. 고친 칸 수를 돌려준다. */
-    function cleanMenu(card, locale = 'en', labels = {}) {
+    function cleanMenu(card, locale = 'en', labels = {}, aiAlso = []) {
       let changed = 0
       for (const menu of card.querySelectorAll(MENU)) {
         for (const row of menu.querySelectorAll(SKILL_ROW)) {
@@ -86,7 +87,7 @@ window.__ModuleLoader__.load({
           const memo = written.get(node)
           const original = memo !== undefined && memo.shown === node.nodeValue ? memo.original : node.nodeValue
           const name = String(row.children[0].textContent ?? '').trim().replace(/^\//u, '')
-          const shown = relabel(original, locale, labels?.[name])
+          const shown = relabel(original, locale, labels?.[name], aiAlso.includes(name))
           if (shown === node.nodeValue) continue
           node.nodeValue = shown
           written.set(node, { shown, original })
@@ -98,7 +99,7 @@ window.__ModuleLoader__.load({
 
     // ── 호스트 상태(창 하나에 하나) ─────────────────────────────
     function createStore() {
-      let value = { locale: 'en', hints: {}, labels: {}, restart: false }
+      let value = { locale: 'en', hints: {}, labels: {}, aiAlso: [], restart: false }
       let inflight = null
       const listeners = new Set()
       const refresh = () => {
@@ -106,7 +107,7 @@ window.__ModuleLoader__.load({
           .then((response) => (response.ok ? response.json() : null))
           .then((body) => {
             if (body && typeof body === 'object') {
-              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, labels: body.labels ?? {}, restart: body.restart === true }
+              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, labels: body.labels ?? {}, aiAlso: Array.isArray(body.aiAlso) ? body.aiAlso : [], restart: body.restart === true }
               for (const listener of listeners) listener()
             }
           })
@@ -136,7 +137,7 @@ window.__ModuleLoader__.load({
     function attachHint(card) {
       let ours = null
       const update = () => {
-        cleanMenu(card, store.get().locale, store.get().labels) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
+        cleanMenu(card, store.get().locale, store.get().labels, store.get().aiAlso) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
         const input = card.querySelector(INPUT)
         if (input === null) return
         const current = input.style.getPropertyValue(VAR)

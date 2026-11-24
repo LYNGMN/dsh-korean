@@ -1,4 +1,4 @@
-import { DEFAULT_OVERLAY, DEFAULT_ROOTS, discover, hintsFor, labelsFor, loadOverlay } from './skills.js'
+import { DEFAULT_OVERLAY, DEFAULT_ROOTS, aiAlsoFor, discover, hintsFor, labelsFor, loadOverlay } from './skills.js'
 import { createSync, DEFAULT_SCRIPT } from './sync.js'
 import { createText, registerLocalized, resolveLocale, watchLocale } from './host-locale.js'
 
@@ -111,7 +111,7 @@ export function apply(ctx, config = {}) {
     await ready.catch(() => {})
     const locale = resolveLocale(ctx)
     const found = skills()
-    return json({ locale, hints: hintsFor(found, locale), labels: labelsFor(found, locale), restart: state.restart })
+    return json({ locale, hints: hintsFor(found, locale), labels: labelsFor(found, locale), aiAlso: aiAlsoFor(found), restart: state.restart })
   }
 
   const handler = async (invocation) => {

@@ -135,6 +135,19 @@ test('AI 스킬 줄은 이름으로 찾은 한국어 요약을 보이고, 요약
   assert.equal(descriptionOf(slashed), 'AI 호출 가능 · 엑스', '이름 앞 / 는 떼고 찾는다')
 })
 
+test('사용자 전용 이름이라도 AI가 다른 이름으로 부를 수 있으면 AI 표시를 붙인다', () => {
+  const { relabel, cleanMenu } = testing()
+  assert.equal(relabel('사용자 전용 · 원인부터 찾는 디버깅', 'ko', undefined, true), 'AI 호출 가능 · 원인부터 찾는 디버깅')
+  assert.equal(relabel('사용자 전용 · 원인부터 찾는 디버깅', 'ko', undefined, false), '원인부터 찾는 디버깅')
+  const { card, userOnly, modelSkill } = menuCard()
+  cleanMenu(card, 'ko', {}, ['skill-0'])
+  assert.equal(descriptionOf(userOnly), 'AI 호출 가능 · 계획을 세운다')
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when debugging')
+  assert.equal(cleanMenu(card, 'ko', {}, ['skill-0']), 0, '두 번 붙이지 않는다')
+  assert.equal(cleanMenu(card, 'ko', {}, []), 1, '목록에서 빠지면 표시도 뗀다')
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
+})
+
 test('설명 칸이 없거나 모양이 다른 줄은 건너뛴다', () => {
   const { cleanMenu } = testing()
   const nameOnly = new El('button', { role: 'option', id: 'dsh-slash-option-skill-0' }, [new El('span', {}, ['/a'])])
