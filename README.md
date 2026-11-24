@@ -92,7 +92,7 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
 <td nowrap><strong>스킬 힌트</strong></td>
-<td>입력창에 /스킬을 치면 뒤에 회색 입력 안내를 보여 주고, 스킬 메뉴 설명을 DSH 언어에 맞춰요.</td>
+<td>입력창에 /스킬을 치면 뒤에 회색 입력 안내를 보여 주고, 스킬 메뉴 설명을 DSH 언어에 맞추고, 줄마다 붙던 "사용자 전용" 표시 대신 AI도 부를 수 있는 스킬에만 "AI 호출 가능"과 한국어 요약을 보여 줘요.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -58,6 +58,14 @@ function wrappedSkill(text) {
   return m ? m[1] : undefined
 }
 
+function realPath(path) {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
+}
+
 function entries(root) {
   try {
     return readdirSync(root).sort((a, b) => a.localeCompare(b))
@@ -85,11 +93,15 @@ export function loadOverlay(path = DEFAULT_OVERLAY) {
 
 /**
  * 사람이 `/`로 부를 수 있는 스킬(`user-invocable: false`가 아닌 것)을 찾는다.
- * @returns {{ name: string, userOnly: boolean, description: string, hint?: string, summary?: string }[]}
+ * 사용자 전용 스킬이라도 같은 원본 `SKILL.md`를 AI가 다른 이름으로 부를 수 있으면(dsh-sync-skills의
+ * `user-invocable: false` 모델 호출용 감싸개 등) `aiAlso: true`를 붙인다.
+ * @returns {{ name: string, userOnly: boolean, description: string, hint?: string, summary?: string, aiAlso?: boolean }[]}
  */
 export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
   const seen = new Set()
   const found = []
+  const origins = new Map() // 사용자 전용 스킬 → 원본 SKILL.md 위치
+  const modelOrigins = new Set() // AI가 부를 수 있는 이름이 가리키는 원본 SKILL.md 위치
   for (const root of roots) {
     for (const entry of entries(root)) {
       const path = join(root, entry)
@@ -100,8 +112,10 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
       const meta = frontmatter(own)
       if (!meta.name || !meta.description || !SKILL_NAME.test(meta.name) || seen.has(meta.name)) continue
       seen.add(meta.name)
-      if (meta['user-invocable'] === 'false') continue
       const target = wrappedSkill(own)
+      const origin = realPath(target ?? file)
+      if (meta['disable-model-invocation'] !== 'true') modelOrigins.add(origin)
+      if (meta['user-invocable'] === 'false') continue
       const source = frontmatter((target !== undefined && read(target)) || own)
       const extra = overlay[source.name ?? meta.name] ?? overlay[meta.name] ?? {}
       const skill = { name: meta.name, userOnly: meta['disable-model-invocation'] === 'true', description: meta.description }
@@ -109,10 +123,31 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
       if (hint) skill.hint = hint
       const summary = String(extra.summary ?? '').trim()
       if (summary) skill.summary = summary
+      if (skill.userOnly) origins.set(skill, origin)
       found.push(skill)
     }
   }
+  for (const [skill, origin] of origins) if (modelOrigins.has(origin)) skill.aiAlso = true
   return found
+}
+
+/** 사용자 전용이지만 AI도 다른 이름으로 부를 수 있는 스킬 이름들. 메뉴에서 "AI 호출 가능"으로 보인다. */
+export function aiAlsoFor(skills) {
+  return skills.filter((skill) => skill.aiAlso).map((skill) => skill.name)
+}
+
+/**
+ * 화면에 넘길 AI 호출 가능 스킬의 메뉴 설명 `{ 이름: '요약 · 안내' }`. 한국어일 때만 준다.
+ * 이런 스킬은 AI가 읽는 설명이라 파일은 원문 그대로 두고, `/` 메뉴 글자만 이 요약으로 바꾼다.
+ */
+export function labelsFor(skills, locale) {
+  if (locale !== 'ko') return {}
+  const out = {}
+  for (const skill of skills) {
+    if (skill.userOnly || !skill.summary) continue
+    out[skill.name] = skill.hint ? `${skill.summary} · ${skill.hint}` : skill.summary
+  }
+  return out
 }
 
 /** 화면에 넘길 입력 안내 `{ 이름: 안내 }`. 안내 글이 한국어로 쓰여 있어 한국어일 때만 준다. */

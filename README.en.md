@@ -92,7 +92,7 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
 <td><strong>Skill hints</strong></td>
-<td>Shows a grey input hint after /skill in the composer and matches skill menu descriptions to your DSH language.</td>
+<td>Shows a grey input hint after /skill in the composer, matches skill menu descriptions to your DSH language, and swaps the "user-only" label repeated on each row for an "AI-callable" mark (with the Korean summary in Korean) on the few skills AI can also call.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>

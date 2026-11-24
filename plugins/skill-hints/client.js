@@ -1,8 +1,12 @@
-// 스킬 힌트 — 화면 쪽. 두 가지를 한다.
+// 스킬 힌트 — 화면 쪽. 세 가지를 한다.
 // 1. 입력창이 `/스킬이름` 하나뿐이면 그 뒤에 회색 입력 안내를 보여 준다.
 //    DSH 명령이 쓰는 방법(입력칸의 CSS 변수 `--dsh-composer-hint`)을 그대로 빌려, DSH가 안내를 쓰지 않을 때만 넣는다.
 // 2. 호스트가 메뉴 설명을 새 언어로 다시 썼으면 입력창 아래 띠에 "다시 시작" 알림을 띄운다.
-// 안내 목록과 알림 여부는 호스트 경로 `api/dsh-skill-hints`에서 받는다.
+// 3. `/` 메뉴의 스킬 줄 표시를 뒤집는다. DSH는 사용자 전용 스킬마다 "사용자 전용 · "(`menu.userOnly`)을 붙이는데,
+//    사용자 스킬 대부분이 사용자 전용이라 같은 말이 줄마다 반복된다. 그 표시를 지우고, 표시가 없던 줄(AI도 스스로
+//    부를 수 있는 스킬)에 "AI 호출 가능 · "을 붙인다. 그런 스킬의 파일 설명은 AI가 읽는 글이라 영어 원문 그대로 두고,
+//    한국어면 메뉴에서만 한국어 요약(호스트가 주는 labels)으로 바꿔 보인다. 고르기·검색·AI 호출 여부는 그대로다.
+// 안내 목록, AI 스킬 메뉴 요약, 알림 여부는 호스트 경로 `api/dsh-skill-hints`에서 받는다.
 window.__ModuleLoader__.load({
   id: '@lyngmn/dsh-skill-hints',
   factory(require) {
@@ -17,6 +21,17 @@ window.__ModuleLoader__.load({
     const VAR = '--dsh-composer-hint'
     const SKILL_TOKEN = /^\/([a-z0-9]+(?:-[a-z0-9]+)*)(\s*)$/u
     const DISMISS_KEY = `${PLUGIN}:restart-dismissed`
+    const MENU = '[data-trigger-menu]'
+    // MenuView의 optionId(`dsh-slash-option-${source}-${index}`) 가운데 스킬 묶음 줄.
+    const SKILL_ROW = '[role="option"][id^="dsh-slash-option-skill-"]'
+    // DSH `menu.userOnly` 문구(zh·en·ja·es·fr·de·ru·pt)와 한국어 언어팩 번역.
+    const USER_ONLY_LABELS = [
+      '사용자 전용', 'user-only', '仅用户', 'ユーザー専用', 'solo usuario',
+      'utilisateur uniquement', 'Nur für Benutzer', 'только для пользователей', 'somente usuário',
+    ]
+    const SEPARATOR = ' · '
+    // AI도 스스로 부를 수 있는 스킬에 붙이는 표시.
+    const AI_LABELS = { ko: 'AI 호출 가능', en: 'AI-callable' }
     const TEXT = {
       ko: { restart: '스킬 메뉴를 새로 맞췄어요. DSH를 완전히 종료(⌘Q)했다가 다시 켜면 반영돼요.', close: '알림 닫기' },
       en: { restart: 'The skill menu was updated. Quit DSH (⌘Q) and open it again to see the change.', close: 'Dismiss' },
@@ -31,9 +46,60 @@ window.__ModuleLoader__.load({
       return m[2] === '' ? ` ${hint}` : hint
     }
 
+    /** "사용자 전용 · "을 뗀 설명. 그 표시로 시작하지 않으면 null. */
+    function stripUserOnly(text) {
+      if (typeof text !== 'string') return null
+      for (const label of USER_ONLY_LABELS) {
+        const prefix = label + SEPARATOR
+        if (text.startsWith(prefix)) return text.slice(prefix.length)
+      }
+      return null
+    }
+
+    /**
+     * DSH가 그린 스킬 설명(원문)을 메뉴에 보일 글로 바꾼다. 사용자 전용은 표시를 떼고, 나머지는 AI 표시를 붙인다.
+     * AI 스킬에 한국어 요약(label)이 있으면 원문 대신 그것을 보인다. 사용자 전용 이름이라도 AI가 다른 이름으로
+     * 같은 스킬을 부를 수 있으면(aiAlso) 표시를 떼고 AI 표시를 붙인다.
+     */
+    function relabel(original, locale, label, aiAlso = false) {
+      const userOnly = stripUserOnly(original)
+      if (userOnly !== null) return aiAlso ? `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${userOnly}` : userOnly
+      const body = typeof label === 'string' && label !== '' ? label : original
+      return `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${body}`
+    }
+
+    // 우리가 쓴 글자를 기억한다(text 노드 → { shown, original }). DSH가 새 원문을 쓰면 shown과 달라져 다시 고친다.
+    const written = new WeakMap()
+
+    /** 줄의 설명 칸: 글자 하나만 든 span 가운데 이름(첫 칸)이 아닌 마지막 것. 없으면 null. */
+    function descriptionNode(row) {
+      const spans = [...row.children].filter((span) => span.tagName === 'SPAN' && span.childNodes.length === 1 && span.firstChild.nodeType === 3)
+      return spans.length >= 2 && spans[0] === row.children[0] ? spans[spans.length - 1].firstChild : null
+    }
+
+    /** 카드 안 `/` 메뉴의 스킬 줄 설명 표시를 맞춘다. 고친 칸 수를 돌려준다. */
+    function cleanMenu(card, locale = 'en', labels = {}, aiAlso = []) {
+      let changed = 0
+      for (const menu of card.querySelectorAll(MENU)) {
+        for (const row of menu.querySelectorAll(SKILL_ROW)) {
+          const node = descriptionNode(row)
+          if (node === null) continue
+          const memo = written.get(node)
+          const original = memo !== undefined && memo.shown === node.nodeValue ? memo.original : node.nodeValue
+          const name = String(row.children[0].textContent ?? '').trim().replace(/^\//u, '')
+          const shown = relabel(original, locale, labels?.[name], aiAlso.includes(name))
+          if (shown === node.nodeValue) continue
+          node.nodeValue = shown
+          written.set(node, { shown, original })
+          changed += 1
+        }
+      }
+      return changed
+    }
+
     // ── 호스트 상태(창 하나에 하나) ─────────────────────────────
     function createStore() {
-      let value = { locale: 'en', hints: {}, restart: false }
+      let value = { locale: 'en', hints: {}, labels: {}, aiAlso: [], restart: false }
       let inflight = null
       const listeners = new Set()
       const refresh = () => {
@@ -41,7 +107,7 @@ window.__ModuleLoader__.load({
           .then((response) => (response.ok ? response.json() : null))
           .then((body) => {
             if (body && typeof body === 'object') {
-              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, restart: body.restart === true }
+              value = { locale: body.locale === 'ko' ? 'ko' : 'en', hints: body.hints ?? {}, labels: body.labels ?? {}, aiAlso: Array.isArray(body.aiAlso) ? body.aiAlso : [], restart: body.restart === true }
               for (const listener of listeners) listener()
             }
           })
@@ -67,10 +133,11 @@ window.__ModuleLoader__.load({
     }
 
     // ── 1. 입력 안내 ────────────────────────────────────────────
-    /** 카드 하나의 입력칸을 지켜보며 안내 변수를 넣고 뺀다. DSH가 넣은 안내는 건드리지 않는다. */
+    /** 카드 하나를 지켜보며 입력칸 안내 변수를 넣고 빼고, 메뉴 표시를 맞춘다. DSH가 넣은 안내는 건드리지 않는다. */
     function attachHint(card) {
       let ours = null
       const update = () => {
+        cleanMenu(card, store.get().locale, store.get().labels, store.get().aiAlso) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
         const input = card.querySelector(INPUT)
         if (input === null) return
         const current = input.style.getPropertyValue(VAR)
@@ -156,7 +223,7 @@ window.__ModuleLoader__.load({
       }, RestartNotice))
     }
     // 시험용: 순수 함수와 카드 붙이기를 연다.
-    apply.testing = { ghostHint, attachHint, store }
+    apply.testing = { ghostHint, attachHint, store, stripUserOnly, relabel, cleanMenu, USER_ONLY_LABELS, AI_LABELS }
 
     return { inject: ['slots'], apply }
   },
