@@ -87,7 +87,7 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <tr>
 <td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""></td>
 <td nowrap><strong>엔터 키 설정</strong></td>
-<td>입력창에서 엔터 키를 누르면 바로 보낼지 줄을 바꿀지 골라요. 한글을 치다가 누른 엔터 키도 한 번에 처리해요.</td>
+<td>입력창에서 엔터 키를 누르면 바로 보낼지 줄을 바꿀지 골라요. 한글을 치다가 누른 엔터 키도 한 번에 처리하고, / 메뉴에서 고를 때 커서 뒤에 써 둔 글을 지켜요.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>

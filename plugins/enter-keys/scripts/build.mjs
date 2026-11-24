@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 export const ROOT = join(fileURLToPath(import.meta.url), '..', '..')
 
 // 의존 순서대로. 모듈끼리의 import는 이어 붙이면서 지운다.
-export const PURE_MODULES = ['src/enter-rules.js']
+export const PURE_MODULES = ['src/enter-rules.js', 'src/tail-guard.js']
 const LOCAL_IMPORT = /^import [^\n]* from '\.\/[\w-]+\.js'\n/gm
 
 export function inline(source, file) {

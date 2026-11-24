@@ -87,7 +87,7 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <tr>
 <td align="center"><img src="plugins/enter-keys/icon.svg" width="40" height="40" alt=""></td>
 <td><strong>Enter key setting</strong></td>
-<td>Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing.</td>
+<td>Choose whether Enter sends or starts a new line in the composer, send Korean text with a single Enter while composing, and keep the text after the caret when picking from the / menu.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Enter Key",
-    "description": "Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing. Not an official DeepSeek plugin."
+    "description": "Choose whether Enter sends or starts a new line in the composer, send Korean text with a single Enter while composing, and keep the text after the caret when picking from the / menu. Not an official DeepSeek plugin."
   }
 }
