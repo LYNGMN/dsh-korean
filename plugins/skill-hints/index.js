@@ -5,13 +5,15 @@ import { join } from 'node:path'
 import { createText, registerLocalized } from './host-locale.js'
 
 /**
- * 스킬 입력 힌트 — DSH는 스킬의 argument-hint를 입력창에 보여 주지 않는다.
- * 입력창 힌트(input.hint)는 호스트 명령에만 붙으므로, 힌트가 있는 스킬마다
- * 같은 이름의 명령을 등록하고, 실행하면 `/이름 인자`를 사용자 메시지로 보내
- * DSH가 원래 스킬을 그대로 불러오게 한다.
+ * 스킬 입력 힌트 — DSH는 스킬의 argument-hint를 입력창에 보여 주지 않고,
+ * `/` 메뉴의 스킬 설명도 원문(대개 영어) 그대로 보여 준다.
+ * 입력창 힌트(input.hint)와 메뉴 설명은 호스트 명령에 붙으므로, 사람이 부를 수 있는
+ * 스킬마다 같은 이름의 명령을 등록하고, 실행하면 `/이름 인자`를 사용자 메시지로 보내
+ * DSH가 원래 스킬을 그대로 불러오게 한다. 힌트가 없는 스킬은 입력 힌트 없이 등록한다.
  *
- * 명령 설명의 앞말과 결과 알림은 DSH 언어 설정(host-locale.js)을 따르고,
- * 언어가 바뀌면 명령을 다시 등록한다. 스킬 요약·힌트 자체는 스킬 데이터라 그대로 둔다.
+ * 명령 설명과 결과 알림은 DSH 언어 설정(host-locale.js)을 따른다. 한국어면 오버레이의
+ * 한국어 요약(없으면 영어), 그 밖은 원본 SKILL.md description의 첫 문장을 쓰고,
+ * 언어가 바뀌면 명령을 다시 등록한다. 힌트 글 자체는 스킬 데이터라 그대로 둔다.
  */
 export const name = 'skill-hints'
 export const inject = ['commands']
@@ -90,10 +92,22 @@ function shorten(text) {
   return t.length > DESCRIPTION_MAX ? `${t.slice(0, DESCRIPTION_MAX - 1).trimEnd()}…` : t
 }
 
-/**
- * 힌트가 있는 사람 호출 가능 스킬을 찾는다.
- * @returns {{ name: string, hint: string, description: string }[]}
- */
+// 문장 끝으로 보지 않는 약어(뒤에 공백이 와도 문장이 이어진다).
+const ABBREVIATION = /(?:^|\s|\()(?:e\.g|i\.e|etc|vs|cf)\.$/iu
+
+/** 영어 설명의 첫 문장(마침표·느낌표·물음표 뒤 공백 또는 끝까지). 길면 줄인다. */
+export function firstSentence(text) {
+  const t = String(text ?? '').replace(/\s+/gu, ' ').trim()
+  const end = /[.!?](?=\s|$)/gu
+  let m
+  while ((m = end.exec(t)) !== null) {
+    const head = t.slice(0, m.index + 1)
+    if (!ABBREVIATION.test(head)) return shorten(head)
+  }
+  return shorten(t)
+}
+
+/** 한국어 요약·힌트 오버레이(`{ skills: { 이름: { summary, hint } } }`). */
 export function loadOverlay(path = DEFAULT_OVERLAY) {
   try {
     const skills = JSON.parse(read(path) ?? '{}').skills
@@ -103,6 +117,10 @@ export function loadOverlay(path = DEFAULT_OVERLAY) {
   }
 }
 
+/**
+ * 사람이 부를 수 있는 스킬을 찾는다(`user-invocable: false`는 뺀다).
+ * @returns {{ name: string, hint?: string, summaryKo?: string, summaryEn: string }[]}
+ */
 export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
   const seen = new Set()
   const found = []
@@ -128,8 +146,11 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
       const source = frontmatter(real)
       const extra = overlay[source.name ?? skillName] ?? overlay[skillName] ?? {}
       const hint = source['argument-hint'] || extra.hint
-      if (!hint) continue
-      found.push({ name: skillName, hint, description: shorten(extra.summary || (source.description ?? meta.description)) })
+      const skill = { name: skillName, summaryEn: firstSentence(source.description || meta.description) }
+      if (hint) skill.hint = hint
+      const summaryKo = shorten(extra.summary)
+      if (summaryKo) skill.summaryKo = summaryKo
+      found.push(skill)
     }
   }
   return found
@@ -170,11 +191,12 @@ export function apply(ctx, config = {}) {
   registerLocalized(ctx, (locale) => {
     const disposers = []
     for (const skill of skills) {
+      const summary = locale === 'ko' ? skill.summaryKo || skill.summaryEn : skill.summaryEn
       try {
         disposers.push(ctx.commands.register({
           name: skill.name,
-          description: t('description', { summary: skill.description }, locale),
-          input: { hint: skill.hint },
+          description: t('description', { summary }, locale),
+          ...(skill.hint ? { input: { hint: skill.hint } } : {}),
           handler: ({ agent, rawInput }) => {
             try {
               agent.steer(userMessage(skillLine(skill.name, rawInput)))

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply, discover, frontmatter, skillLine } from '../index.js'
+import { apply, discover, firstSentence, frontmatter, skillLine } from '../index.js'
 
 function fixture() {
   const base = mkdtempSync(join(tmpdir(), 'skill-hints-'))
@@ -35,18 +35,39 @@ test('frontmatter reads quoted, plain and block values', () => {
   assert.equal(meta['argument-hint'], '[x | y]')
 })
 
-test('discover finds hinted, user-invocable skills through wrappers', () => {
+test('discover finds user-invocable skills through wrappers, with or without a hint', () => {
   const found = discover(fixture(), {})
-  assert.deepEqual(found.map((s) => s.name).sort(), ['gstack-cso', 'impeccable'])
+  assert.deepEqual(found.map((s) => s.name).sort(), ['gstack-cso', 'impeccable', 'plain'])
   const cso = found.find((s) => s.name === 'gstack-cso')
   assert.equal(cso.hint, '[--diff 변경분만 | --code 코드]')
-  assert.equal(cso.description, 'Security audit for code')
+  assert.equal(cso.summaryEn, 'Security audit for code')
+  assert.equal(cso.summaryKo, undefined)
+  const plain = found.find((s) => s.name === 'plain')
+  assert.equal(plain.hint, undefined)
+  assert.equal(plain.summaryEn, 'no hint')
+})
+
+test('discover leaves out user-invocable: false skills', () => {
+  const found = discover(fixture(), { hidden: { summary: '숨김' } })
+  assert.equal(found.some((s) => s.name === 'hidden'), false)
+})
+
+test('firstSentence keeps the first sentence and shortens long text', () => {
+  assert.equal(firstSentence('Fix the cause. Then test it.'), 'Fix the cause.')
+  assert.equal(firstSentence('Use for files (e.g. a .env file). More.'), 'Use for files (e.g. a .env file).')
+  assert.equal(firstSentence('Use when Next.js\n  breaks'), 'Use when Next.js breaks')
+  const long = firstSentence('word '.repeat(60))
+  assert.equal(long.length, 160)
+  assert.ok(long.endsWith('…'))
 })
 
 test('earlier root wins for the same name', () => {
   const [dsh, shelf] = fixture()
   writeFileSync(join(dsh, 'impeccable.md'), '---\nname: impeccable\ndescription: shadow\n---\nno target\n')
-  assert.equal(discover([dsh, shelf], {}).some((s) => s.name === 'impeccable'), false)
+  const found = discover([dsh, shelf], {}).filter((s) => s.name === 'impeccable')
+  assert.equal(found.length, 1)
+  assert.equal(found[0].summaryEn, 'shadow')
+  assert.equal(found[0].hint, undefined)
 })
 
 test('skillLine keeps the slash token the skill loader recognises', () => {
@@ -86,10 +107,11 @@ test('a name already taken by a host command is skipped, not fatal', () => {
 test('overlay gives Korean summary and a hint for skills without one', () => {
   const shelf = fixture()
   const found = discover(shelf, { cso: { summary: '보안 점검' }, plain: { hint: '[대상]', summary: '평범' } })
-  assert.equal(found.find((s) => s.name === 'gstack-cso').description, '보안 점검')
+  assert.equal(found.find((s) => s.name === 'gstack-cso').summaryKo, '보안 점검')
   const plain = found.find((s) => s.name === 'plain')
   assert.equal(plain.hint, '[대상]')
-  assert.equal(plain.description, '평범')
+  assert.equal(plain.summaryKo, '평범')
+  assert.equal(plain.summaryEn, 'no hint')
 })
 
 /** Fake Host with a stored DSH language (`undefined` = follow the system) and the settings event. */
@@ -171,4 +193,51 @@ test('a language change registers the skill commands again', async () => {
   const steered = []
   await registered.get('gstack-cso').handler({ agent: { steer: (m) => steered.push(m) }, rawInput: '--diff' })
   assert.equal(steered[0].content[0].text, '/gstack-cso --diff')
+})
+
+function overlayFile(skills) {
+  const path = join(mkdtempSync(join(tmpdir(), 'skill-hints-overlay-')), 'skill-hints.json')
+  writeFileSync(path, JSON.stringify({ skills }))
+  return path
+}
+
+test('a skill without a hint is registered with no input hint', () => {
+  const { ctx, registered } = localeHost('en')
+  apply(ctx, { roots: fixture(), overlay: NO_OVERLAY })
+  const plain = registered.get('plain')
+  assert.ok(plain)
+  assert.equal(plain.input, undefined)
+  assert.equal(plain.description, 'Skill · no hint')
+  assert.equal(registered.has('hidden'), false)
+})
+
+test('a Korean DSH language uses the Korean summary', () => {
+  const { ctx, registered } = localeHost('ko')
+  apply(ctx, { roots: fixture(), overlay: overlayFile({ cso: { summary: '코드 보안 점검' }, plain: { summary: '평범한 스킬' } }) })
+  assert.equal(registered.get('gstack-cso').description, '스킬 · 코드 보안 점검')
+  assert.equal(registered.get('plain').description, '스킬 · 평범한 스킬')
+  assert.equal(registered.get('plain').input, undefined)
+})
+
+test('an English DSH language uses the first English sentence', () => {
+  const [dsh, shelf] = fixture()
+  writeFileSync(join(shelf, 'plain', 'SKILL.md'), '---\nname: plain\ndescription: Do one thing. Then explain why at length.\n---\n')
+  const { ctx, registered } = localeHost('en')
+  apply(ctx, { roots: [dsh, shelf], overlay: overlayFile({ plain: { summary: '평범한 스킬' } }) })
+  assert.equal(registered.get('plain').description, 'Skill · Do one thing.')
+})
+
+test('a Korean DSH language falls back to English when there is no Korean summary', () => {
+  const { ctx, registered } = localeHost('ko')
+  apply(ctx, { roots: fixture(), overlay: overlayFile({ cso: { summary: '코드 보안 점검' } }) })
+  assert.equal(registered.get('plain').description, '스킬 · no hint')
+  assert.equal(registered.get('impeccable').description, '스킬 · Design work')
+})
+
+test('switching the language swaps Korean and English summaries', async () => {
+  const { ctx, registered, setLocale } = localeHost('ko')
+  apply(ctx, { roots: fixture(), overlay: overlayFile({ plain: { summary: '평범한 스킬' } }) })
+  assert.equal(registered.get('plain').description, '스킬 · 평범한 스킬')
+  await setLocale('en')
+  assert.equal(registered.get('plain').description, 'Skill · no hint')
 })
