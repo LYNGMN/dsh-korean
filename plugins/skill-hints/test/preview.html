@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>스킬 힌트 미리보기</title>
-<!-- 실제 DSH 없이 client.js의 입력 안내와 재시작 알림을 올려 보는 틀. ?theme=dark 어두운 테마, ?lang=en 영어. 색 값은 plan-view 미리보기와 같다. -->
+<!-- 실제 DSH 없이 client.js의 입력 안내와 재시작 알림을 올려 보는 틀. ?theme=dark 어두운 테마, ?lang=en 영어, ?text=/gstack-cso%20--d 첫 글(옵션 자동완성: Tab·→로 채움). 색 값은 plan-view 미리보기와 같다. -->
 <style>
   :root {
     --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
@@ -22,7 +22,7 @@
   body { margin: 0; padding: 24px 16px; font: 14px/22px -apple-system, BlinkMacSystemFont, sans-serif; background: var(--page); color: var(--dsw-alias-label-primary); }
   main { max-width: 760px; margin: 0 auto; }
   [data-composer-card] { position: relative; border: .5px solid var(--dsw-alias-border-l1); border-radius: 16px; background: var(--dsw-alias-card-fill); padding: 12px 14px; }
-  [data-composer-input] { min-height: 44px; border-radius: 8px; font-size: 16px; line-height: 24px; }
+  [data-composer-input] { min-height: 44px; border-radius: 8px; font-size: 16px; line-height: 24px; white-space: pre-wrap; }
   [data-composer-input]:focus-visible { outline: 2px solid var(--dsw-focus-ring-color); outline-offset: 2px; }
   [data-composer-input] p { margin: 0; }
   [data-composer-input] p:last-child::after { content: var(--dsh-composer-hint); color: var(--dsw-alias-label-tertiary); pointer-events: none; }
@@ -72,6 +72,13 @@
   __mod.apply({ effect: (fn) => fn(), slots: { inject: (_n, fn) => fn(), register: (o, C) => { slots[o.name] = C } } })
   const { attachHint, store } = __mod.apply.testing
   function render() { const dock = document.getElementById('dock'); dock.replaceChildren(toDom(slots['conversation.composer.dock']({}))) }
+  const input = document.querySelector('[data-composer-input]')
+  if (params.has('text')) input.firstChild.textContent = params.get('text')
+  // DSH 붙여넣기(PASTE_COMMAND → pasteText) 대신: 커서 자리에 글을 넣는다.
+  input.addEventListener('paste', (event) => {
+    event.preventDefault()
+    document.execCommand('insertText', false, event.clipboardData.getData('text/plain'))
+  })
   store.refresh().then(() => { attachHint(document.querySelector('[data-composer-card]')); render() })
 </script>
 </body>

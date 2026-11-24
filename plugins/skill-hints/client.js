@@ -1,6 +1,9 @@
 // 스킬 힌트 — 화면 쪽. 세 가지를 한다.
 // 1. 입력창이 `/스킬이름` 하나뿐이면 그 뒤에 회색 입력 안내를 보여 준다.
 //    DSH 명령이 쓰는 방법(입력칸의 CSS 변수 `--dsh-composer-hint`)을 그대로 빌려, DSH가 안내를 쓰지 않을 때만 넣는다.
+//    안내에 적힌 옵션(`--diff 변경분만 | polish 다듬기`)의 앞 글자를 치면 남은 글자를 회색으로 보이고,
+//    Tab이나 →를 누르면 남은 글자와 공백 하나를 가짜 붙여넣기로 채운다. 메뉴가 열려 있거나 한글 조합 중이거나
+//    커서가 글 끝이 아니면 키를 지나보내, DSH 메뉴 Tab 고르기·Tab 포커스 이동·enter-keys가 그대로 동작한다.
 // 2. 호스트가 메뉴 설명을 새 언어로 다시 썼으면 입력창 아래 띠에 "다시 시작" 알림을 띄운다.
 // 3. `/` 메뉴의 스킬 줄 표시를 뒤집는다. DSH는 사용자 전용 스킬마다 "사용자 전용 · "(`menu.userOnly`)을 붙이는데,
 //    사용자 스킬 대부분이 사용자 전용이라 같은 말이 줄마다 반복된다. 그 표시를 지우고, 표시가 없던 줄(AI도 스스로
@@ -44,6 +47,69 @@ window.__ModuleLoader__.load({
       const hint = hints?.[m[1]]
       if (typeof hint !== 'string' || hint === '') return null
       return m[2] === '' ? ` ${hint}` : hint
+    }
+
+    // ── 옵션 자동완성(순수 함수) ────────────────────────────────
+    // 고를 말 낱말: 소문자 영어·숫자·하이픈, 앞에 대시 0~2개(`--diff`, `polish`, `pre-commit`).
+    const KEYWORD = /^-{0,2}[a-z0-9][a-z0-9-]*$/u
+    // `/이름` 뒤에 공백과 인자가 있는 글.
+    const SKILL_ARGS = /^\/([a-z0-9]+(?:-[a-z0-9]+)*)\s+(\S[\s\S]*)$/u
+    // 치는 중인 옵션 토큰: 대시 둘 뒤에 한 글자 이상.
+    const TYPED_OPTION = /^--[a-z0-9][a-z0-9-]*$/u
+    const TYPED_WORD = /^[a-z0-9][a-z0-9-]*$/u
+
+    /**
+     * 안내 문자열에서 고를 말을 안내 순서대로 뽑는다. `[…]` 묶음마다 `|`로 나눈 선택지의
+     * 앞부분 소문자 영어 낱말(여러 개면 이어서)이 고를 말이고, 그 뒤에 설명이 있어야 한다.
+     * `[URL]`·`[경로]`·`DX 확장`처럼 설명이 없거나 영어 소문자로 시작하지 않는 자리 표시는 뺀다.
+     * @returns {{ word: string, option: boolean }[]} option은 `-`로 시작하는 옵션인지.
+     */
+    function hintChoices(hint) {
+      const out = []
+      for (const group of String(hint ?? '').match(/\[[^\]]*\]/gu) ?? []) {
+        for (const part of group.slice(1, -1).split('|')) {
+          const words = part.trim().split(/\s+/u).filter(Boolean)
+          let n = 0
+          while (n < words.length && KEYWORD.test(words[n])) n += 1
+          if (n === 0 || n === words.length) continue
+          const word = words.slice(0, n).join(' ')
+          if (!out.some((choice) => choice.word === word)) out.push({ word, option: word.startsWith('-') })
+        }
+      }
+      return out
+    }
+
+    /**
+     * 입력이 `/이름 … 치는중` 모양일 때 안내의 고를 말 가운데 첫 번째로 맞는 것의 남은 글자. 없으면 null.
+     * - `--`로 시작하는 토큰은 인자 어디서나 옵션과 맞춘다. 이미 친 옵션은 다시 권하지 않는다.
+     * - 그냥 낱말은 앞 인자가 옵션뿐일 때(첫 인자)만 하위 명령과 맞춘다. `branch diff`처럼 두 낱말이면 이어서 맞춘다.
+     * - 공백으로 끝나거나, 다 쳤거나, 맞는 것이 없으면 null.
+     */
+    function completeOption(text, hints) {
+      const m = SKILL_ARGS.exec(String(text ?? ''))
+      if (m === null || /\s$/u.test(m[2])) return null
+      const hint = hints?.[m[1]]
+      if (typeof hint !== 'string' || hint === '') return null
+      const tokens = m[2].split(/\s+/u)
+      const typed = tokens[tokens.length - 1]
+      const before = tokens.slice(0, -1)
+      let phrase
+      let option
+      if (typed.startsWith('-')) {
+        if (!TYPED_OPTION.test(typed)) return null
+        phrase = typed
+        option = true
+      } else {
+        if (!TYPED_WORD.test(typed)) return null
+        phrase = [...before.filter((token) => !token.startsWith('-')), typed].join(' ')
+        option = false
+      }
+      for (const choice of hintChoices(hint)) {
+        if (choice.option !== option || choice.word === phrase || !choice.word.startsWith(phrase)) continue
+        if (option && before.includes(choice.word)) continue
+        return choice.word.slice(phrase.length)
+      }
+      return null
     }
 
     /** "사용자 전용 · "을 뗀 설명. 그 표시로 시작하지 않으면 null. */
@@ -133,28 +199,80 @@ window.__ModuleLoader__.load({
     }
 
     // ── 1. 입력 안내 ────────────────────────────────────────────
+    // `/`·`@` 자동완성 메뉴와 명령 인자 고르기 창(enter-keys와 같은 표시). 열려 있으면 Tab은 DSH 몫이다.
+    const OPEN_MENU = '[data-trigger-menu], [data-composer-overlay] [role="listbox"]'
+    const ACCEPT_KEYS = new Set(['Tab', 'ArrowRight'])
+
+    /** 커서가 한 점이고 편집 루트 글의 맨 끝인지. 회색 안내는 마지막 줄 끝에 그려지므로 그 자리에서만 채운다. */
+    function caretAtEnd(input) {
+      const selection = window.getSelection?.()
+      if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false
+      const caret = selection.getRangeAt(0)
+      if (!input.contains(caret.startContainer)) return false
+      const after = document.createRange()
+      after.setStart(caret.startContainer, caret.startOffset)
+      after.setEnd(input, input.childNodes.length)
+      return after.toString() === ''
+    }
+
+    /** 커서 자리에 글을 넣는다. DSH 키맵의 붙여넣기(PASTE_COMMAND → pasteText)가 받아 넣는다(enter-keys와 같은 길). */
+    function insertViaPaste(input, text) {
+      const data = new DataTransfer()
+      data.setData('text/plain', text)
+      const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+      input.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
     /** 카드 하나를 지켜보며 입력칸 안내 변수를 넣고 빼고, 메뉴 표시를 맞춘다. DSH가 넣은 안내는 건드리지 않는다. */
     function attachHint(card) {
       let ours = null
+      // 지금 보이는 회색 글이 옵션 자동완성이면 그 남은 글자(Tab·→로 채울 것).
+      let completion = null
       const update = () => {
         cleanMenu(card, store.get().locale, store.get().labels, store.get().aiAlso) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
         const input = card.querySelector(INPUT)
         if (input === null) return
         const current = input.style.getPropertyValue(VAR)
-        if (current !== '' && current !== ours) { ours = null; return } // DSH 명령 안내가 쓰는 중
+        if (current !== '' && current !== ours) { ours = null; completion = null; return } // DSH 명령 안내가 쓰는 중
         const single = input.querySelectorAll('p').length <= 1
-        const hint = single ? ghostHint(input.textContent, store.get().hints) : null
+        const { hints } = store.get()
+        const text = input.textContent
+        const whole = single ? ghostHint(text, hints) : null
+        completion = single && whole === null ? completeOption(text, hints) : null
+        const hint = whole ?? completion
         const next = hint === null ? null : JSON.stringify(hint)
         if (next === ours && current === (ours ?? '')) return
         if (next === null) input.style.removeProperty(VAR)
         else input.style.setProperty(VAR, next)
         ours = next
       }
+      // 옵션 자동완성이 보일 때만 Tab·→를 받는다. 나머지는 모두 지나보낸다.
+      const onKeyDown = (event) => {
+        if (completion === null || !ACCEPT_KEYS.has(event.key) || event.isTrusted === false) return
+        if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+        if (event.isComposing || event.keyCode === 229) return
+        const input = card.querySelector(INPUT)
+        if (input === null || !(event.target instanceof Node) || !input.contains(event.target)) return
+        if (input.hasAttribute('data-composer-composing')) return
+        if (ours === null || input.style.getPropertyValue(VAR) !== ours) return // DSH 안내가 대신 보이는 중
+        if (card.querySelector(OPEN_MENU) !== null || document.querySelector('[data-trigger-menu]') !== null) return
+        if (!caretAtEnd(input)) return
+        if (typeof DataTransfer !== 'function' || typeof ClipboardEvent !== 'function') return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        const fill = `${completion} `
+        if (!insertViaPaste(input, fill)) {
+          try { console.warn(`[${PLUGIN}] 옵션을 채우지 못했어요`) } catch { /* 콘솔 없음 */ }
+        }
+      }
+      card.addEventListener('keydown', onKeyDown, true)
       const observer = new MutationObserver(update)
       observer.observe(card, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['style'] })
       const off = store.subscribe(update)
       update()
       return () => {
+        card.removeEventListener('keydown', onKeyDown, true)
         observer.disconnect()
         off()
         const input = card.querySelector(INPUT)
@@ -223,7 +341,7 @@ window.__ModuleLoader__.load({
       }, RestartNotice))
     }
     // 시험용: 순수 함수와 카드 붙이기를 연다.
-    apply.testing = { ghostHint, attachHint, store, stripUserOnly, relabel, cleanMenu, USER_ONLY_LABELS, AI_LABELS }
+    apply.testing = { ghostHint, hintChoices, completeOption, attachHint, store, stripUserOnly, relabel, cleanMenu, USER_ONLY_LABELS, AI_LABELS }
 
     return { inject: ['slots'], apply }
   },
