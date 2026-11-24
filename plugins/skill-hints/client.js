@@ -2,8 +2,10 @@
 // 1. 입력창이 `/스킬이름` 하나뿐이면 그 뒤에 회색 입력 안내를 보여 준다.
 //    DSH 명령이 쓰는 방법(입력칸의 CSS 변수 `--dsh-composer-hint`)을 그대로 빌려, DSH가 안내를 쓰지 않을 때만 넣는다.
 // 2. 호스트가 메뉴 설명을 새 언어로 다시 썼으면 입력창 아래 띠에 "다시 시작" 알림을 띄운다.
-// 3. `/` 메뉴의 스킬 줄마다 DSH가 붙이는 "사용자 전용 · "(`menu.userOnly`)을 지운다.
-//    사용자 스킬 대부분이 사용자 전용이라 같은 말이 줄마다 반복되기 때문이다. 글자만 바꾸고 고르기·AI 호출 여부는 그대로다.
+// 3. `/` 메뉴의 스킬 줄 표시를 뒤집는다. DSH는 사용자 전용 스킬마다 "사용자 전용 · "(`menu.userOnly`)을 붙이는데,
+//    사용자 스킬 대부분이 사용자 전용이라 같은 말이 줄마다 반복된다. 그 표시를 지우고, 표시가 없던 줄(AI도 스스로
+//    부를 수 있는 스킬)에 "AI 호출 가능 · "을 붙인다. 그런 스킬은 AI가 읽는 설명이라 영어 원문 그대로인 까닭도 알 수 있다.
+//    메뉴 글자만 바꾸고 고르기·검색·AI 호출 여부는 그대로다.
 // 안내 목록과 알림 여부는 호스트 경로 `api/dsh-skill-hints`에서 받는다.
 window.__ModuleLoader__.load({
   id: '@lyngmn/dsh-skill-hints',
@@ -28,6 +30,8 @@ window.__ModuleLoader__.load({
       'utilisateur uniquement', 'Nur für Benutzer', 'только для пользователей', 'somente usuário',
     ]
     const SEPARATOR = ' · '
+    // AI도 스스로 부를 수 있는 스킬에 붙이는 표시.
+    const AI_LABELS = { ko: 'AI 호출 가능', en: 'AI-callable' }
     const TEXT = {
       ko: { restart: '스킬 메뉴를 새로 맞췄어요. DSH를 완전히 종료(⌘Q)했다가 다시 켜면 반영돼요.', close: '알림 닫기' },
       en: { restart: 'The skill menu was updated. Quit DSH (⌘Q) and open it again to see the change.', close: 'Dismiss' },
@@ -52,19 +56,36 @@ window.__ModuleLoader__.load({
       return null
     }
 
-    /** 카드 안 `/` 메뉴의 스킬 줄에서 표시를 지운다. 고친 칸 수를 돌려준다. */
-    function cleanMenu(card) {
+    /** DSH가 그린 스킬 설명(원문)을 메뉴에 보일 글로 바꾼다. 사용자 전용은 표시를 떼고, 나머지는 AI 표시를 붙인다. */
+    function relabel(original, locale) {
+      const userOnly = stripUserOnly(original)
+      if (userOnly !== null) return userOnly
+      return `${AI_LABELS[locale] ?? AI_LABELS.en}${SEPARATOR}${original}`
+    }
+
+    // 우리가 쓴 글자를 기억한다(text 노드 → { shown, original }). DSH가 새 원문을 쓰면 shown과 달라져 다시 고친다.
+    const written = new WeakMap()
+
+    /** 줄의 설명 칸: 글자 하나만 든 span 가운데 이름(첫 칸)이 아닌 마지막 것. 없으면 null. */
+    function descriptionNode(row) {
+      const spans = [...row.children].filter((span) => span.tagName === 'SPAN' && span.childNodes.length === 1 && span.firstChild.nodeType === 3)
+      return spans.length >= 2 && spans[0] === row.children[0] ? spans[spans.length - 1].firstChild : null
+    }
+
+    /** 카드 안 `/` 메뉴의 스킬 줄 설명 표시를 맞춘다. 고친 칸 수를 돌려준다. */
+    function cleanMenu(card, locale = 'en') {
       let changed = 0
       for (const menu of card.querySelectorAll(MENU)) {
         for (const row of menu.querySelectorAll(SKILL_ROW)) {
-          for (const span of row.children) {
-            const node = span.firstChild
-            if (span.tagName !== 'SPAN' || node === null || node.nodeType !== 3 || span.childNodes.length !== 1) continue
-            const next = stripUserOnly(node.nodeValue)
-            if (next === null) continue
-            node.nodeValue = next
-            changed += 1
-          }
+          const node = descriptionNode(row)
+          if (node === null) continue
+          const memo = written.get(node)
+          const original = memo !== undefined && memo.shown === node.nodeValue ? memo.original : node.nodeValue
+          const shown = relabel(original, locale)
+          if (shown === node.nodeValue) continue
+          node.nodeValue = shown
+          written.set(node, { shown, original })
+          changed += 1
         }
       }
       return changed
@@ -106,11 +127,11 @@ window.__ModuleLoader__.load({
     }
 
     // ── 1. 입력 안내 ────────────────────────────────────────────
-    /** 카드 하나를 지켜보며 입력칸 안내 변수를 넣고 빼고, 메뉴 표시를 지운다. DSH가 넣은 안내는 건드리지 않는다. */
+    /** 카드 하나를 지켜보며 입력칸 안내 변수를 넣고 빼고, 메뉴 표시를 맞춘다. DSH가 넣은 안내는 건드리지 않는다. */
     function attachHint(card) {
       let ours = null
       const update = () => {
-        cleanMenu(card) // 3. 메뉴가 열리거나 다시 그려질 때마다(DSH가 글자를 되돌려도) 표시를 지운다.
+        cleanMenu(card, store.get().locale) // 3. 메뉴가 열리거나 다시 그려질 때·언어가 바뀔 때마다 표시를 맞춘다.
         const input = card.querySelector(INPUT)
         if (input === null) return
         const current = input.style.getPropertyValue(VAR)
@@ -196,7 +217,7 @@ window.__ModuleLoader__.load({
       }, RestartNotice))
     }
     // 시험용: 순수 함수와 카드 붙이기를 연다.
-    apply.testing = { ghostHint, attachHint, store, stripUserOnly, cleanMenu, USER_ONLY_LABELS }
+    apply.testing = { ghostHint, attachHint, store, stripUserOnly, relabel, cleanMenu, USER_ONLY_LABELS, AI_LABELS }
 
     return { inject: ['slots'], apply }
   },

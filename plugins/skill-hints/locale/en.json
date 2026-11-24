@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Skill Hints",
-    "description": "Shows a grey input hint after /skill in the composer, matches skill menu descriptions to your DSH language, hides the \"user-only\" label repeated on each row, and adds /skill-hints to check them. Not an official DeepSeek plugin."
+    "description": "Shows a grey input hint after /skill in the composer, matches skill menu descriptions to your DSH language, swaps the \"user-only\" label repeated on each row for an \"AI-callable\" mark on the few skills AI can also call, and adds /skill-hints to check them. Not an official DeepSeek plugin."
   }
 }

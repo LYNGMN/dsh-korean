@@ -1,4 +1,4 @@
-// `/` 메뉴의 "사용자 전용 · " 표시 숨기기 시험. MenuView 줄 모양만 흉내 낸 작은 DOM으로 돌린다.
+// `/` 메뉴 스킬 줄 표시 시험("사용자 전용 · " 지우기, "AI 호출 가능 · " 붙이기). MenuView 줄 모양만 흉내 낸 작은 DOM으로 돌린다.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -57,28 +57,76 @@ test('사용자 전용 표시만 떼고 나머지 설명은 그대로', () => {
   assert.equal(stripUserOnly(undefined), null)
 })
 
-test('메뉴 안 스킬 줄만 고친다', () => {
-  const { cleanMenu } = testing()
-  const skill = row('skill', 0, '사용자 전용 · 계획을 세운다')
-  const modelSkill = row('skill', 1, 'AI도 부를 수 있는 스킬')
+test('설명 원문을 메뉴 글로: 사용자 전용은 떼고 나머지는 AI 표시를 붙인다', () => {
+  const { relabel } = testing()
+  assert.equal(relabel('사용자 전용 · 계획을 세운다', 'ko'), '계획을 세운다')
+  assert.equal(relabel('Use when debugging', 'ko'), 'AI 호출 가능 · Use when debugging')
+  assert.equal(relabel('Use when debugging', 'en'), 'AI-callable · Use when debugging')
+  assert.equal(relabel('Use when debugging', 'fr'), 'AI-callable · Use when debugging', '모르는 언어는 영어')
+})
+
+function menuCard() {
+  const userOnly = row('skill', 0, '사용자 전용 · 계획을 세운다')
+  const modelSkill = row('skill', 1, 'Use when debugging')
   const command = row('command', 0, '사용자 전용 · 명령 설명')
   const outside = row('skill', 2, '사용자 전용 · 메뉴 밖 글')
   const card = new El('div', {}, [
-    new El('div', { 'data-trigger-menu': '' }, [new El('div', { role: 'listbox' }, [skill, modelSkill, command])]),
+    new El('div', { 'data-trigger-menu': '' }, [new El('div', { role: 'listbox' }, [userOnly, modelSkill, command])]),
     outside,
   ])
-  assert.equal(cleanMenu(card), 1)
-  assert.equal(descriptionOf(skill), '계획을 세운다')
-  assert.equal(descriptionOf(modelSkill), 'AI도 부를 수 있는 스킬')
+  return { card, userOnly, modelSkill, command, outside }
+}
+
+test('메뉴 안 스킬 줄만 고친다', () => {
+  const { cleanMenu } = testing()
+  const { card, userOnly, modelSkill, command, outside } = menuCard()
+  assert.equal(cleanMenu(card, 'ko'), 2)
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when debugging')
   assert.equal(descriptionOf(command), '사용자 전용 · 명령 설명', '스킬이 아닌 묶음은 손대지 않는다')
   assert.equal(descriptionOf(outside), '사용자 전용 · 메뉴 밖 글', '메뉴 밖은 손대지 않는다')
-  assert.equal(cleanMenu(card), 0, '두 번 고치지 않는다')
+  assert.equal(cleanMenu(card, 'ko'), 0, '두 번 고치지 않는다(뗀 설명에 AI 표시를 붙이지 않는다)')
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
 })
 
-test('글자 사이에 다른 요소가 낀 칸은 건너뛴다', () => {
+test('DSH가 원문을 다시 쓰면 그 원문으로 다시 고친다', () => {
   const { cleanMenu } = testing()
-  const mixed = new El('button', { role: 'option', id: 'dsh-slash-option-skill-0' }, [
+  const { card, userOnly, modelSkill } = menuCard()
+  cleanMenu(card, 'ko')
+  userOnly.children[1].firstChild.nodeValue = '사용자 전용 · 계획을 세운다'
+  modelSkill.children[1].firstChild.nodeValue = 'Use when testing'
+  assert.equal(cleanMenu(card, 'ko'), 2)
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when testing')
+  // 같은 칸을 DSH가 다른 스킬 줄로 다시 쓸 때(사용자 전용 칸에 AI 스킬 원문)
+  userOnly.children[1].firstChild.nodeValue = 'Use when reviewing'
+  cleanMenu(card, 'ko')
+  assert.equal(descriptionOf(userOnly), 'AI 호출 가능 · Use when reviewing')
+})
+
+test('언어가 바뀌면 AI 표시만 그 언어로 바꾸고 겹치지 않는다', () => {
+  const { cleanMenu } = testing()
+  const { card, userOnly, modelSkill } = menuCard()
+  cleanMenu(card, 'en')
+  assert.equal(descriptionOf(modelSkill), 'AI-callable · Use when debugging')
+  assert.equal(cleanMenu(card, 'ko'), 1)
+  assert.equal(descriptionOf(modelSkill), 'AI 호출 가능 · Use when debugging')
+  assert.equal(descriptionOf(userOnly), '계획을 세운다')
+})
+
+test('설명 칸이 없거나 모양이 다른 줄은 건너뛴다', () => {
+  const { cleanMenu } = testing()
+  const nameOnly = new El('button', { role: 'option', id: 'dsh-slash-option-skill-0' }, [new El('span', {}, ['/a'])])
+  const mixed = new El('button', { role: 'option', id: 'dsh-slash-option-skill-1' }, [
+    new El('span', {}, ['/b']),
     new El('span', {}, ['사용자 전용 · ', new El('mark', {}, ['강조'])]),
   ])
-  assert.equal(cleanMenu(new El('div', {}, [new El('div', { 'data-trigger-menu': '' }, [mixed])])), 0)
+  const withIcon = new El('button', { role: 'option', id: 'dsh-slash-option-skill-2' }, [
+    new El('span', {}, [new El('svg')]),
+    new El('span', {}, ['/c']),
+    new El('span', {}, ['Use when c']),
+  ])
+  const card = new El('div', {}, [new El('div', { 'data-trigger-menu': '' }, [nameOnly, mixed, withIcon])])
+  assert.equal(cleanMenu(card, 'ko'), 0)
+  assert.equal(descriptionOf(withIcon), '/c', '아이콘이 앞에 있으면 어느 칸이 이름인지 몰라 손대지 않는다')
 })
