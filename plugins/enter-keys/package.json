@@ -1,8 +1,8 @@
 {
   "name": "@lyngmn/dsh-enter-keys",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Choose whether Enter sends or starts a new line in the composer, and send Korean text with a single Enter while composing. Not an official DeepSeek plugin.",
+  "description": "Choose whether Enter sends or starts a new line in the composer, send Korean text with a single Enter while composing, and keep the text after the caret when picking from the / menu. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "lib/index.js",

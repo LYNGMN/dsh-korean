@@ -12,10 +12,11 @@ DSH 0.2.2-rc.3 입력창의 Enter 처리(`dsh-client-ui-conversation/src/client/
 
 - `/Applications/DeepSeek Harness.app` 안의 파일은 읽기만 합니다. DSH 코드·CSS를 복사하지 않습니다.
 - 공식 경로는 자리 두 곳만 씁니다: `conversation.input.overlay`(입력창 카드 안, 보이지 않는 `span`)와 `settings.general.item`(설정 줄, order 21).
-- DOM 개입은 자기 입력창 카드(`[data-composer-card]`) 안에서, 편집 루트(`[data-composer-input]`) 안을 향한 keydown·composition 이벤트에만 합니다. 문서 전체나 다른 요소에 듣기를 걸지 않습니다(설정 동기화용 `window` `storage` 이벤트 하나만 예외).
+- DOM 개입은 자기 입력창 카드(`[data-composer-card]`) 안에서, 편집 루트(`[data-composer-input]`) 안을 향한 keydown·composition·beforeinput 이벤트에만 합니다. 쓰는 것은 다시 누른 Enter와, 자동완성 뒤 사라진 글을 넣는 가짜 `paste` 이벤트·커서 옮기기뿐입니다. 문서 전체나 다른 요소에 듣기를 걸지 않습니다(설정 동기화용 `window` `storage` 이벤트 하나만 예외).
 - DSH 동작을 대신하지 않습니다. 보내기·메뉴 고르기·잠금·작업 중 방식은 DSH가 정하도록, 확정이 끝난 뒤 편집 루트에 Enter(또는 Shift+Enter) 하나를 다시 눌러 줍니다. DSH 내부 객체(Lexical editor, `ComposerKeyboard`)에 손대지 않습니다.
 - Shift+Enter는 늘 DSH 줄바꿈, Cmd/Ctrl+Enter는 DSH 규칙(작업 중 반대 방식)을 그대로 둡니다. 한글 조합 중 Cmd/Ctrl+Enter만 같은 조합으로 다시 눌러 한 번에 되게 합니다.
 - 한글이 아닌 조합(일본어·중국어 후보 고르기)은 예전 DSH 동작 그대로 둡니다. 자동완성 메뉴가 열려 있으면 Enter는 DSH가 항목을 고르게 둡니다.
+- 자동완성 뒤 글 지키기(2026-11-25 사용자 요청): 메뉴가 열린 채 누른 Tab·Enter는 막지 않고 DSH가 고르게 둡니다. 고르기 직전 커서 뒤 글을 기억했다가, 고른 뒤 그 글이 사라졌을 때만 편집 루트에 가짜 `paste` 이벤트를 보내 DSH 붙여넣기(`PASTE_COMMAND` → `pasteText`)가 넣게 합니다. 정상으로 골라졌으면 아무것도 하지 않고, 칩·인용이 섞인 뒤 글과 사람이 그 사이 다른 키를 누른 경우는 손대지 않습니다. 판단 규칙은 `src/tail-guard.js`(DOM·타이머 없음)에만 둡니다. DSH가 원인을 고치면 이 기능은 뺍니다.
 - 판단 규칙은 `src/enter-rules.js`(DOM·타이머 없음)에만 둡니다. 숫자(30ms·100ms·1000ms)를 바꾸면 그 파일 주석과 테스트를 같이 고칩니다.
 - 설정은 브라우저 저장소 `dsh-enter-keys:enterKey`(`send`·`newline`)에 둡니다. 읽기·쓰기는 모두 try/catch이고, 못 읽으면 바로 보내기입니다.
 - `@deepseek-ai/dsh-client-ui-primitives` 같은 Harness Client 패키지를 `require`하지 않습니다. 공용 모듈로 받는 것은 `react`뿐입니다.
@@ -58,6 +59,7 @@ DSH 0.2.2-rc.3 입력창의 Enter 처리(`dsh-client-ui-conversation/src/client/
    - `src/client/input/editor/ComposerContentEditable.tsx`: `data-composer-input`
    - `dsh-client-ui-input-trigger/src/client/MenuView.tsx`: `data-trigger-menu`
    - `src/client/apply.ts`: `settings.general.item`의 `composer-enter` 순서(20)
+   - `src/client/input/editor/span-map.ts`·`editor/text-ref.ts`, `dsh-client-ui-skill/src/client/index.ts` `onPick`: 맨 앞에 `/스킬일부`를 넣고 Tab으로 고를 때 뒤 글이 그대로 남으면(콘솔에 `되살렸어요`가 안 뜨면) DSH가 고친 것이니 자동완성 뒤 글 지키기를 뺍니다.
 3. 실제 Desktop에서 운영 확인 6번을 다시 합니다.
 
 ## 작업하며 배운 것

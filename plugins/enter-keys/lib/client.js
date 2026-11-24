@@ -6,7 +6,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const { useEffect, useRef, useState, useId } = React
-    const VERSION = "1.0.0"
+    const VERSION = "1.1.0"
     const STYLE_TEXT = "/* 일반 설정의 \"Enter를 누르면\" 줄. DSH 설정 줄과 같은 색 토큰을 쓰고, 토큰이 없으면 괄호 안 값으로 그린다. */\n.dek-row {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 12px 16px;\n  padding: 16px 0;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.08));\n  word-break: keep-all;\n  overflow-wrap: break-word;\n}\n.dek-text {\n  flex: 1 1 240px;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.dek-title {\n  font-size: 14px;\n  line-height: 22px;\n  color: var(--dsw-alias-label-primary, #1f2329);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.dek-desc {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary, #646a73);\n  text-wrap: pretty;\n}\n.dek-line { display: block; }\n\n/* 두 칸 고르기. 진짜 라디오 단추라 화살표 키·화면 읽기가 그대로 된다. */\n.dek-segment {\n  flex: none;\n  display: inline-grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 2px;\n  padding: 2px;\n  border-radius: var(--dsw-radius-md, 10px);\n  background: var(--dsw-alias-bg-module-platform, rgba(0, 0, 0, 0.05));\n}\n.dek-option {\n  position: relative;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 88px;\n  height: 40px;\n  padding: 0 12px;\n  box-sizing: border-box;\n  border-radius: calc(var(--dsw-radius-md, 10px) - 2px);\n  font-size: 14px;\n  line-height: 22px;\n  color: var(--dsw-alias-label-secondary, #646a73);\n  white-space: nowrap;\n  cursor: pointer;\n  user-select: none;\n}\n.dek-radio {\n  position: absolute;\n  inset: 0;\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  opacity: 0;\n  cursor: pointer;\n}\n.dek-option:has(.dek-radio:checked) {\n  color: var(--dsw-alias-label-primary, #1f2329);\n  background: var(--dsw-alias-bg-base, #ffffff);\n  box-shadow: 0 0 0 0.5px var(--dsw-elevation-stroke-color, rgba(0, 0, 0, 0.12)), 0 1px 2px rgba(0, 0, 0, 0.06);\n}\n.dek-option:has(.dek-radio:focus-visible) {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, #3f77d8);\n  outline-offset: 1px;\n}\n@media (hover: hover) {\n  .dek-option:not(:has(.dek-radio:checked)):hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.04));\n  }\n}\n\n/* 좁은 설정 창: 고르기를 설명 아래 줄로 내린다. */\n@media (max-width: 520px) {\n  .dek-segment { width: 100%; }\n  .dek-option { min-width: 0; }\n}"
 
     const ENTER_KEY_MODES = ['send', 'newline']
@@ -110,6 +110,53 @@ window.__ModuleLoader__.load({
         },
       }
     }
+    
+    const TAIL_CHECKS_MS = [0, 80, 300]
+    
+    /**
+     * 지켜볼 키인지.
+     * @param {{ key?: string, code?: string, isTrusted?: boolean, isComposing?: boolean,
+     *   shiftKey?: boolean, altKey?: boolean, metaKey?: boolean, ctrlKey?: boolean }} e keydown
+     * @param {boolean} menuOpen `/`·`@` 자동완성 메뉴가 열렸는지
+     * @returns {'tab' | 'enter' | null} 메뉴가 열린 채 누른 Tab·엔터 키(조합 없이)만. 그 밖은 null.
+     */
+    function watchKind(e, menuOpen) {
+      if (!menuOpen || e.isTrusted === false || e.isComposing) return null
+      if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return null
+      if (e.key === 'Tab') return 'tab'
+      if (e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter') return 'enter'
+      return null
+    }
+    
+    /** 화면 글을 비교할 수 있게 고른다(줄바꿈 없는 공백·CRLF). */
+    function normalizeText(text) {
+      return String(text ?? '').replace(/ /g, ' ').replace(/\r\n?/g, '\n')
+    }
+    
+    /**
+     * 고르기 뒤 커서 뒤 글이 사라졌는지.
+     * @param {{ before: string, tail: string, after: string }} s 고르기 직전 전체 글, 그때 커서 뒤 글, 지금 전체 글
+     * @returns {boolean} 무언가 바뀌었고, 남은 글이 있으며, 그 끝에 커서 뒤 글이 없을 때만 true.
+     * 보내서 비었거나(after가 빔) 아직 아무 일도 없으면(after === before) false.
+     */
+    function lostTail({ before, tail, after }) {
+      const t = normalizeText(tail)
+      const a = normalizeText(after)
+      if (t.trim() === '' || a.trim() === '') return false
+      if (a === normalizeText(before)) return false
+      if (a.endsWith(t)) return false
+      return !a.includes(t.trim())
+    }
+    
+    /**
+     * 되살릴 글. 고른 항목 뒤에 이미 공백이 있으면 앞 공백을 하나로 줄인다.
+     * @param {{ tail: string, after: string }} s
+     */
+    function restoreText({ tail, after }) {
+      const t = normalizeText(tail)
+      const a = normalizeText(after)
+      return a === '' || /\s$/.test(a) ? t.replace(/^[ \t]+/, '') : t
+    }
 
     const PLUGIN = 'dsh-enter-keys'
     const CARD = '[data-composer-card]'
@@ -187,6 +234,92 @@ window.__ModuleLoader__.load({
       }))
     }
 
+    // ── 자동완성 뒤 글 지키기 ─────────────────────────────────
+    // DSH 편집 루트는 줄마다 <p>, 줄 안 줄바꿈은 <br>, 빈 줄은 <p><br></p>다. 그 모양대로 글을 읽는다.
+
+    function inlineText(node) {
+      if (node.nodeType === 3) return node.nodeValue ?? ''
+      if (node.nodeName === 'BR') return '\n'
+      let out = ''
+      for (const child of node.childNodes) out += inlineText(child)
+      return out
+    }
+
+    function blockText(block) {
+      if (block.nodeType === 3) return block.nodeValue ?? ''
+      const kids = block.childNodes
+      if (kids.length === 1 && kids[0].nodeName === 'BR') return ''
+      return inlineText(block)
+    }
+
+    function composerText(container) {
+      return Array.from(container.childNodes, blockText).join('\n')
+    }
+
+    // 커서 뒤 글. 커서가 한 점이 아니거나, 뒤에 칩·인용(contenteditable=false)이 섞이면 null(글로 되살리면 칩이 깨진다).
+    function readTail(input) {
+      const selection = window.getSelection?.()
+      if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null
+      const caret = selection.getRangeAt(0)
+      if (!input.contains(caret.startContainer)) return null
+      const range = document.createRange()
+      range.setStart(caret.startContainer, caret.startOffset)
+      range.setEnd(input, input.childNodes.length)
+      const fragment = range.cloneContents()
+      if (fragment.querySelector('[contenteditable="false"]') !== null) return null
+      return composerText(fragment)
+    }
+
+    // composerText 기준 offset 자리의 DOM 점.
+    function pointAt(input, offset) {
+      let left = offset
+      let last = [input, input.childNodes.length]
+      const blocks = Array.from(input.childNodes)
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i]
+        if (i > 0) left -= 1
+        if (left < 0) return last
+        const placeholder = block.childNodes.length === 1 && block.firstChild.nodeName === 'BR'
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT)
+        for (let node = walker.currentNode; node !== null; node = walker.nextNode()) {
+          if (node.nodeType === 3) {
+            const length = node.nodeValue.length
+            if (left <= length) return [node, left]
+            left -= length
+            last = [node, length]
+          } else if (node.nodeName === 'BR' && !placeholder) {
+            if (left === 0) return [node.parentNode, Array.prototype.indexOf.call(node.parentNode.childNodes, node)]
+            left -= 1
+          }
+        }
+        if (left === 0) return [block, block.childNodes.length]
+        last = [block, block.childNodes.length]
+      }
+      return last
+    }
+
+    function setCaret(node, offset) {
+      const selection = window.getSelection?.()
+      if (!selection) return
+      const range = document.createRange()
+      range.setStart(node, offset)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    // 끝에 글을 붙인다. DSH 키맵의 붙여넣기(PASTE_COMMAND → pasteText)가 받아 정리해 넣는다.
+    function appendViaPaste(input, text) {
+      if (typeof DataTransfer !== 'function' || typeof ClipboardEvent !== 'function') return false
+      input.focus({ preventScroll: true })
+      setCaret(input, input.childNodes.length)
+      const data = new DataTransfer()
+      data.setData('text/plain', text)
+      const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+      input.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
     const attached = new WeakSet()
 
     // 입력창 카드 하나에 capture 단계 듣기를 건다. 카드 밖 DOM은 건드리지 않는다.
@@ -199,37 +332,91 @@ window.__ModuleLoader__.load({
         const input = root()
         return input !== null && target instanceof Node && input.contains(target)
       }
+      const later = (fn, ms, message) => {
+        const id = setTimeout(() => {
+          timers.delete(id)
+          try { fn() } catch (error) { warn(message, error) }
+        }, ms)
+        timers.add(id)
+        return id
+      }
+      const menuOpen = () => card.querySelector(MENU) !== null || document.querySelector('[data-trigger-menu]') !== null
       const controller = createEnterController({
         now: () => Date.now(),
-        later: (fn, ms) => {
-          const id = setTimeout(() => {
-            timers.delete(id)
-            try { fn() } catch (error) { warn('엔터 키를 다시 누르지 못했어요', error) }
-          }, ms)
-          timers.add(id)
-        },
+        later: (fn, ms) => { later(fn, ms, '엔터 키를 다시 누르지 못했어요') },
         enterKey: store.get,
-        menuOpen: () => card.querySelector(MENU) !== null || document.querySelector('[data-trigger-menu]') !== null,
+        menuOpen,
         press: key => pressEnter(root(), key),
       })
+
+      // 자동완성으로 고르기 직전의 커서 뒤 글. 고른 뒤 사라졌을 때만 되살린다.
+      let watch = null
+      const stopWatch = () => {
+        if (watch === null) return
+        for (const id of watch.ids) { clearTimeout(id); timers.delete(id) }
+        watch = null
+      }
+      const checkTail = (current, at) => {
+        if (watch !== current) return
+        const input = root()
+        if (input === null || !input.isConnected) { stopWatch(); return }
+        const after = composerText(input)
+        if (!lostTail({ before: current.before, tail: current.tail, after })) return
+        stopWatch()
+        const caret = normalizeText(after).length
+        if (!appendViaPaste(input, restoreText({ tail: current.tail, after }))) {
+          warn('자동완성 뒤 사라진 글을 되살리지 못했어요', null)
+          return
+        }
+        // 붙여넣기를 마친 DSH 편집기가 커서를 글 끝에 다시 그린 뒤, 고른 항목 바로 뒤로 옮긴다.
+        later(() => {
+          if (!input.isConnected) return
+          const [node, offset] = pointAt(input, caret)
+          setCaret(node, offset)
+        }, 0, '커서를 되돌리지 못했어요')
+        try { console.info(`[${PLUGIN}] ${current.kind} 고른 뒤 사라진 글 ${current.tail.length}자를 되살렸어요(${at}ms)`) } catch { /* 콘솔 없음 */ }
+      }
+      const startWatch = (kind) => {
+        const input = root()
+        if (input === null) return
+        const tail = readTail(input)
+        if (tail === null || tail.trim() === '') return
+        const current = { kind, before: composerText(input), tail, ids: [] }
+        watch = current
+        for (const ms of TAIL_CHECKS_MS) {
+          current.ids.push(later(() => checkTail(current, ms), ms, '자동완성 뒤 글을 확인하지 못했어요'))
+        }
+      }
+
       const onKeyDown = (event) => {
         if (!inInput(event.target)) return
+        // 사람이 다음 키를 누르면 그 뒤 바뀐 글은 사람 몫이다.
+        if (event.isTrusted !== false) stopWatch()
         let action = 'pass'
         try { action = controller.keydown(event) } catch (error) { warn('엔터 키 판단에 실패해 DSH 기본 동작으로 둡니다', error) }
         if (action === 'consume') {
           event.preventDefault()
           event.stopImmediatePropagation()
+          return
         }
+        try {
+          const kind = watchKind(event, menuOpen())
+          if (kind !== null) startWatch(kind === 'tab' ? 'Tab으로' : '엔터 키로')
+        } catch (error) { warn('자동완성 뒤 글을 기억하지 못했어요', error) }
       }
+      const onBeforeInput = (event) => { if (event.isTrusted !== false && inInput(event.target)) stopWatch() }
       const onStart = (event) => { if (inInput(event.target)) controller.compositionStart() }
       const onEnd = (event) => { if (inInput(event.target)) controller.compositionEnd(event.data) }
       card.addEventListener('keydown', onKeyDown, true)
       card.addEventListener('compositionstart', onStart, true)
       card.addEventListener('compositionend', onEnd, true)
+      card.addEventListener('beforeinput', onBeforeInput, true)
       return () => {
         card.removeEventListener('keydown', onKeyDown, true)
         card.removeEventListener('compositionstart', onStart, true)
         card.removeEventListener('compositionend', onEnd, true)
+        card.removeEventListener('beforeinput', onBeforeInput, true)
+        watch = null
         for (const id of timers) clearTimeout(id)
         timers.clear()
         attached.delete(card)
@@ -278,7 +465,7 @@ window.__ModuleLoader__.load({
 
     return {
       // 시험(test/client.test.mjs)과 미리보기 틀(test/preview.html)이 쓴다. DSH는 읽지 않는다.
-      internals: { store, attachComposer, createSettingStore },
+      internals: { store, attachComposer, createSettingStore, composerText, readTail, pointAt },
       inject: ['slots'],
       apply(ctx) {
         ctx.effect(() => {
