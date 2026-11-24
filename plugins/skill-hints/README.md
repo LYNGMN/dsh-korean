@@ -19,6 +19,15 @@ DSH는 `/` 메뉴에 "명령"과 "스킬"을 따로 보여 주고, 스킬 설명
 
 DSH 언어를 바꾸면 목록을 새로 받게 합니다. 스킬 파일이 바뀌면 DSH 파일 제공자가 같은 목록 캐시를 비우므로 요약도 다시 읽습니다. 화면에 남은 목록은 새 대화에서 바뀔 수 있습니다.
 
+## "사용자 전용" 표시 숨기기
+
+DSH는 `/` 메뉴에서 사용자 전용 스킬 설명 앞에 "사용자 전용 · "을 붙입니다. 사용자 스킬은 대부분 사용자 전용이라 거의 모든 줄에 같은 말이 반복되므로, 화면 쪽 번들(`client.js`)이 메뉴의 스킬 줄에서 이 앞부분만 지웁니다.
+
+- 입력창 카드 안 공식 자리(`conversation.input.overlay`)에 보이지 않게 들어가, 그 카드 안 `/` 메뉴의 스킬 줄(`dsh-slash-option-skill-*`) 글자만 고칩니다. 명령 줄과 메뉴 밖 글은 건드리지 않습니다.
+- DSH가 지원하는 모든 언어의 표시 문구(한국어 언어팩 번역 포함)를 알아봅니다.
+- 글자만 바꾸므로 고르기·Tab·엔터 키, AI가 스킬을 부를 수 있는지(`disable-model-invocation`)는 그대로입니다.
+- DSH가 메뉴 구조나 문구를 바꾸면 원래 표시가 다시 보일 뿐 메뉴는 그대로 동작합니다.
+
 ## 설치
 
 한국어 DSH 키트의 다른 플러그인과 함께 저장소 루트에서 `./install.sh`로 설치합니다.
@@ -27,7 +36,7 @@ DSH 언어를 바꾸면 목록을 새로 받게 합니다. 스킬 파일이 바�
 ## 시험
 
 ```bash
-~/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node --test test/plugin.test.js
+~/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node --test test/plugin.test.js test/client.test.mjs
 ```
 
 ## 되돌리기

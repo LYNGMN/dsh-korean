@@ -92,7 +92,7 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
 <td nowrap><strong>스킬 힌트</strong></td>
-<td>/ 메뉴의 사용자 전용 스킬 설명을 DSH 언어에 맞춰 보여 줘요. 한국어면 한국어 요약과 세부 명령 안내를 붙여요.</td>
+<td>/ 메뉴의 사용자 전용 스킬 설명을 DSH 언어에 맞춰 보여 줘요. 한국어면 한국어 요약과 세부 명령 안내를 붙이고, 줄마다 붙던 "사용자 전용" 표시는 숨겨요.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>

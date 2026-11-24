@@ -1,26 +1,28 @@
 {
   "name": "@lyngmn/dsh-skill-hints",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Shows user-only skill descriptions in the / menu in your DSH language, with Korean summaries and argument hints when DSH is in Korean. Not an official DeepSeek plugin.",
+  "description": "Shows user-only skill descriptions in the / menu in your DSH language, with Korean summaries and argument hints when DSH is in Korean, and hides the \"user-only\" label repeated on each row. Not an official DeepSeek plugin.",
   "author": "LYNGMN",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
     "host-locale.js",
+    "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
     "README.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js test/*.test.mjs"
   },
   "license": "MIT",
   "repository": {
@@ -32,6 +34,12 @@
     "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
     }
   }
 }
