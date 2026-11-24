@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스킬 힌트 미리보기</title>
+<!-- 실제 DSH 없이 client.js의 입력 안내와 재시작 알림을 올려 보는 틀. ?theme=dark 어두운 테마, ?lang=en 영어. 색 값은 plan-view 미리보기와 같다. -->
+<style>
+  :root {
+    --dsw-alias-label-primary: #1f1f1f; --dsw-alias-label-secondary: #5f5f5f; --dsw-alias-label-tertiary: #8a8a8a;
+    --dsw-alias-state-business-primary: #3964fe; --dsw-alias-state-business-tertiary: rgba(57, 100, 254, .12);
+    --dsw-alias-border-l1: rgba(0, 0, 0, .12); --dsw-alias-card-fill: #fff;
+    --dsw-focus-ring-color: #3964fe; --dsw-focus-ring-width: 2px; --dsw-radius-lg: 12px; --dsw-radius-sm: 6px;
+    --page: #fafafa; color-scheme: light;
+  }
+  :root[data-theme='dark'] {
+    --dsw-alias-label-primary: #ececec; --dsw-alias-label-secondary: #b4b4b4; --dsw-alias-label-tertiary: #8d8d8d;
+    --dsw-alias-state-business-primary: #7b9bff; --dsw-alias-state-business-tertiary: rgba(123, 155, 255, .18);
+    --dsw-alias-border-l1: rgba(255, 255, 255, .14); --dsw-alias-card-fill: #24252a;
+    --dsw-focus-ring-color: #7b9bff; --page: #18191c; color-scheme: dark;
+  }
+  body { margin: 0; padding: 24px 16px; font: 14px/22px -apple-system, BlinkMacSystemFont, sans-serif; background: var(--page); color: var(--dsw-alias-label-primary); }
+  main { max-width: 760px; margin: 0 auto; }
+  [data-composer-card] { position: relative; border: .5px solid var(--dsw-alias-border-l1); border-radius: 16px; background: var(--dsw-alias-card-fill); padding: 12px 14px; }
+  [data-composer-input] { min-height: 44px; border-radius: 8px; font-size: 16px; line-height: 24px; }
+  [data-composer-input]:focus-visible { outline: 2px solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+  [data-composer-input] p { margin: 0; }
+  [data-composer-input] p:last-child::after { content: var(--dsh-composer-hint); color: var(--dsw-alias-label-tertiary); pointer-events: none; }
+</style>
+</head>
+<body>
+<main>
+  <div data-composer-card>
+    <div data-composer-input contenteditable="true" aria-label="입력창"><p>/gstack-cso</p></div>
+    <div id="overlay"></div>
+  </div>
+  <div id="dock"></div>
+</main>
+<script>
+  const params = new URLSearchParams(location.search)
+  if (params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark'
+  const locale = params.get('lang') === 'en' ? 'en' : 'ko'
+  window.fetch = async () => ({ ok: true, json: async () => ({ locale, restart: true, hints: { 'gstack-cso': '[--diff 변경분만 | --code 코드]' } }) })
+  // 아주 작은 React 흉내: 나무를 그대로 DOM으로 옮긴다(훅은 처음 값만).
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
+    useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+    useRef: () => ({ current: null }), useEffect: () => {},
+  }
+  const SVG = new Set(['svg', 'path'])
+  function toDom(node) {
+    if (node == null || node === false) return document.createTextNode('')
+    if (typeof node === 'string') return document.createTextNode(node)
+    if (typeof node.type === 'function') return toDom(node.type(node.props))
+    const el = SVG.has(node.type) ? document.createElementNS('http://www.w3.org/2000/svg', node.type) : document.createElement(node.type)
+    for (const [k, v] of Object.entries(node.props)) {
+      if (k === 'ref') continue
+      if (k === 'className') el.setAttribute('class', v)
+      else if (k === 'onClick') el.addEventListener('click', () => { v(); render() })
+      else if (k === 'hidden') el.hidden = v
+      else el.setAttribute(k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), String(v))
+    }
+    for (const child of node.children) el.appendChild(toDom(child))
+    return el
+  }
+  window.__ModuleLoader__ = { load(entry) { window.__mod = entry.factory(() => React) } }
+</script>
+<script src="../client.js"></script>
+<script>
+  sessionStorage.removeItem('dsh-skill-hints:restart-dismissed')
+  const slots = {}
+  __mod.apply({ effect: (fn) => fn(), slots: { inject: (_n, fn) => fn(), register: (o, C) => { slots[o.name] = C } } })
+  const { attachHint, store } = __mod.apply.testing
+  function render() { const dock = document.getElementById('dock'); dock.replaceChildren(toDom(slots['conversation.composer.dock']({}))) }
+  store.refresh().then(() => { attachHint(document.querySelector('[data-composer-card]')); render() })
+</script>
+</body>
+</html>
