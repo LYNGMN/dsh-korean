@@ -1,27 +1,38 @@
-import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { createText, registerLocalized } from './host-locale.js'
+import { resolveLocale, watchLocale } from './host-locale.js'
 
 /**
- * 스킬 입력 힌트 — DSH는 스킬의 argument-hint를 입력창에 보여 주지 않고,
- * `/` 메뉴의 스킬 설명도 원문(대개 영어) 그대로 보여 준다.
- * 입력창 힌트(input.hint)와 메뉴 설명은 호스트 명령에 붙으므로, 사람이 부를 수 있는
- * 스킬마다 같은 이름의 명령을 등록하고, 실행하면 `/이름 인자`를 사용자 메시지로 보내
- * DSH가 원래 스킬을 그대로 불러오게 한다. 힌트가 없는 스킬은 입력 힌트 없이 등록한다.
+ * 스킬 힌트 — `/` 메뉴의 사람 전용 스킬 설명을 DSH 언어에 맞춘다.
  *
- * 명령 설명과 결과 알림은 DSH 언어 설정(host-locale.js)을 따른다. 한국어면 오버레이의
- * 한국어 요약(없으면 영어), 그 밖은 원본 SKILL.md description 앞부분(160자까지)을 쓰고,
- * 언어가 바뀌면 명령을 다시 등록한다. 힌트 글 자체는 스킬 데이터라 그대로 둔다.
+ * DSH는 `/` 메뉴에 "명령"과 "스킬"을 따로 보여 주고, 같은 이름이어도 합치지 않는다.
+ * 그래서 명령을 따로 등록하지 않고, 스킬 제공자(`ctx.skills.registerProvider`)로
+ * 같은 스킬을 사용자 폴더보다 앞선 순위로 다시 내놓아 스킬 줄 하나의 설명만 바꾼다.
+ * 한국어면 오버레이의 한국어 요약(없으면 영어)과 입력 힌트, 그 밖은 원문 description
+ * 앞부분(160자)을 쓴다. 본문·경로·호출 범위는 DSH 파일 제공자와 똑같이 둔다.
+ *
+ * 모델도 부르는 스킬은 건드리지 않는다. description은 모델이 스킬을 고르는 글이기도
+ * 해서 언어마다 바뀌면 안 된다(host-locale.js 머리말).
  */
 export const name = 'skill-hints'
-export const inject = ['commands']
+export const inject = ['skills']
+
+/** 제공자 이름. `runtime`은 DSH가 따로 쓴다. */
+export const PROVIDER = 'skill-hints'
+/**
+ * DSH 파일 스킬 순위: 프로젝트 100·200, 사용자 지정 폴더 300, ~/.dsh/skills 400, ~/.agents/skills 500.
+ * 작을수록 이긴다. 사용자 지정 폴더는 그대로 이기게 두고 두 사용자 폴더만 앞선다.
+ */
+export const RANK = 350
 
 const HOME = homedir()
-// DSH가 스킬을 읽는 순서(rank 400 → 500). 같은 이름이면 앞쪽이 이긴다.
-export const DEFAULT_ROOTS = [join(HOME, '.dsh', 'skills'), join(HOME, '.agents', 'skills')]
-// 한국어 힌트·요약 한 곳(~/.agents/bin/skill-hints-sync가 원본에 넣는 것과 같은 목록)
+/** DSH가 사용자 스킬을 읽는 순서와 출처 이름(같은 이름이면 앞쪽이 이긴다). */
+export const DEFAULT_ROOTS = [
+  { path: join(HOME, '.dsh', 'skills'), source: 'user-dsh' },
+  { path: join(HOME, '.agents', 'skills'), source: 'user-agents' },
+]
+/** 한국어 힌트·요약 한 곳(~/.agents/bin/skill-hints-sync가 원본에 넣는 것과 같은 목록). */
 export const DEFAULT_OVERLAY = join(HOME, '.agents', 'skill-hints.json')
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const DESCRIPTION_MAX = 160
@@ -65,6 +76,14 @@ export function frontmatter(text) {
   return out
 }
 
+/** 머리말 뒤 본문. DSH 파일 제공자처럼 `---` 한 줄로 닫힌 곳 다음부터 읽고 앞뒤 공백을 뗀다. */
+export function body(text) {
+  const lines = String(text ?? '').split('\n')
+  if (lines[0]?.replace(/\r$/u, '') !== '---') return undefined
+  const close = lines.findIndex((line, i) => i > 0 && line.replace(/\r$/u, '') === '---')
+  return close < 0 ? undefined : lines.slice(close + 1).join('\n').trim()
+}
+
 /** 감싸개(.md)가 가리키는 실제 SKILL.md 경로. */
 function wrappedSkill(text) {
   const m = /`(\/[^`\n]+\/SKILL\.md)`/u.exec(text)
@@ -73,7 +92,7 @@ function wrappedSkill(text) {
 
 function entries(root) {
   try {
-    return readdirSync(root).sort()
+    return readdirSync(root).sort((a, b) => a.localeCompare(b))
   } catch {
     return []
   }
@@ -84,6 +103,14 @@ function isDir(path) {
     return statSync(path).isDirectory()
   } catch {
     return false
+  }
+}
+
+function realPath(path) {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
   }
 }
 
@@ -106,36 +133,39 @@ export function loadOverlay(path = DEFAULT_OVERLAY) {
   }
 }
 
+function normalizeRoots(roots) {
+  return roots.map((root, i) => (typeof root === 'string' ? { path: root, source: i === 0 ? 'user-dsh' : 'user-agents' } : root))
+}
+
 /**
- * 사람이 부를 수 있는 스킬을 찾는다(`user-invocable: false`는 뺀다).
- * @returns {{ name: string, hint?: string, summaryKo?: string, summaryEn: string }[]}
+ * 사람 전용(`disable-model-invocation: true`) 스킬을 DSH와 같은 규칙으로 찾는다.
+ * 같은 이름은 앞 폴더가 이기고, 이긴 쪽이 모델도 부르는 스킬이거나 `user-invocable: false`면 뺀다.
+ * @returns {{ name: string, source: string, locator: { path: string, directory: string }, whenToUse?: string, hint?: string, summaryKo?: string, summaryEn: string }[]}
  */
 export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
   const seen = new Set()
   const found = []
-  for (const root of roots) {
-    for (const entry of entries(root)) {
-      const path = join(root, entry)
-      let own
-      let real
-      if (entry.endsWith('.md') && !isDir(path)) {
-        own = read(path)
-        const target = own === undefined ? undefined : wrappedSkill(own)
-        real = target !== undefined && existsSync(target) ? read(target) : own
-      } else if (isDir(path)) {
-        own = read(join(path, 'SKILL.md'))
-        real = own
-      }
+  for (const root of normalizeRoots(roots)) {
+    for (const entry of entries(root.path)) {
+      const path = join(root.path, entry)
+      const locator = isDir(path)
+        ? { path: join(path, 'SKILL.md'), directory: path }
+        : entry.endsWith('.md') ? { path, directory: root.path } : undefined
+      if (locator === undefined) continue
+      const own = read(locator.path)
       if (own === undefined) continue
       const meta = frontmatter(own)
       const skillName = meta.name
-      if (!skillName || !SKILL_NAME.test(skillName) || seen.has(skillName)) continue
+      if (!skillName || !meta.description || !SKILL_NAME.test(skillName) || seen.has(skillName)) continue
       seen.add(skillName)
-      if (meta['user-invocable'] === 'false') continue
+      if (meta['disable-model-invocation'] !== 'true' || meta['user-invocable'] === 'false') continue
+      const target = wrappedSkill(own)
+      const real = (target !== undefined && read(target)) || own
       const source = frontmatter(real)
       const extra = overlay[source.name ?? skillName] ?? overlay[skillName] ?? {}
+      const skill = { name: skillName, source: root.source, locator, summaryEn: shorten(source.description || meta.description) }
+      if (meta.whenToUse) skill.whenToUse = meta.whenToUse
       const hint = source['argument-hint'] || extra.hint
-      const skill = { name: skillName, summaryEn: shorten(source.description || meta.description) }
       if (hint) skill.hint = hint
       const summaryKo = shorten(extra.summary)
       if (summaryKo) skill.summaryKo = summaryKo
@@ -145,60 +175,65 @@ export function discover(roots = DEFAULT_ROOTS, overlay = loadOverlay()) {
   return found
 }
 
-function userMessage(text) {
-  return Object.freeze({
-    role: 'user',
-    id: randomUUID(),
-    content: Object.freeze([Object.freeze({ type: 'text', text })]),
-    source: Object.freeze({ kind: 'user' }),
-  })
+/** 메뉴에 보일 설명. 한국어면 요약(없으면 영어)과 입력 힌트, 그 밖은 영어 원문. 힌트는 한국어로 쓰여 있어 한국어에서만 붙인다. */
+export function describe(skill, locale) {
+  if (locale !== 'ko') return skill.summaryEn
+  const summary = skill.summaryKo || skill.summaryEn
+  return skill.hint ? `${summary} · ${skill.hint}` : summary
 }
 
-/** 사용자에게 보이는 호스트 글(언어별). */
-export const TEXT = Object.freeze({
-  en: {
-    description: 'Skill · {summary}',
-    failed: '/{name} failed: {message}',
-    loading: 'Loading the /{name} skill.',
-  },
-  ko: {
-    description: '스킬 · {summary}',
-    failed: '/{name} 실행 실패: {message}',
-    loading: '/{name} 스킬을 불러옵니다.',
-  },
-})
+const INVOCATION = Object.freeze({ modelInvocable: false, userInvocable: true })
 
-export function skillLine(skillName, rawInput) {
-  const args = String(rawInput ?? '').trim()
-  return args === '' ? `/${skillName}` : `/${skillName} ${args}`
+/** 찾은 스킬 하나를 DSH 스킬 후보로 바꾼다. */
+export function candidate(skill, locale) {
+  return {
+    name: skill.name,
+    description: describe(skill, locale),
+    ...(skill.whenToUse ? { whenToUse: skill.whenToUse } : {}),
+    invocation: INVOCATION,
+    provider: PROVIDER,
+    source: skill.source,
+    rank: RANK,
+    locator: skill.locator,
+    resourceBase: { kind: 'directory', path: skill.locator.directory },
+    path: realPath(skill.locator.path),
+  }
+}
+
+/** 스킬을 부를 때 본문을 파일에서 다시 읽는다. 설명은 원문(모델이 보는 글)을 그대로 둔다. */
+export function load(found) {
+  const text = read(found.locator.path)
+  const content = body(text)
+  if (content === undefined) return undefined
+  const meta = frontmatter(text)
+  if (meta.name !== found.name || !meta.description) return undefined
+  return {
+    name: found.name,
+    description: meta.description,
+    ...(found.whenToUse ? { whenToUse: found.whenToUse } : {}),
+    invocation: found.invocation,
+    source: found.source,
+    provider: PROVIDER,
+    resourceBase: { kind: 'directory', path: found.locator.directory },
+    path: realPath(found.locator.path),
+    content,
+  }
 }
 
 export function apply(ctx, config = {}) {
+  if (typeof ctx?.skills?.registerProvider !== 'function') return
   const roots = Array.isArray(config?.roots) && config.roots.length > 0 ? config.roots : DEFAULT_ROOTS
-  const skills = discover(roots, loadOverlay(config?.overlay ?? DEFAULT_OVERLAY))
-  const t = createText(ctx, TEXT)
-  registerLocalized(ctx, (locale) => {
-    const disposers = []
-    for (const skill of skills) {
-      const summary = locale === 'ko' ? skill.summaryKo || skill.summaryEn : skill.summaryEn
-      try {
-        disposers.push(ctx.commands.register({
-          name: skill.name,
-          description: t('description', { summary }, locale),
-          ...(skill.hint ? { input: { hint: skill.hint } } : {}),
-          handler: ({ agent, rawInput }) => {
-            try {
-              agent.steer(userMessage(skillLine(skill.name, rawInput)))
-            } catch (error) {
-              return { kind: 'error', text: t('failed', { name: skill.name, message: error instanceof Error ? error.message : String(error) }) }
-            }
-            return { kind: 'success', text: t('loading', { name: skill.name }) }
-          },
-        }))
-      } catch {
-        // 같은 이름의 호스트 명령이 이미 있으면 그 명령을 그대로 둔다.
-      }
+  const overlayPath = config?.overlay ?? DEFAULT_OVERLAY
+  ctx.skills.registerProvider((control) => {
+    // 언어가 바뀌면 목록을 다시 받게 한다. 스킬 파일이 바뀌면 DSH 파일 제공자가 같은 캐시를 비운다.
+    watchLocale(ctx, () => control.invalidate())
+    return {
+      name: PROVIDER,
+      list: async () => {
+        const locale = resolveLocale(ctx)
+        return discover(roots, loadOverlay(overlayPath)).map((skill) => candidate(skill, locale))
+      },
+      get: async (listed) => load(listed),
     }
-    return disposers
   })
 }

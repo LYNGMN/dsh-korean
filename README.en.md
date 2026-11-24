@@ -92,7 +92,7 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <tr>
 <td align="center"><img src="plugins/skill-hints/icon.svg" width="40" height="40" alt=""></td>
 <td><strong>Skill hints</strong></td>
-<td>Shows each skill's argument hint in the composer.</td>
+<td>Shows user-only skill descriptions in the / menu in your DSH language, with Korean summaries and argument hints when DSH is in Korean.</td>
 </tr>
 <tr>
 <td align="center"><img src="plugins/footnote-hover/icon.svg" width="40" height="40" alt=""></td>
