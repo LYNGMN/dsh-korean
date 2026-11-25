@@ -1,0 +1,144 @@
+<!doctype html>
+<!--
+  A stand-in for DSH's markdown preview tab, for looking at Path Links by eye and for the browser tests.
+  Query: ?theme=dark, ?lang=en|zh, ?noreveal (a Host that cannot open paths), ?nolocale.
+  Colors and the inline-code box copy DSH 0.2.2 (design-platform.css, the markdown CSS module).
+  Calls the plugin makes are kept in window.__calls.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Path Links preview</title>
+<style>
+  :root {
+    --dsw-alias-link: rgb(65, 118, 230);
+    --dsw-static-deepseek-600: rgb(72, 104, 178);
+    --dsw-alias-label-primary: rgb(15, 17, 21);
+    --dsw-alias-label-secondary: rgb(97, 102, 107);
+    --dsw-alias-bg-base: rgb(255, 255, 255);
+    --dsw-alias-markdown-inline-code: rgb(250, 250, 250);
+    --dsw-alias-border-l1: rgba(0, 0, 0, 0.04);
+    --dsw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
+    --dsw-alias-state-business-primary: rgb(65, 118, 230);
+    --dsw-alias-state-error-primary: rgb(236, 19, 19);
+    --dsw-radius-sm: 8px;
+    --dsw-font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    --ds-font-family-code: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  body[data-ds-dark-theme] {
+    --dsw-alias-link: rgb(122, 170, 255);
+    --dsw-alias-label-primary: rgb(249, 250, 251);
+    --dsw-alias-label-secondary: rgb(207, 211, 214);
+    --dsw-alias-bg-base: rgb(21, 21, 23);
+    --dsw-alias-markdown-inline-code: rgb(41, 41, 41);
+    --dsw-alias-border-l1: rgba(255, 255, 255, 0.06);
+    --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.08);
+    --dsw-alias-state-business-primary: rgb(122, 170, 255);
+    --dsw-alias-state-error-primary: rgb(242, 90, 90);
+    color-scheme: dark;
+  }
+  :focus-visible { outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-width: 2px; }
+  html, body { margin: 0; background: var(--dsw-alias-bg-base); }
+  html { scrollbar-width: thin; scrollbar-color: var(--dsw-alias-label-secondary) transparent; }
+  body { padding: 16px 20px; color: var(--dsw-alias-label-primary); font: 14px / 24px var(--dsw-font-family); overflow-wrap: anywhere; }
+  #outside code { font: 12px / 19px var(--ds-font-family-code); }
+  .md { min-width: 0; overflow-wrap: anywhere; font: 14px / 24px var(--dsw-font-family); color: var(--dsw-alias-label-primary); word-break: keep-all; }
+  .md p { margin: 16px 0; }
+  .md :not(pre) > code { display: inline-flex; align-items: center; box-sizing: border-box; font: 12px / 19px var(--ds-font-family-code); background-color: var(--dsw-alias-markdown-inline-code); border: .5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-sm); padding: 0 5px; }
+  .md pre { background: var(--dsw-alias-markdown-inline-code); padding: 8px 12px; border-radius: 8px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--dsw-alias-label-secondary) transparent; }
+  .md pre code { font: 12px / 19px var(--ds-font-family-code); }
+</style>
+</head>
+<body>
+<div data-document-markdown>
+  <div class="md" data-markdown-variant="document" id="doc">
+    <h1>pstack-demo</h1>
+    <p>(pstack 묶음: 사람 호출용 접두사)</p>
+    <p>이 스킬은 <code>pstack</code> 묶음의 <code>demo</code>이다.</p>
+    <ul>
+      <li id="placeholder">원래 이름은 꺼져 있을 수 있으니 <code>/Users/me/.agents/sources/pack/skills/&lt;이름&gt;/SKILL.md</code>를 읽고 따른다.</li>
+      <li id="command">명령 이름은 <code>/pstack-&lt;이름&gt;</code>으로 쓴다. 따로 정한 이름: <code>setup-pstack</code> → <code>/pstack-setup</code>.</li>
+    </ul>
+    <ol>
+      <li id="file"><code>/Users/me/.agents/sources/pack/skills/demo/SKILL.md</code>를 끝까지 읽고 그대로 따른다.</li>
+      <li id="dir">그 안의 상대 경로(<code>references/</code>, <code>scripts/</code> 등)는 <code>/Users/me/.agents/sources/pack/skills/demo</code> 기준으로 찾는다.</li>
+      <li id="linked"><code>/Users/me/.agents/skills/cloud/demo/SKILL.md</code>와 폴더 <code>/Users/me/.agents/skills/cloud/demo</code>는 링크된 폴더를 거친다.</li>
+      <li id="missing">없는 경로 <code>/Users/me/nowhere/SKILL.md</code>와 홈 경로 <code>~/.agents/skills</code>는 그대로 둔다.</li>
+      <li id="workspace">작업 공간 안 파일 <code>/Users/me/project/README.md</code></li>
+    </ol>
+    <pre><code id="fence">/Users/me/.agents/sources/pack/skills/demo/SKILL.md</code></pre>
+  </div>
+</div>
+<p id="outside">미리 보기 밖: <code>/Users/me/.agents/sources/pack/skills/demo/SKILL.md</code></p>
+<script>
+  (() => {
+    const q = new URLSearchParams(location.search)
+    if (q.get('theme') === 'dark') document.body.setAttribute('data-ds-dark-theme', '')
+    const FILES = {
+      '/Users/me/.agents/sources/pack/skills/demo/SKILL.md': '/Users/me/.agents/sources/pack/skills/demo/SKILL.md',
+      '/Users/me/.agents/skills/cloud/demo/SKILL.md': '/Users/me/.agents/sources/cloud/skills/demo/SKILL.md',
+      '/Users/me/project/README.md': '/Users/me/project/README.md'
+    }
+    const DIRS = new Set(['/Users/me/.agents/sources/pack/skills/demo', '/Users/me/.agents/skills/cloud/demo'])
+    const calls = window.__calls = { stat: [], open: [], reveal: [] }
+    window.__fail = { open: false, reveal: false }
+    const ok = (value) => ({ ok: true, value })
+    const err = (code, details) => ({ ok: false, error: { code, details } })
+    const scope = {
+      sidebarRight: {
+        mounted: { getSnapshot: () => 'sess-1' },
+        openResource(address, options) {
+          calls.open.push([address, options])
+          if (window.__fail.open) throw new Error('no tab type claims it')
+        }
+      },
+      sessions: { list: { getSnapshot: () => ({ byId: { 'sess-1': { cwd: '/Users/me/project' } } }) } },
+      remote: {
+        session: {
+          canOpenWorkspacePath: async () => ok(!q.has('noreveal')),
+          openWorkspacePath: async (request) => { calls.reveal.push(request); return window.__fail.reveal ? err('gateway/bad-request', {}) : ok({ opened: true }) }
+        },
+        workspaceFiles: {
+          async stat(sid, path) {
+            calls.stat.push([sid, path])
+            await new Promise((r) => setTimeout(r, 5))
+            if (FILES[path]) return ok({ absolutePath: FILES[path], version: '1' })
+            if (DIRS.has(path)) return err('workspace-file/not-regular-file', { path, kind: 'directory' })
+            return err('workspace-file/not-found', { path })
+          }
+        }
+      }
+    }
+    const lang = q.get('lang') || 'ko'
+    const dicts = {}
+    const listeners = new Set()
+    window.__setLocale = (id) => { window.__active = id; for (const fn of listeners) fn() }
+    window.__active = lang
+    const locale = q.has('nolocale') ? undefined : {
+      register(ns, d) { dicts[ns] = d; return () => {} },
+      bind(ns) { return (key, params) => (dicts[ns][window.__active]?.[key] ?? dicts[ns].en[key]).replace(/\{(\w+)\}/g, (m, n) => (params && n in params ? String(params[n]) : m)) },
+      subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn) }
+    }
+    const disposers = []
+    const effect = (fn) => { const out = fn(); if (typeof out === 'function') disposers.push(out) }
+    window.__dispose = () => { while (disposers.length) disposers.pop()() }
+    window.__ModuleLoader__ = {
+      load(def) {
+        const mod = window.__pathLinks = def.factory(() => {})
+        mod.apply({
+          locale,
+          effect,
+          inject(services, cb) {
+            const missing = services.filter((s) => !s.split('.').reduce((o, k) => o?.[k], scope))
+            if (missing.length) throw new Error('missing ' + missing)
+            cb({ ...scope, effect })
+          }
+        })
+      }
+    }
+  })()
+</script>
+<script src="../client.js"></script>
+</body>
+</html>

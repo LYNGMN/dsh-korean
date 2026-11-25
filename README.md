@@ -100,6 +100,11 @@ DeepSeek Harness(DSH)를 한국어로 쓰기 위한 플러그인 모음입니다
 <td>각주 번호에 마우스를 올리면 내용을 미리 보여 줘요.</td>
 </tr>
 <tr>
+<td align="center"><img src="plugins/path-links/icon.svg" width="40" height="40" alt=""></td>
+<td nowrap><strong>경로 바로가기</strong></td>
+<td>마크다운 미리보기의 절대 경로를 누르면 그 파일을 새 탭으로 열고, 옆 ↗로 Finder에서 보여 줘요.</td>
+</tr>
+<tr>
 <td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""></td>
 <td nowrap><strong>모델 예비 키</strong></td>
 <td>쓰던 API 키가 막히면 예비 키로 넘어가요.</td>

@@ -1,0 +1,7 @@
+# Path Links bundle for DSH.
+# The browser half (client.js) turns an absolute path written as inline code in
+# the markdown preview into a link that opens the file in a new tab, and adds a
+# ↗ button beside it that shows the path in Finder.
+- insert:
+    - id: path-links
+      name: '@lyngmn/dsh-path-links'
