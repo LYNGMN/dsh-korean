@@ -100,6 +100,11 @@ Every plugin is named `@lyngmn/dsh-<name>` and gets its own card on the DSH plug
 <td>Shows a footnote's text when you hover over its number.</td>
 </tr>
 <tr>
+<td align="center"><img src="plugins/path-links/icon.svg" width="40" height="40" alt=""></td>
+<td><strong>Path links</strong></td>
+<td>Click an absolute path in the markdown preview to open that file in a new tab, or ↗ beside it to show it in Finder.</td>
+</tr>
+<tr>
 <td align="center"><img src="plugins/model-key-failover/icon.svg" width="40" height="40" alt=""></td>
 <td><strong>Spare model keys</strong></td>
 <td>Switches to a spare API key when the current one stops working.</td>

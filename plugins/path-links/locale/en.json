@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Path Links",
+    "description": "In the markdown preview, click an absolute path shown as code to open that file in a new tab, or click ↗ beside it to show it in Finder. Not an official DeepSeek plugin."
+  }
+}

@@ -1,0 +1,15 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lucide "square-arrow-out-up-right" (ISC License, https://lucide.dev/icons/square-arrow-out-up-right). -->
+  <!-- 24칸 원본을 36칸 가운데에 놓고 0.88배로 줄였다(선 굵기는 2 ÷ 0.88). 네모가 칸을 꽉 채워 열쇠 기준 보이는 크기 1.36 → 1.03, 중심 어긋남 0.14px. -->
+  <g transform="translate(18 18) scale(0.88) translate(-12 -12)" stroke="url(#path-links-icon)" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+    <path d="m21 3-9 9" />
+    <path d="M15 3h6v6" />
+  </g>
+  <defs>
+    <linearGradient id="path-links-icon" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D94EE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+  </defs>
+</svg>
